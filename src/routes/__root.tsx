@@ -109,7 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="es">
       <head>
         <HeadContent />
       </head>
@@ -121,13 +121,36 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function Gate() {
+  const { state, ready } = useMarcelo();
+
+  if (!ready) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (!state.profile.onboarded) {
+    return <Onboarding />;
+  }
+
+  return (
+    <AppShell>
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+    </AppShell>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <MarceloProvider>
+        <AssistantProvider>
+          <Gate />
+          <Toaster position="top-center" />
+        </AssistantProvider>
+      </MarceloProvider>
     </QueryClientProvider>
   );
 }
