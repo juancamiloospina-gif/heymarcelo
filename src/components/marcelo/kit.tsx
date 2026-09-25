@@ -7,8 +7,8 @@ export function Screen({ children, className }: { children: ReactNode; className
 
 export function PageTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="mb-5">
-      <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-foreground">{title}</h1>
+    <div className="mb-6">
+      <h1 className="text-[26px] font-bold leading-tight text-foreground">{title}</h1>
       {subtitle ? <p className="mt-1 text-[14px] text-muted-foreground">{subtitle}</p> : null}
     </div>
   );
@@ -57,7 +57,7 @@ export function Button({ variant = "primary", size = "md", className, ...props }
     <button
       {...props}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-colors disabled:opacity-50",
         size === "md" ? "h-12 px-5 text-[15px]" : "h-10 px-4 text-[14px]",
         variant === "primary" && "bg-primary text-primary-foreground hover:bg-primary/90",
         variant === "secondary" && "border border-border bg-card text-foreground hover:bg-muted",
@@ -80,7 +80,7 @@ export function Field({
       <input
         {...props}
         className={cn(
-          "h-12 w-full rounded-xl border border-input bg-card px-4 text-[15px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-accent focus:ring-2 focus:ring-accent/25",
+          "h-12 w-full rounded-2xl border border-input bg-card px-4 text-[15px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-accent focus:ring-2 focus:ring-accent/25",
           className,
         )}
       />

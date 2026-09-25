@@ -286,14 +286,14 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={value}>
       {children}
       {isOpen ? (
-        <div className="fixed inset-0 z-50 flex justify-center bg-primary/35 backdrop-blur-sm">
-          <div className="flex w-full max-w-md flex-col bg-background">
+        <div className="fixed inset-0 z-50 flex justify-center bg-primary/60 backdrop-blur-sm">
+          <div className="flex w-full max-w-md flex-col bg-primary text-primary-foreground">
             <div className="flex items-center justify-between px-5 pb-2 pt-5">
-              <span className="text-[15px] font-semibold tracking-tight">Marcelo</span>
+               <span className="text-[15px] font-semibold">Marcelo</span>
               <button
                 onClick={close}
                 aria-label="Cerrar"
-                className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                 className="flex size-9 items-center justify-center rounded-full bg-primary-foreground/10 text-primary-foreground"
               >
                 <X className="size-4" />
               </button>
@@ -301,11 +301,11 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 
             <div className="flex-1 overflow-y-auto px-5 pb-4">
               <Wave active={listening || thinking} />
-              <p className="text-center text-[15px] font-semibold text-foreground">
+              <p className="text-center text-[18px] font-bold text-primary-foreground">
                 {listening ? "Te escucho" : thinking ? "Un momento…" : reply ? "" : "Dime qué necesitas"}
               </p>
               {!heard && !reply ? (
-                <p className="mx-auto mt-2 max-w-[280px] text-center text-[13px] leading-relaxed text-muted-foreground">
+                <p className="mx-auto mt-2 max-w-[280px] text-center text-[13px] leading-relaxed text-primary-foreground/60">
                   Habla normalmente en español. Yo me encargo del resto.
                 </p>
               ) : null}
@@ -355,12 +355,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
               ) : null}
             </div>
 
-            <div className="border-t border-border bg-card px-5 pb-6 pt-4">
+             <div className="border-t border-primary-foreground/10 bg-primary px-5 pb-6 pt-4">
               <div className="flex items-center justify-center">
                 <button
                   onClick={listening ? () => recognitionRef.current?.stop() : startListening}
                   aria-label={listening ? "Detener" : "Hablar con Marcelo"}
-                  className="relative flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                   className="relative flex size-16 items-center justify-center rounded-full bg-card text-accent shadow-[var(--shadow-lift)]"
                 >
                   {listening ? (
                     <span className="absolute inset-0 rounded-full bg-accent/50 animate-pulse-ring" />
@@ -379,7 +379,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
                   placeholder="O escríbeme aquí"
-                  className="h-11 flex-1 rounded-xl border border-input bg-background px-4 text-[15px] outline-none focus:border-accent"
+                   className="h-11 flex-1 rounded-xl border border-primary-foreground/15 bg-primary-foreground/10 px-4 text-[15px] text-primary-foreground outline-none placeholder:text-primary-foreground/45 focus:border-accent"
                 />
                 <Button size="sm" type="submit" aria-label="Enviar" disabled={!typed.trim() || thinking}>
                   <Send className="size-4" />
