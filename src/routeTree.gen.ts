@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
+import { Route as MensajeClientIdRouteImport } from './routes/mensaje.$clientId'
+import { Route as TrabajoJobIdRouteImport } from './routes/trabajo.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,17 +36,31 @@ const ClientesClientIdRoute = ClientesClientIdRouteImport.update({
   path: '/clientes/$clientId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MensajeClientIdRoute = MensajeClientIdRouteImport.update({
+  id: '/mensaje/$clientId',
+  path: '/mensaje/$clientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrabajoJobIdRoute = TrabajoJobIdRouteImport.update({
+  id: '/trabajo/$jobId',
+  path: '/trabajo/$jobId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
+  '/mensaje/$clientId': typeof MensajeClientIdRoute
+  '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
+  '/mensaje/$clientId': typeof MensajeClientIdRoute
+  '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/clientes': typeof ClientesIndexRoute
 }
 export interface FileRoutesById {
@@ -52,20 +68,43 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
+  '/mensaje/$clientId': typeof MensajeClientIdRoute
+  '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/agenda' | '/clientes/$clientId' | '/clientes/'
+  fullPaths:
+    | '/'
+    | '/agenda'
+    | '/clientes/$clientId'
+    | '/mensaje/$clientId'
+    | '/trabajo/$jobId'
+    | '/clientes/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agenda' | '/clientes/$clientId' | '/clientes'
-  id: '__root__' | '/' | '/agenda' | '/clientes/$clientId' | '/clientes/'
+  to:
+    | '/'
+    | '/agenda'
+    | '/clientes/$clientId'
+    | '/mensaje/$clientId'
+    | '/trabajo/$jobId'
+    | '/clientes'
+  id:
+    | '__root__'
+    | '/'
+    | '/agenda'
+    | '/clientes/$clientId'
+    | '/mensaje/$clientId'
+    | '/trabajo/$jobId'
+    | '/clientes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
   ClientesClientIdRoute: typeof ClientesClientIdRoute
+  MensajeClientIdRoute: typeof MensajeClientIdRoute
+  TrabajoJobIdRoute: typeof TrabajoJobIdRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
 }
 
@@ -99,6 +138,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesClientIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mensaje/$clientId': {
+      id: '/mensaje/$clientId'
+      path: '/mensaje/$clientId'
+      fullPath: '/mensaje/$clientId'
+      preLoaderRoute: typeof MensajeClientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trabajo/$jobId': {
+      id: '/trabajo/$jobId'
+      path: '/trabajo/$jobId'
+      fullPath: '/trabajo/$jobId'
+      preLoaderRoute: typeof TrabajoJobIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -106,6 +159,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
   ClientesClientIdRoute: ClientesClientIdRoute,
+  MensajeClientIdRoute: MensajeClientIdRoute,
+  TrabajoJobIdRoute: TrabajoJobIdRoute,
   ClientesIndexRoute: ClientesIndexRoute,
 }
 export const routeTree = rootRouteImport
