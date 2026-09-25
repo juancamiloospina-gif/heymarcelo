@@ -34,7 +34,7 @@ function Mas() {
       <Card className="divide-y divide-border p-0">
         {links.map(({ to, label, hint, icon: Icon }) => (
           <button key={to} onClick={() => navigate({ to })} className="flex w-full items-center gap-3 px-4 py-4 text-left">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-accent">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
               <Icon className="size-4.5" />
             </span>
             <span className="min-w-0 flex-1">

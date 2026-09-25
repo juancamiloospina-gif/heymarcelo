@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Send, Mic } from "lucide-react";
+import { ArrowLeft, Send, Mic, Phone, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useAssistant } from "@/components/marcelo/assistant";
@@ -73,8 +73,11 @@ function Mensaje() {
         <ArrowLeft className="size-4" /> {client.name}
       </button>
 
-      <h1 className="text-[24px] font-semibold leading-tight">{client.name}</h1>
-      <p className="mt-1 text-[14px] text-muted-foreground">{client.city}</p>
+      <Card className="flex items-center gap-3 p-3">
+        <span className="flex size-11 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-primary-foreground">{client.name.split(" ").map((part) => part[0]).slice(0,2).join("")}</span>
+        <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold">{client.name}</span><span className="block text-[12px] text-muted-foreground">{client.city}</span></span>
+        <Phone className="size-4 text-accent" /><MoreVertical className="size-4 text-muted-foreground" />
+      </Card>
 
       <SectionTitle>Lo que quieres decir</SectionTitle>
       <Card className="space-y-3">
@@ -126,12 +129,7 @@ function Mensaje() {
           <SectionTitle>Mensajes anteriores</SectionTitle>
           <div className="space-y-3">
             {history.map((m) => (
-              <Card key={m.id}>
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Tú dijiste</p>
-                <p className="mt-0.5 text-[14px]">{m.es}</p>
-                <p className="mt-3 text-[12px] font-semibold uppercase tracking-wide text-accent">En inglés</p>
-                <p className="mt-0.5 text-[14px]">{m.en}</p>
-              </Card>
+              <div key={m.id} className="space-y-2"><div className="ml-8 rounded-2xl rounded-tr-sm bg-accent/10 p-3 text-[14px]">{m.es}</div><div className="mr-8 rounded-2xl rounded-tl-sm bg-card p-3 text-[14px] shadow-[var(--shadow-card)]">{m.en}<p className="mt-1 text-[10px] font-semibold text-accent">Traducción</p></div></div>
             ))}
           </div>
         </>

@@ -43,6 +43,8 @@ function Gastos() {
     <Screen>
       <PageTitle title="Gastos" subtitle={`Llevas ${money(total)} este mes.`} />
 
+      <div className="mb-4 grid grid-cols-3 rounded-xl bg-muted p-1 text-center text-[11px] font-semibold text-muted-foreground"><span className="px-2 py-2">Resumen</span><span className="px-2 py-2">Ingresos</span><span className="rounded-lg bg-primary px-2 py-2 text-primary-foreground">Gastos</span></div>
+
       <Card className="space-y-4">
         <Field
           label="¿Cuánto gastaste?"
@@ -60,7 +62,7 @@ function Gastos() {
                 onClick={() => setCategory(c)}
                 className={cn(
                   "rounded-full px-3.5 py-2 text-[13px] font-medium transition-colors",
-                  category === c ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground",
+                   category === c ? "bg-accent text-accent-foreground" : "border border-border bg-card text-muted-foreground",
                 )}
               >
                 {c}
