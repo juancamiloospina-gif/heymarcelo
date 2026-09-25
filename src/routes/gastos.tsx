@@ -104,14 +104,14 @@ function Gastos() {
           }}
         />
         
-        <div className="flex gap-3">
-          <Button variant="secondary" className="flex-1 h-14 rounded-2xl border-dashed" onClick={() => fileRef.current?.click()}>
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="secondary" className="h-14 min-w-0 rounded-2xl border-dashed px-3 text-[12px]" onClick={() => fileRef.current?.click()}>
             <Camera className="size-5" /> 
-            <span className="truncate">{receipt ? "Cambiar foto" : "Tomar foto del recibo"}</span>
+            <span className="truncate">{receipt ? "Cambiar foto" : "Foto del recibo"}</span>
           </Button>
           
           <Button
-            className="h-14 flex-[1.5] rounded-2xl bg-primary text-primary-foreground shadow-lg"
+            className="h-14 min-w-0 rounded-2xl bg-primary px-3 text-[12px] text-primary-foreground shadow-lg"
             disabled={!Number(amount)}
             onClick={() => {
               addExpense({ amount: Number(amount), category, note: note || undefined, date: todayISO(), receipt });
