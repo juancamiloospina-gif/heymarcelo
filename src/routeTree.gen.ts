@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgendaRouteImport } from './routes/agenda'
+import { Route as DineroRouteImport } from './routes/dinero'
+import { Route as GastosRouteImport } from './routes/gastos'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
 import { Route as MensajeClientIdRouteImport } from './routes/mensaje.$clientId'
@@ -24,6 +26,16 @@ const IndexRoute = IndexRouteImport.update({
 const AgendaRoute = AgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DineroRoute = DineroRouteImport.update({
+  id: '/dinero',
+  path: '/dinero',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GastosRoute = GastosRouteImport.update({
+  id: '/gastos',
+  path: '/gastos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
@@ -50,6 +62,8 @@ const TrabajoJobIdRoute = TrabajoJobIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
+  '/dinero': typeof DineroRoute
+  '/gastos': typeof GastosRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
@@ -58,6 +72,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
+  '/dinero': typeof DineroRoute
+  '/gastos': typeof GastosRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
@@ -67,6 +83,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
+  '/dinero': typeof DineroRoute
+  '/gastos': typeof GastosRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
@@ -77,6 +95,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agenda'
+    | '/dinero'
+    | '/gastos'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
@@ -85,6 +105,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agenda'
+    | '/dinero'
+    | '/gastos'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
@@ -93,6 +115,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/agenda'
+    | '/dinero'
+    | '/gastos'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
@@ -102,6 +126,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
+  DineroRoute: typeof DineroRoute
+  GastosRoute: typeof GastosRoute
   ClientesClientIdRoute: typeof ClientesClientIdRoute
   MensajeClientIdRoute: typeof MensajeClientIdRoute
   TrabajoJobIdRoute: typeof TrabajoJobIdRoute
@@ -122,6 +148,20 @@ declare module '@tanstack/react-router' {
       path: '/agenda'
       fullPath: '/agenda'
       preLoaderRoute: typeof AgendaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dinero': {
+      id: '/dinero'
+      path: '/dinero'
+      fullPath: '/dinero'
+      preLoaderRoute: typeof DineroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gastos': {
+      id: '/gastos'
+      path: '/gastos'
+      fullPath: '/gastos'
+      preLoaderRoute: typeof GastosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes/': {
@@ -158,6 +198,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
+  DineroRoute: DineroRoute,
+  GastosRoute: GastosRoute,
   ClientesClientIdRoute: ClientesClientIdRoute,
   MensajeClientIdRoute: MensajeClientIdRoute,
   TrabajoJobIdRoute: TrabajoJobIdRoute,
