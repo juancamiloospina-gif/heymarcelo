@@ -2,13 +2,13 @@ import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
 export function Screen({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("px-5 pb-28 pt-5", className)}>{children}</div>;
+  return <div className={cn("px-4 pb-28 pt-5", className)}>{children}</div>;
 }
 
 export function PageTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-6">
-      <h1 className="text-[26px] font-bold leading-tight text-foreground">{title}</h1>
+      <h1 className="text-[22px] font-bold leading-tight text-foreground">{title}</h1>
       {subtitle ? <p className="mt-1 text-[14px] text-muted-foreground">{subtitle}</p> : null}
     </div>
   );

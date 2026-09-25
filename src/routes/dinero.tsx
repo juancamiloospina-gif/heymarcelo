@@ -35,13 +35,18 @@ function Dinero() {
 
   return (
     <Screen>
-      <PageTitle title="Tu dinero" subtitle="Lo que entra y lo que sale este mes." />
+      <PageTitle title="Tu dinero" subtitle="Resumen de este mes" />
 
-      <Card className="bg-primary text-primary-foreground">
+      <div className="mb-4 grid grid-cols-3 rounded-xl bg-muted p-1 text-center text-[11px] font-semibold text-muted-foreground">
+        <span className="rounded-lg bg-primary px-2 py-2 text-primary-foreground">Resumen</span><span className="px-2 py-2">Ingresos</span><span className="px-2 py-2">Gastos</span>
+      </div>
+
+      <Card className="relative overflow-hidden bg-primary text-primary-foreground">
+        <div className="absolute bottom-5 right-5 flex h-16 items-end gap-1 opacity-55">{[30,48,38,64,52].map((h,i)=><span key={i} className="w-2 rounded-t-sm bg-accent" style={{height:h}} />)}</div>
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/60">Este mes</p>
         <p className="mt-2 text-[34px] font-semibold leading-none">{money(profit)}</p>
         <p className="mt-1 text-[13px] text-primary-foreground/70">Ganancia</p>
-        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-primary-foreground/15 pt-4">
+        <div className="relative mt-5 grid grid-cols-2 gap-4 border-t border-primary-foreground/15 pt-4">
           <div>
             <p className="text-[12px] text-primary-foreground/60">Ingresos</p>
             <p className="mt-0.5 text-[17px] font-semibold">{money(income)}</p>

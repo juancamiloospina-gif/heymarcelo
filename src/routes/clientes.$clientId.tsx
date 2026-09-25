@@ -44,12 +44,14 @@ function ClienteDetalle() {
 
   return (
     <Screen>
-      <button onClick={() => navigate({ to: "/clientes" })} className="mb-4 flex items-center gap-1.5 text-[14px] text-muted-foreground">
-        <ArrowLeft className="size-4" /> Clientes
+      <button onClick={() => navigate({ to: "/clientes" })} className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground">
+        <ArrowLeft className="size-4" /> Cliente
       </button>
 
-      <h1 className="text-[24px] font-semibold leading-tight">{client.name}</h1>
-      <p className="mt-1 text-[14px] text-muted-foreground">
+      <div className="text-center">
+        <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-[20px] font-bold text-primary-foreground">{client.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span>
+      <h1 className="mt-3 text-[22px] font-bold leading-tight">{client.name}</h1>
+      <p className="mt-1 text-[13px] text-muted-foreground">
         {client.service}
         {client.price ? ` · ${money(client.price)} habitual` : ""}
       </p>
@@ -58,6 +60,7 @@ function ClienteDetalle() {
           <Badge tone="danger">Te debe {money(owed)}</Badge>
         </div>
       ) : null}
+      </div>
 
       <div className="mt-5 grid grid-cols-3 gap-2">
         <Button variant="secondary" size="sm" onClick={() => (window.location.href = `tel:${client.phone}`)}>
@@ -103,7 +106,7 @@ function ClienteDetalle() {
       ) : null}
 
       <SectionTitle>Datos</SectionTitle>
-      <Card className="space-y-3">
+      <Card className="space-y-4">
         <InfoLine label="Teléfono" value={client.phone || "Sin teléfono"} />
         <InfoLine label="Dirección" value={`${client.address}${client.city ? `, ${client.city}` : ""}`} icon />
         {client.notes ? <InfoLine label="Notas" value={client.notes} /> : null}

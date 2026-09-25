@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, Plus, ChevronRight } from "lucide-react";
+import { Search, Plus, ChevronRight, UserRound } from "lucide-react";
 import { Button, Card, Empty, Field, PageTitle, Screen } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { money } from "@/lib/marcelo-data";
@@ -28,7 +28,10 @@ function Clientes() {
 
   return (
     <Screen>
-      <PageTitle title="Clientes" subtitle="Las personas para las que trabajas." />
+      <div className="flex items-start justify-between">
+        <PageTitle title="Clientes" subtitle={`${state.clients.length} personas`} />
+        <Button size="sm" aria-label="Agregar cliente" onClick={() => setAdding(true)}><Plus className="size-4" /></Button>
+      </div>
 
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -36,21 +39,21 @@ function Clientes() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar cliente"
-          className="h-12 w-full rounded-xl border border-input bg-card pl-11 pr-4 text-[15px] outline-none focus:border-accent"
+          className="h-11 w-full rounded-xl border border-input bg-card pl-11 pr-4 text-[14px] outline-none focus:border-accent"
         />
       </div>
 
       {list.length === 0 ? (
         <Empty title="No encontré ese cliente." hint="Agrégalo aquí abajo o dile a Marcelo quién es." />
       ) : (
-        <Card className="divide-y divide-border p-0">
+        <div className="space-y-2">
           {list.map((c) => (
             <button
               key={c.id}
               onClick={() => navigate({ to: "/clientes/$clientId", params: { clientId: c.id } })}
-              className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+              className="surface flex w-full items-center gap-3 px-4 py-3.5 text-left"
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-[14px] font-semibold">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[14px] font-bold text-accent">
                 {c.name
                   .split(" ")
                   .map((p) => p[0])
@@ -70,7 +73,7 @@ function Clientes() {
               </span>
             </button>
           ))}
-        </Card>
+        </div>
       )}
 
       {adding ? (
@@ -105,11 +108,7 @@ function Clientes() {
             </Button>
           </div>
         </Card>
-      ) : (
-        <Button variant="secondary" className="mt-5 w-full" onClick={() => setAdding(true)}>
-          <Plus className="size-4" /> Agregar cliente
-        </Button>
-      )}
+      ) : null}
     </Screen>
   );
 }

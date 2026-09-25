@@ -48,7 +48,7 @@ function Documentos() {
 
   return (
     <Screen>
-      <PageTitle title="Documentos" subtitle="Todo ordenado para cuando lo necesites." />
+      <PageTitle title="Documentos fiscales" subtitle="Todo ordenado para cuando lo necesites." />
 
       <Card>
         <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Resumen {year}</p>
