@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as DineroRouteImport } from './routes/dinero'
+import { Route as DocumentosRouteImport } from './routes/documentos'
 import { Route as GastosRouteImport } from './routes/gastos'
+import { Route as MasRouteImport } from './routes/mas'
+import { Route as PendientesRouteImport } from './routes/pendientes'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
 import { Route as MensajeClientIdRouteImport } from './routes/mensaje.$clientId'
@@ -33,9 +36,24 @@ const DineroRoute = DineroRouteImport.update({
   path: '/dinero',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentosRoute = DocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GastosRoute = GastosRouteImport.update({
   id: '/gastos',
   path: '/gastos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasRoute = MasRouteImport.update({
+  id: '/mas',
+  path: '/mas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendientesRoute = PendientesRouteImport.update({
+  id: '/pendientes',
+  path: '/pendientes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
@@ -63,7 +81,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/dinero': typeof DineroRoute
+  '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
+  '/mas': typeof MasRoute
+  '/pendientes': typeof PendientesRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
@@ -73,7 +94,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/dinero': typeof DineroRoute
+  '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
+  '/mas': typeof MasRoute
+  '/pendientes': typeof PendientesRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
@@ -84,7 +108,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/dinero': typeof DineroRoute
+  '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
+  '/mas': typeof MasRoute
+  '/pendientes': typeof PendientesRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
@@ -96,7 +123,10 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/dinero'
+    | '/documentos'
     | '/gastos'
+    | '/mas'
+    | '/pendientes'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
@@ -106,7 +136,10 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/dinero'
+    | '/documentos'
     | '/gastos'
+    | '/mas'
+    | '/pendientes'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
@@ -116,7 +149,10 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/dinero'
+    | '/documentos'
     | '/gastos'
+    | '/mas'
+    | '/pendientes'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
@@ -127,7 +163,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
   DineroRoute: typeof DineroRoute
+  DocumentosRoute: typeof DocumentosRoute
   GastosRoute: typeof GastosRoute
+  MasRoute: typeof MasRoute
+  PendientesRoute: typeof PendientesRoute
   ClientesClientIdRoute: typeof ClientesClientIdRoute
   MensajeClientIdRoute: typeof MensajeClientIdRoute
   TrabajoJobIdRoute: typeof TrabajoJobIdRoute
@@ -157,11 +196,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DineroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/documentos': {
+      id: '/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof DocumentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gastos': {
       id: '/gastos'
       path: '/gastos'
       fullPath: '/gastos'
       preLoaderRoute: typeof GastosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mas': {
+      id: '/mas'
+      path: '/mas'
+      fullPath: '/mas'
+      preLoaderRoute: typeof MasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pendientes': {
+      id: '/pendientes'
+      path: '/pendientes'
+      fullPath: '/pendientes'
+      preLoaderRoute: typeof PendientesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes/': {
@@ -199,7 +259,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
   DineroRoute: DineroRoute,
+  DocumentosRoute: DocumentosRoute,
   GastosRoute: GastosRoute,
+  MasRoute: MasRoute,
+  PendientesRoute: PendientesRoute,
   ClientesClientIdRoute: ClientesClientIdRoute,
   MensajeClientIdRoute: MensajeClientIdRoute,
   TrabajoJobIdRoute: TrabajoJobIdRoute,
