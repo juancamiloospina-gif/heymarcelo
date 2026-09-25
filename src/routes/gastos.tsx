@@ -69,7 +69,7 @@ function Gastos() {
                 className={cn(
                   "rounded-full px-4 py-2 text-[14px] font-medium transition-all",
                   category === c 
-                    ? "bg-[#1B2B48] text-white shadow-md" 
+                    ? "bg-primary text-primary-foreground shadow-md" 
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
@@ -111,7 +111,7 @@ function Gastos() {
           </Button>
           
           <Button
-            className="flex-[1.5] h-14 rounded-2xl shadow-lg bg-[#1B2B48] text-white"
+            className="h-14 flex-[1.5] rounded-2xl bg-primary text-primary-foreground shadow-lg"
             disabled={!Number(amount)}
             onClick={() => {
               addExpense({ amount: Number(amount), category, note: note || undefined, date: todayISO(), receipt });
@@ -131,7 +131,7 @@ function Gastos() {
         {state.expenses.map((e) => (
           <div key={e.id} className="surface flex items-center justify-between px-4 py-4 border-none shadow-sm rounded-2xl">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="size-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
                 <Receipt className="size-5" />
               </div>
               <div className="min-w-0">
@@ -143,7 +143,7 @@ function Gastos() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-[16px] font-bold text-red-500">−{money(e.amount)}</p>
+              <p className="text-[16px] font-bold text-destructive">−{money(e.amount)}</p>
               <ChevronRight className="size-4 text-muted-foreground/30" />
             </div>
           </div>

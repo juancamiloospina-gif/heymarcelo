@@ -17,9 +17,9 @@ export const Route = createFileRoute("/mas")({
 });
 
 const mainLinks = [
-  { to: "/dinero", label: "Tu dinero", hint: "Ingresos, gastos y ganancia", icon: Wallet, color: "text-blue-600 bg-blue-50" },
-  { to: "/gastos", label: "Gastos", hint: "Anota lo que gastas", icon: Receipt, color: "text-red-600 bg-red-50" },
-  { to: "/pendientes", label: "Pendientes", hint: "Cobros y recados", icon: ListChecks, color: "text-orange-600 bg-orange-50" },
+  { to: "/dinero", label: "Tu dinero", hint: "Ingresos, gastos y ganancia", icon: Wallet, color: "text-accent bg-accent/10" },
+  { to: "/gastos", label: "Gastos", hint: "Anota lo que gastas", icon: Receipt, color: "text-destructive bg-destructive/10" },
+  { to: "/pendientes", label: "Pendientes", hint: "Cobros y recados", icon: ListChecks, color: "text-warning-foreground bg-warning/15" },
   { to: "/documentos", label: "Documentos", hint: "Resumen para tu contador", icon: FileText, color: "text-success bg-success/10" },
 ] as const;
 
