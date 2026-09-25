@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, ChevronRight, MessageSquare, House, FileText, AlertCircle } from "lucide-react";
 import { Button, Card, Empty, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/pendientes")({
   head: () => ({
@@ -19,15 +20,47 @@ export const Route = createFileRoute("/pendientes")({
 function Pendientes() {
   const { state, togglePending, addPending } = useMarcelo();
   const [text, setText] = useState("");
+  const [activeTab, setActiveTab] = useState("Todos");
+
+  const tabs = ["Todos", "Quejas", "Solicitudes", "Otros"];
 
   const open = state.pendings.filter((p) => !p.done);
   const done = state.pendings.filter((p) => p.done);
 
+  const getIcon = (text: string) => {
+    const t = text.toLowerCase();
+    if (t.includes("cobrar") || t.includes("dinero") || t.includes("pago")) return { icon: AlertCircle, color: "bg-red-100 text-red-600" };
+    if (t.includes("volver") || t.includes("casa") || t.includes("visita")) return { icon: House, color: "bg-blue-100 text-blue-600" };
+    if (t.includes("factura") || t.includes("enviar")) return { icon: FileText, color: "bg-purple-100 text-purple-600" };
+    return { icon: MessageSquare, color: "bg-orange-100 text-orange-600" };
+  };
+
   return (
     <Screen>
-      <PageTitle title="Pendientes" subtitle="Lo que no se te puede olvidar." />
+      <div className="flex items-center justify-between mb-2">
+         <button onClick={() => window.history.back()} className="text-muted-foreground">
+           <ChevronRight className="size-6 rotate-180" />
+         </button>
+      </div>
+      
+      <PageTitle title="Pendientes" />
 
-      <Card className="flex items-center gap-2 p-2">
+      <div className="flex gap-2 overflow-x-auto pb-6 no-scrollbar">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap transition-colors",
+              activeTab === tab ? "bg-[#1B2B48] text-white" : "bg-muted text-muted-foreground"
+            )}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      <Card className="flex items-center gap-2 p-2 mb-6 shadow-sm border-none bg-muted/50">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -43,43 +76,62 @@ function Pendientes() {
         <Button
           size="sm"
           aria-label="Agregar"
+          className="rounded-xl"
           disabled={!text.trim()}
           onClick={() => {
             addPending(text.trim());
             setText("");
           }}
         >
-          <Plus className="size-4" />
+          <Plus className="size-5" />
         </Button>
       </Card>
 
-      <SectionTitle>Por hacer</SectionTitle>
       {open.length === 0 ? (
         <Empty title="Todo al día." hint="No tienes nada pendiente. Si recuerdas algo, dímelo y lo anoto." />
       ) : (
-        <Card className="divide-y divide-border p-0">
-          {open.map((p) => (
-            <button key={p.id} onClick={() => togglePending(p.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-              <span className="size-5 shrink-0 rounded-md border-2 border-border" />
-              <span className="flex-1 text-[15px]">{p.text}</span>
-            </button>
-          ))}
-        </Card>
+        <div className="space-y-3">
+          {open.map((p) => {
+            const { icon: Icon, color } = getIcon(p.text);
+            return (
+              <button
+                key={p.id}
+                onClick={() => togglePending(p.id)}
+                className="flex w-full items-center gap-4 p-4 text-left surface border-none shadow-sm rounded-2xl group active:scale-[0.98] transition-all"
+              >
+                <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0", color)}>
+                  <Icon className="size-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="block text-[16px] font-semibold text-foreground truncate">{p.text}</span>
+                    <span className="text-[12px] font-medium text-orange-500 whitespace-nowrap">Hoy</span>
+                  </div>
+                  <span className="block text-[13px] text-muted-foreground truncate">{p.clientId ? "John Smith · $120" : "Recordatorio"}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {done.length > 0 ? (
         <>
           <SectionTitle>Listos</SectionTitle>
-          <Card className="divide-y divide-border p-0">
+          <div className="space-y-2 opacity-60">
             {done.map((p) => (
-              <button key={p.id} onClick={() => togglePending(p.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-success text-success-foreground">
-                  <Check className="size-3.5" />
-                </span>
-                <span className="flex-1 text-[15px] text-muted-foreground line-through">{p.text}</span>
+              <button
+                key={p.id}
+                onClick={() => togglePending(p.id)}
+                className="flex w-full items-center gap-4 px-4 py-3 text-left"
+              >
+                <div className="size-10 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+                  <Check className="size-5 text-success" />
+                </div>
+                <span className="flex-1 text-[15px] text-muted-foreground line-through truncate">{p.text}</span>
               </button>
             ))}
-          </Card>
+          </div>
         </>
       ) : null}
     </Screen>
