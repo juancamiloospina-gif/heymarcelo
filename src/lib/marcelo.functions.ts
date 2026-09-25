@@ -66,8 +66,10 @@ export const askMarcelo = createServerFn({ method: "POST" })
     if (!res.ok || !res.body) {
       const detail = await res.text().catch(() => "");
       let reply = "Marcelo no pudo responder en este momento. Intenta de nuevo.";
-      if (res.status === 402) reply = "Se acabaron los créditos de Marcelo. Recárgalos para seguir usándolo.";
-      if (res.status === 429) reply = "Marcelo está recibiendo muchas solicitudes. Espera unos segundos.";
+      if (res.status === 402)
+        reply = "Se acabaron los créditos de Marcelo. Recárgalos para seguir usándolo.";
+      if (res.status === 429)
+        reply = "Marcelo está recibiendo muchas solicitudes. Espera unos segundos.";
       console.error("marcelo gateway error", res.status, detail.slice(0, 500));
       return { ok: false as const, status: res.status, reply };
     }
@@ -90,7 +92,8 @@ export const askMarcelo = createServerFn({ method: "POST" })
           if (!payload || payload === "[DONE]") continue;
           try {
             const evt = JSON.parse(payload);
-            if (evt.type === "response.output_text.delta" && typeof evt.delta === "string") text += evt.delta;
+            if (evt.type === "response.output_text.delta" && typeof evt.delta === "string")
+              text += evt.delta;
           } catch {
             /* partial frame */
           }
@@ -102,7 +105,12 @@ export const askMarcelo = createServerFn({ method: "POST" })
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
     if (start === -1 || end === -1) {
-      return { ok: true as const, reply: cleaned || "No entendí bien. ¿Puedes repetirlo?", confirm: false, action: null };
+      return {
+        ok: true as const,
+        reply: cleaned || "No entendí bien. ¿Puedes repetirlo?",
+        confirm: false,
+        action: null,
+      };
     }
     try {
       const parsed = JSON.parse(cleaned.slice(start, end + 1));

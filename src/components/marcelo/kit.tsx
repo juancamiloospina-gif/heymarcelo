@@ -17,7 +17,9 @@ export function PageTitle({ title, subtitle }: { title: string; subtitle?: strin
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-3 mt-7 flex items-baseline justify-between first:mt-0">
-      <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{children}</h2>
+      <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {children}
+      </h2>
       {action}
     </div>
   );
@@ -63,7 +65,8 @@ export function Button({ variant = "primary", size = "md", className, ...props }
         variant === "accent" && "bg-accent text-accent-foreground hover:bg-accent/90",
         variant === "secondary" && "border border-border bg-card text-foreground hover:bg-muted",
         variant === "ghost" && "text-muted-foreground hover:bg-muted",
-        variant === "danger" && "border border-destructive/30 bg-card text-destructive hover:bg-destructive/5",
+        variant === "danger" &&
+          "border border-destructive/30 bg-card text-destructive hover:bg-destructive/5",
         className,
       )}
     />
@@ -115,7 +118,9 @@ export function Empty({ title, hint }: { title: string; hint: string }) {
   return (
     <Card className="py-8 text-center">
       <p className="text-[15px] font-semibold text-foreground">{title}</p>
-      <p className="mx-auto mt-2 max-w-[260px] text-[13px] leading-relaxed text-muted-foreground">{hint}</p>
+      <p className="mx-auto mt-2 max-w-[260px] text-[13px] leading-relaxed text-muted-foreground">
+        {hint}
+      </p>
     </Card>
   );
 }
@@ -143,7 +148,9 @@ export function Row({
       ) : null}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-semibold text-foreground">{title}</span>
-        {subtitle ? <span className="block truncate text-[13px] text-muted-foreground">{subtitle}</span> : null}
+        {subtitle ? (
+          <span className="block truncate text-[13px] text-muted-foreground">{subtitle}</span>
+        ) : null}
       </span>
       {right}
     </Tag>

@@ -63,6 +63,66 @@ export type Profile = {
   onboarded: boolean;
 };
 
+export type ServiceKind =
+  "pasto" | "poda" | "limpieza" | "riego" | "plantas" | "reparacion" | "general";
+
+export type Service = {
+  id: string;
+  name: string;
+  /** How Marcelo names it to English-speaking clients. */
+  nameEn: string;
+  price: number;
+  minutes: number;
+  kind: ServiceKind;
+};
+
+export type Channel = "whatsapp" | "sms";
+
+export type Connection = {
+  connected: boolean;
+  number?: string | undefined;
+};
+
+/** "tu_turno": Marcelo needs the user. "manual": the user took over, Marcelo stays quiet. */
+export type ConversationStage =
+  "nuevo" | "cotizado" | "agendado" | "rechazado" | "tu_turno" | "manual";
+
+export type InboxMessage = {
+  id: string;
+  from: "client" | "marcelo" | "user";
+  text: string;
+  /** Spanish version shown to the user when `text` is in English. */
+  es?: string | undefined;
+  /** What Marcelo understood from a client message, in Spanish. */
+  note?: string | undefined;
+  at: string; // ISO datetime
+};
+
+export type Conversation = {
+  id: string;
+  channel: Channel;
+  contactName: string;
+  phone: string;
+  clientId?: string | undefined;
+  lang: "en" | "es";
+  stage: ConversationStage;
+  serviceId?: string | undefined;
+  /** Price agreed for this client when it differs from the service's list price. */
+  price?: number | undefined;
+  proposal?: { date: string; time: string } | undefined;
+  jobId?: string | undefined;
+  messages: InboxMessage[];
+  unread: boolean;
+  updatedAt: string;
+};
+
+export type Settings = {
+  autoReply: boolean;
+  workDays: number[]; // 0 = domingo
+  workStart: string; // HH:mm
+  workEnd: string; // HH:mm
+};
+
 export type MarceloState = {
   profile: Profile;
   clients: Client[];
@@ -71,14 +131,39 @@ export type MarceloState = {
   expenses: Expense[];
   pendings: Pending[];
   messages: Message[];
+  services: Service[];
+  conversations: Conversation[];
+  connections: Record<Channel, Connection>;
+  settings: Settings;
 };
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
+// Local calendar date (not UTC), so "hoy" doesn't roll over early in the evening in the US.
 export const todayISO = (offset = 0) => {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
+export const monthISO = () => todayISO().slice(0, 7);
+
+export const expenseCategories: Expense["category"][] = [
+  "Gasolina",
+  "Herramientas",
+  "Materiales",
+  "Vehículo",
+  "Publicidad",
+  "Otros",
+];
+
+export const paymentMethodLabel: Record<Payment["method"], string> = {
+  efectivo: "Efectivo",
+  zelle: "Zelle",
+  cheque: "Cheque",
+  debe: "Pendiente",
 };
 
 export const money = (n: number) =>
@@ -92,6 +177,17 @@ export const prettyTime = (t: string) => {
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
 };
+
+export const prettyDateEn = (iso: string) => {
+  if (iso === todayISO()) return "today";
+  if (iso === todayISO(1)) return "tomorrow";
+  const d = new Date(`${iso}T12:00:00`);
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+};
+
+export const nowISO = () => new Date().toISOString();
+
+export const digits = (phone: string) => phone.replace(/\D/g, "").slice(-10);
 
 export const prettyDate = (iso: string) => {
   if (iso === todayISO()) return "Hoy";
@@ -202,15 +298,168 @@ export function demoState(): MarceloState {
     ],
     expenses: [
       { id: uid(), category: "Gasolina", amount: 45, date: todayISO(-1), note: "Tanque lleno" },
-      { id: uid(), category: "Herramientas", amount: 85, date: todayISO(-4), note: "Tijeras nuevas" },
-      { id: uid(), category: "Materiales", amount: 32, date: todayISO(-8), note: "Bolsas y guantes" },
+      {
+        id: uid(),
+        category: "Herramientas",
+        amount: 85,
+        date: todayISO(-4),
+        note: "Tijeras nuevas",
+      },
+      {
+        id: uid(),
+        category: "Materiales",
+        amount: 32,
+        date: todayISO(-8),
+        note: "Bolsas y guantes",
+      },
     ],
     pendings: [
-      { id: uid(), text: "John me debe $90", clientId: c1, amount: 90, done: false, createdAt: todayISO(-2) },
-      { id: uid(), text: "Enviar factura a Robert", clientId: c3, done: false, createdAt: todayISO(-1) },
+      {
+        id: uid(),
+        text: "John me debe $90",
+        clientId: c1,
+        amount: 90,
+        done: false,
+        createdAt: todayISO(-2),
+      },
+      {
+        id: uid(),
+        text: "Enviar factura a Robert",
+        clientId: c3,
+        done: false,
+        createdAt: todayISO(-1),
+      },
       { id: uid(), text: "Comprar fertilizante orgánico", done: false, createdAt: todayISO(-1) },
-      { id: uid(), text: "Volver a casa de Sarah a limpiar hojas", clientId: c2, done: false, createdAt: todayISO() },
+      {
+        id: uid(),
+        text: "Volver a casa de Sarah a limpiar hojas",
+        clientId: c2,
+        done: false,
+        createdAt: todayISO(),
+      },
     ],
     messages: [],
+    services: demoServices(),
+    conversations: demoConversations(),
+    connections: {
+      whatsapp: { connected: true, number: "(626) 555-0100" },
+      sms: { connected: false },
+    },
+    settings: {
+      autoReply: true,
+      workDays: [1, 2, 3, 4, 5, 6],
+      workStart: "08:00",
+      workEnd: "17:00",
+    },
   };
+}
+
+function demoServices(): Service[] {
+  return [
+    {
+      id: "srv_pasto",
+      name: "Corte de pasto y limpieza",
+      nameEn: "Lawn mowing & cleanup",
+      price: 120,
+      minutes: 90,
+      kind: "pasto",
+    },
+    {
+      id: "srv_poda",
+      name: "Poda y limpieza",
+      nameEn: "Hedge & tree trimming",
+      price: 150,
+      minutes: 120,
+      kind: "poda",
+    },
+    {
+      id: "srv_jardin",
+      name: "Limpieza de jardín",
+      nameEn: "Yard & leaf cleanup",
+      price: 95,
+      minutes: 90,
+      kind: "limpieza",
+    },
+    {
+      id: "srv_mant",
+      name: "Mantenimiento general",
+      nameEn: "General yard maintenance",
+      price: 85,
+      minutes: 60,
+      kind: "general",
+    },
+    {
+      id: "srv_riego",
+      name: "Instalación de riego",
+      nameEn: "Sprinkler installation",
+      price: 250,
+      minutes: 180,
+      kind: "riego",
+    },
+  ];
+}
+
+function demoConversations(): Conversation[] {
+  const at = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60_000).toISOString();
+  // Next weekday at least two days out, so the demo quote is always in the future.
+  let offset = 2;
+  while (new Date(`${todayISO(offset)}T12:00:00`).getDay() === 0) offset += 1;
+  const date = todayISO(offset);
+  return [
+    {
+      id: "conv_emily",
+      channel: "whatsapp",
+      contactName: "Emily Johnson",
+      phone: "(626) 555-0199",
+      lang: "en",
+      stage: "cotizado",
+      serviceId: "srv_poda",
+      proposal: { date, time: "10:00" },
+      unread: true,
+      updatedAt: at(12),
+      messages: [
+        {
+          id: uid(),
+          from: "client",
+          text: "Hi! Do you do hedge trimming? My bushes are getting out of control 😅",
+          note: "Pide: Poda y limpieza",
+          at: at(14),
+        },
+        {
+          id: uid(),
+          from: "marcelo",
+          text: `Hi Emily! Yes, hedge & tree trimming is $150. I can come ${prettyDateEn(date)} at 10:00 AM. Does that work for you? Reply YES to book it.`,
+          es: `¡Hola Emily! Sí, la poda y limpieza cuesta $150. Puedo ir el ${prettyDate(date)} a las 10:00 AM. ¿Te sirve? Responde SÍ para agendar.`,
+          at: at(12),
+        },
+      ],
+    },
+    {
+      id: "conv_david",
+      channel: "whatsapp",
+      contactName: "David Lee",
+      phone: "(818) 555-0147",
+      lang: "en",
+      stage: "tu_turno",
+      serviceId: "srv_pasto",
+      unread: true,
+      updatedAt: at(95),
+      messages: [
+        {
+          id: uid(),
+          from: "client",
+          text: "How much for mowing every week? Could you do $90?",
+          note: "Pidió descuento",
+          at: at(97),
+        },
+        {
+          id: uid(),
+          from: "marcelo",
+          text: "Thanks David! My regular price for lawn mowing & cleanup is $120. Let me check with the owner about a weekly rate and I'll get back to you shortly.",
+          es: "¡Gracias David! Mi precio normal por corte de pasto y limpieza es $120. Déjame consultar un precio semanal y te respondo pronto.",
+          at: at(95),
+        },
+      ],
+    },
+  ];
 }

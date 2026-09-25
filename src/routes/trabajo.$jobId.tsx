@@ -4,13 +4,17 @@ import { ArrowLeft, Phone, Map, MessageSquare, CheckCircle2 } from "lucide-react
 import { toast } from "sonner";
 import { Badge, Button, Card, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { ServiceIcon } from "@/components/marcelo/visual";
 import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
 
 export const Route = createFileRoute("/trabajo/$jobId")({
   head: () => ({
     meta: [
       { title: "Detalle del trabajo — Marcelo" },
-      { name: "description", content: "Hora, dirección, precio y cobro del trabajo, sin pasos de más." },
+      {
+        name: "description",
+        content: "Hora, dirección, precio y cobro del trabajo, sin pasos de más.",
+      },
       { property: "og:title", content: "Detalle del trabajo — Marcelo" },
       { property: "og:description", content: "Hora, dirección, precio y cobro del trabajo." },
     ],
@@ -51,7 +55,13 @@ function TrabajoDetalle() {
       });
       toast.success("Anotado como pendiente de cobro");
     } else {
-      addPayment({ clientId: job.clientId, jobId: job.id, amount: job.price, method, date: todayISO() });
+      addPayment({
+        clientId: job.clientId,
+        jobId: job.id,
+        amount: job.price,
+        method,
+        date: todayISO(),
+      });
       toast.success(`Cobro registrado: ${money(job.price)}`);
     }
     setCharging(false);
@@ -59,38 +69,56 @@ function TrabajoDetalle() {
 
   return (
     <Screen>
-      <button onClick={() => navigate({ to: "/agenda" })} className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground">
-        <ArrowLeft className="size-4" /> Crear un trabajo
+      <button
+        onClick={() => navigate({ to: "/agenda" })}
+        className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground"
+      >
+        <ArrowLeft className="size-4" /> Agenda
       </button>
 
-      <h1 className="text-[24px] font-semibold leading-tight">{client?.name ?? "Cliente"}</h1>
-      <p className="mt-1 text-[15px] text-muted-foreground">{job.service}</p>
+      <div className="flex items-center gap-3">
+        <ServiceIcon kind={state.services.find((s) => s.name === job.service)?.kind} size="lg" />
+        <div className="min-w-0">
+          <h1 className="truncate text-[24px] font-semibold leading-tight">
+            {client?.name ?? "Cliente"}
+          </h1>
+          <p className="mt-0.5 truncate text-[15px] text-muted-foreground">{job.service}</p>
+        </div>
+      </div>
 
       <Card className="mt-5 space-y-4 border-l-4 border-l-accent">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Cuándo</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Cuándo
+            </p>
             <p className="mt-0.5 text-[16px] font-semibold">
               {prettyDate(job.date)} · {prettyTime(job.time)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Precio</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Precio
+            </p>
             <p className="mt-0.5 text-[16px] font-semibold">{money(job.price)}</p>
           </div>
         </div>
         {client ? (
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Dónde</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Dónde
+            </p>
             <p className="mt-0.5 text-[15px]">
-              {client.address}
+              {client.address || "Sin dirección todavía"}
               <br />
               {client.city}
             </p>
           </div>
         ) : null}
         <div>
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Estado</p>
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Estado
+          </p>
           <div className="mt-1.5">
             {job.status === "completado" ? (
               <Badge tone="success">Completado</Badge>
@@ -117,13 +145,19 @@ function TrabajoDetalle() {
         >
           <Map className="size-4" /> Mapa
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => (window.location.href = `tel:${client?.phone ?? ""}`)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => (window.location.href = `tel:${client?.phone ?? ""}`)}
+        >
           <Phone className="size-4" /> Llamar
         </Button>
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => client && navigate({ to: "/mensaje/$clientId", params: { clientId: client.id } })}
+          onClick={() =>
+            client && navigate({ to: "/mensaje/$clientId", params: { clientId: client.id } })
+          }
         >
           <MessageSquare className="size-4" /> Mensaje
         </Button>
@@ -144,7 +178,12 @@ function TrabajoDetalle() {
                   </Button>
                 ))}
               </div>
-              <Button variant="ghost" size="sm" className="w-full" onClick={() => setCharging(false)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                onClick={() => setCharging(false)}
+              >
                 Cancelar
               </Button>
             </Card>

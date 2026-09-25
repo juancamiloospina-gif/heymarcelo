@@ -3,15 +3,22 @@ import { useState } from "react";
 import { Search, Plus, ChevronRight } from "lucide-react";
 import { Button, Card, Empty, Field, PageTitle, Screen } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { ClientAvatar } from "@/components/marcelo/visual";
 import { money } from "@/lib/marcelo-data";
 
 export const Route = createFileRoute("/clientes/")({
   head: () => ({
     meta: [
       { title: "Clientes — Marcelo" },
-      { name: "description", content: "Tus clientes, sus servicios habituales y sus precios, siempre a la mano." },
+      {
+        name: "description",
+        content: "Tus clientes, sus servicios habituales y sus precios, siempre a la mano.",
+      },
       { property: "og:title", content: "Clientes — Marcelo" },
-      { property: "og:description", content: "Tus clientes, sus servicios habituales y sus precios." },
+      {
+        property: "og:description",
+        content: "Tus clientes, sus servicios habituales y sus precios.",
+      },
     ],
   }),
   component: Clientes,
@@ -21,7 +28,14 @@ function Clientes() {
   const { state, addClient } = useMarcelo();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", service: "", price: "" });
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    city: "",
+    service: "",
+    price: "",
+  });
   const navigate = useNavigate();
 
   const list = state.clients.filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()));
@@ -30,7 +44,9 @@ function Clientes() {
     <Screen>
       <div className="flex items-start justify-between">
         <PageTitle title="Clientes" subtitle={`${state.clients.length} personas`} />
-        <Button size="sm" aria-label="Agregar cliente" onClick={() => setAdding(true)}><Plus className="size-4" /></Button>
+        <Button size="sm" aria-label="Agregar cliente" onClick={() => setAdding(true)}>
+          <Plus className="size-4" />
+        </Button>
       </div>
 
       <div className="relative mb-4">
@@ -44,7 +60,10 @@ function Clientes() {
       </div>
 
       {list.length === 0 ? (
-        <Empty title="No encontré ese cliente." hint="Agrégalo aquí abajo o dile a Marcelo quién es." />
+        <Empty
+          title="No encontré ese cliente."
+          hint="Agrégalo aquí abajo o dile a Marcelo quién es."
+        />
       ) : (
         <div className="space-y-2">
           {list.map((c) => (
@@ -53,13 +72,7 @@ function Clientes() {
               onClick={() => navigate({ to: "/clientes/$clientId", params: { clientId: c.id } })}
               className="surface flex w-full items-center gap-3 px-4 py-3.5 text-left"
             >
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[14px] font-bold text-accent">
-                {c.name
-                  .split(" ")
-                  .map((p) => p[0])
-                  .slice(0, 2)
-                  .join("")}
-              </span>
+              <ClientAvatar name={c.name} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-semibold">{c.name}</span>
                 <span className="block truncate text-[13px] text-muted-foreground">
@@ -79,11 +92,31 @@ function Clientes() {
       {adding ? (
         <Card className="mt-5 space-y-3">
           <p className="text-[15px] font-semibold">Nuevo cliente</p>
-          <Field label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <Field label="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <Field label="Dirección" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-          <Field label="Ciudad" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-          <Field label="Servicio habitual" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} />
+          <Field
+            label="Nombre"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <Field
+            label="Teléfono"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          />
+          <Field
+            label="Dirección"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+          />
+          <Field
+            label="Ciudad"
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: e.target.value })}
+          />
+          <Field
+            label="Servicio habitual"
+            value={form.service}
+            onChange={(e) => setForm({ ...form, service: e.target.value })}
+          />
           <Field
             label="Precio habitual"
             inputMode="numeric"

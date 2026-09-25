@@ -1,9 +1,36 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { toast } from "sonner";
+import {
+  detectLang,
+  offerPrice as buildOffer,
+  runAutopilot,
+  type AutopilotResult,
+} from "./marcelo-autopilot";
 import {
   demoState,
+  digits,
+  monthISO,
+  nowISO,
+  prettyDate,
+  prettyTime,
   todayISO,
   uid,
+  type Channel,
   type Client,
+  type Connection,
+  type Conversation,
+  type InboxMessage,
+  type Service,
+  type Settings,
   type Expense,
   type Job,
   type MarceloState,
@@ -27,7 +54,26 @@ type Store = {
   addPayment: (p: Omit<Payment, "id">) => Payment;
   addPending: (text: string, extra?: Partial<Pending>) => Pending;
   togglePending: (id: string) => void;
+  removeExpense: (id: string) => void;
+  clearDonePendings: () => void;
   addMessage: (m: Omit<Message, "id">) => Message;
+  addService: (s: Omit<Service, "id">) => void;
+  updateService: (id: string, patch: Partial<Service>) => void;
+  removeService: (id: string) => void;
+  setSettings: (patch: Partial<Settings>) => void;
+  setConnection: (channel: Channel, patch: Partial<Connection>) => void;
+  receiveClientMessage: (input: {
+    conversationId?: string;
+    channel: Channel;
+    contactName: string;
+    phone: string;
+    text: string;
+  }) => string;
+  sendUserMessage: (conversationId: string, text: string, es?: string) => void;
+  offerPrice: (conversationId: string, price: number) => void;
+  setConversationStage: (conversationId: string, stage: Conversation["stage"]) => void;
+  markConversationRead: (conversationId: string) => void;
+  typingIn: string[];
   reset: () => void;
   clientById: (id?: string) => Client | undefined;
   findClientByName: (name: string) => Client | undefined;
@@ -38,6 +84,10 @@ const Ctx = createContext<Store | null>(null);
 export function MarceloProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<MarceloState>(() => demoState());
   const [ready, setReady] = useState(false);
+  const [typingIn, setTypingIn] = useState<string[]>([]);
+  // Autopilot replies run after a short delay and must see the latest state.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     try {
@@ -69,7 +119,10 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateClient = useCallback((id: string, patch: Partial<Client>) => {
-    setState((s) => ({ ...s, clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+    setState((s) => ({
+      ...s,
+      clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    }));
   }, []);
 
   const addJob = useCallback((j: Omit<Job, "id">) => {
@@ -107,11 +160,240 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const removeExpense = useCallback((id: string) => {
+    setState((s) => ({ ...s, expenses: s.expenses.filter((e) => e.id !== id) }));
+  }, []);
+
+  const clearDonePendings = useCallback(() => {
+    setState((s) => ({ ...s, pendings: s.pendings.filter((p) => !p.done) }));
+  }, []);
+
   const addMessage = useCallback((m: Omit<Message, "id">) => {
     const message: Message = { ...m, id: uid() };
     setState((s) => ({ ...s, messages: [message, ...s.messages] }));
     return message;
   }, []);
+
+  const addService = useCallback((svc: Omit<Service, "id">) => {
+    setState((s) => ({ ...s, services: [...s.services, { ...svc, id: uid() }] }));
+  }, []);
+
+  const updateService = useCallback((id: string, patch: Partial<Service>) => {
+    setState((s) => ({
+      ...s,
+      services: s.services.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+    }));
+  }, []);
+
+  const removeService = useCallback((id: string) => {
+    setState((s) => ({ ...s, services: s.services.filter((x) => x.id !== id) }));
+  }, []);
+
+  const setSettings = useCallback((patch: Partial<Settings>) => {
+    setState((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
+  }, []);
+
+  const setConnection = useCallback((channel: Channel, patch: Partial<Connection>) => {
+    setState((s) => ({
+      ...s,
+      connections: { ...s.connections, [channel]: { ...s.connections[channel], ...patch } },
+    }));
+  }, []);
+
+  const patchConversation = useCallback(
+    (id: string, fn: (c: Conversation) => Conversation) =>
+      setState((s) => ({
+        ...s,
+        conversations: s.conversations.map((c) => (c.id === id ? fn(c) : c)),
+      })),
+    [],
+  );
+
+  /** Applies an autopilot result: reply, conversation patch, booking, address and follow-ups. */
+  const applyResult = useCallback((conversationId: string, result: AutopilotResult) => {
+    const s = stateRef.current;
+    const conv = s.conversations.find((c) => c.id === conversationId);
+    if (!conv) return;
+
+    let clientId = conv.clientId;
+    let newClient: Client | undefined;
+    let job: Job | undefined;
+    if (result.book) {
+      if (!clientId) {
+        newClient = {
+          id: uid(),
+          name: conv.contactName,
+          phone: conv.phone,
+          address: "",
+          city: s.profile.city,
+          service: result.book.service.name,
+          price: result.book.price,
+        };
+        clientId = newClient.id;
+      }
+      job = {
+        id: uid(),
+        clientId,
+        date: result.book.date,
+        time: result.book.time,
+        service: result.book.service.name,
+        price: result.book.price,
+        status: "confirmado",
+      };
+    }
+    const reply: InboxMessage | undefined = result.reply
+      ? { id: uid(), from: "marcelo", text: result.reply.text, es: result.reply.es, at: nowISO() }
+      : undefined;
+
+    setState((prev) => ({
+      ...prev,
+      clients: [
+        ...prev.clients.map((c) =>
+          c.id === clientId && result.saveAddress ? { ...c, address: result.saveAddress } : c,
+        ),
+        ...(newClient ? [newClient] : []),
+      ],
+      jobs: job ? [...prev.jobs, job] : prev.jobs,
+      pendings: result.pending
+        ? [
+            {
+              id: uid(),
+              text: result.pending.text,
+              clientId,
+              amount: result.pending.amount,
+              done: false,
+              createdAt: todayISO(),
+            },
+            ...prev.pendings,
+          ]
+        : prev.pendings,
+      conversations: prev.conversations.map((c) => {
+        if (c.id !== conversationId) return c;
+        const messages = [...c.messages];
+        const last = messages[messages.length - 1];
+        if (result.clientNote && last?.from === "client") {
+          messages[messages.length - 1] = { ...last, note: result.clientNote };
+        }
+        if (reply) messages.push(reply);
+        return {
+          ...c,
+          ...result.patch,
+          clientId,
+          jobId: job?.id ?? c.jobId,
+          messages,
+          unread: true,
+          updatedAt: nowISO(),
+        };
+      }),
+    }));
+
+    const first = conv.contactName.split(" ")[0];
+    if (result.event === "booked" && result.book) {
+      toast.success(`Marcelo agendó a ${first}`, {
+        description: `${result.book.service.name} · ${prettyDate(result.book.date)}, ${prettyTime(result.book.time)}`,
+      });
+    } else if (result.event === "handoff") {
+      toast(`${first} necesita tu respuesta`, { description: result.clientNote });
+    }
+  }, []);
+
+  const receiveClientMessage = useCallback(
+    (input: {
+      conversationId?: string;
+      channel: Channel;
+      contactName: string;
+      phone: string;
+      text: string;
+    }) => {
+      const s = stateRef.current;
+      const existing =
+        s.conversations.find((c) => c.id === input.conversationId) ??
+        s.conversations.find(
+          (c) =>
+            digits(c.phone) !== "" &&
+            digits(c.phone) === digits(input.phone) &&
+            c.channel === input.channel,
+        );
+      const id = existing?.id ?? uid();
+      const knownClient = s.clients.find(
+        (c) => digits(c.phone) !== "" && digits(c.phone) === digits(input.phone),
+      );
+      const message: InboxMessage = { id: uid(), from: "client", text: input.text, at: nowISO() };
+      const conv: Conversation = existing
+        ? {
+            ...existing,
+            messages: [...existing.messages, message],
+            unread: true,
+            updatedAt: nowISO(),
+          }
+        : {
+            id,
+            channel: input.channel,
+            contactName: knownClient?.name ?? input.contactName,
+            phone: input.phone,
+            clientId: knownClient?.id,
+            lang: detectLang(input.text),
+            stage: "nuevo",
+            messages: [message],
+            unread: true,
+            updatedAt: nowISO(),
+          };
+      setState((prev) => ({
+        ...prev,
+        conversations: existing
+          ? prev.conversations.map((c) => (c.id === id ? conv : c))
+          : [conv, ...prev.conversations],
+      }));
+
+      const quiet = conv.stage === "tu_turno" || conv.stage === "manual";
+      if (!s.settings.autoReply || quiet) return id;
+
+      setTypingIn((t) => [...t, id]);
+      window.setTimeout(() => {
+        setTypingIn((t) => t.filter((x) => x !== id));
+        const latest = stateRef.current.conversations.find((c) => c.id === id) ?? conv;
+        applyResult(id, runAutopilot(stateRef.current, latest, input.text));
+      }, 1100);
+      return id;
+    },
+    [applyResult],
+  );
+
+  const sendUserMessage = useCallback(
+    (conversationId: string, text: string, es?: string) => {
+      // Once the user writes by hand, Marcelo stays quiet in this chat until handed back.
+      patchConversation(conversationId, (c) => ({
+        ...c,
+        stage: c.stage === "agendado" ? c.stage : "manual",
+        messages: [...c.messages, { id: uid(), from: "user", text, es, at: nowISO() }],
+        updatedAt: nowISO(),
+      }));
+    },
+    [patchConversation],
+  );
+
+  const offerPrice = useCallback(
+    (conversationId: string, price: number) => {
+      const s = stateRef.current;
+      const conv = s.conversations.find((c) => c.id === conversationId);
+      const service = s.services.find((x) => x.id === conv?.serviceId);
+      if (!conv || !service) return;
+      applyResult(conversationId, buildOffer(s, conv, service, price));
+    },
+    [applyResult],
+  );
+
+  const setConversationStage = useCallback(
+    (conversationId: string, stage: Conversation["stage"]) =>
+      patchConversation(conversationId, (c) => ({ ...c, stage })),
+    [patchConversation],
+  );
+
+  const markConversationRead = useCallback(
+    (conversationId: string) =>
+      patchConversation(conversationId, (c) => (c.unread ? { ...c, unread: false } : c)),
+    [patchConversation],
+  );
 
   const reset = useCallback(() => setState(demoState()), []);
 
@@ -128,7 +410,20 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       addPayment,
       addPending,
       togglePending,
+      removeExpense,
+      clearDonePendings,
       addMessage,
+      addService,
+      updateService,
+      removeService,
+      setSettings,
+      setConnection,
+      receiveClientMessage,
+      sendUserMessage,
+      offerPrice,
+      setConversationStage,
+      markConversationRead,
+      typingIn,
       reset,
       clientById: (id?: string) => state.clients.find((c) => c.id === id),
       findClientByName: (name: string) => {
@@ -136,7 +431,11 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
         if (!n) return undefined;
         return (
           state.clients.find((c) => c.name.toLowerCase() === n) ??
-          state.clients.find((c) => c.name.toLowerCase().includes(n) || n.includes((c.name.split(" ")[0] ?? "").toLowerCase()))
+          state.clients.find(
+            (c) =>
+              c.name.toLowerCase().includes(n) ||
+              n.includes((c.name.split(" ")[0] ?? "").toLowerCase()),
+          )
         );
       },
     }),
@@ -152,7 +451,20 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       addPayment,
       addPending,
       togglePending,
+      removeExpense,
+      clearDonePendings,
       addMessage,
+      addService,
+      updateService,
+      removeService,
+      setSettings,
+      setConnection,
+      receiveClientMessage,
+      sendUserMessage,
+      offerPrice,
+      setConversationStage,
+      markConversationRead,
+      typingIn,
       reset,
     ],
   );
@@ -168,11 +480,13 @@ export function useMarcelo() {
 
 export function useMoney() {
   const { state } = useMarcelo();
-  const month = new Date().toISOString().slice(0, 7);
+  const month = monthISO();
   const income = state.payments
     .filter((p) => p.date.startsWith(month) && p.method !== "debe")
     .reduce((a, b) => a + b.amount, 0);
-  const spent = state.expenses.filter((e) => e.date.startsWith(month)).reduce((a, b) => a + b.amount, 0);
+  const spent = state.expenses
+    .filter((e) => e.date.startsWith(month))
+    .reduce((a, b) => a + b.amount, 0);
   const owed = state.pendings
     .filter((p) => !p.done && typeof p.amount === "number")
     .reduce((a, b) => a + (b.amount ?? 0), 0);

@@ -1,14 +1,26 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowDownLeft, ArrowUpRight, ChevronRight } from "lucide-react";
-import { Button, Card, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
+import { useState } from "react";
+import { ArrowDownLeft, ChevronRight } from "lucide-react";
+import { IconChip, expenseVisual } from "@/components/marcelo/visual";
+import { Button, Card, Empty, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo, useMoney } from "@/lib/marcelo-store";
-import { money, prettyDate } from "@/lib/marcelo-data";
+import { money, paymentMethodLabel, prettyDate, type Expense } from "@/lib/marcelo-data";
+import { cn } from "@/lib/utils";
+
+const views = [
+  { key: "resumen", label: "Resumen" },
+  { key: "ingresos", label: "Ingresos" },
+  { key: "gastos", label: "Gastos" },
+] as const;
 
 export const Route = createFileRoute("/dinero")({
   head: () => ({
     meta: [
       { title: "Tu dinero — Marcelo" },
-      { name: "description", content: "Cuánto hiciste, cuánto gastaste y quién te debe, sin complicaciones." },
+      {
+        name: "description",
+        content: "Cuánto hiciste, cuánto gastaste y quién te debe, sin complicaciones.",
+      },
       { property: "og:title", content: "Tu dinero — Marcelo" },
       { property: "og:description", content: "Cuánto hiciste, cuánto gastaste y quién te debe." },
     ],
@@ -20,31 +32,69 @@ function Dinero() {
   const { state, clientById } = useMarcelo();
   const { income, spent, profit, owed } = useMoney();
   const navigate = useNavigate();
+  const [view, setView] = useState<(typeof views)[number]["key"]>("resumen");
 
   const movements = [
-    ...state.payments.map((p) => ({
-      id: p.id,
-      date: p.date,
-      label: `Pago de ${clientById(p.clientId)?.name ?? "cliente"}`,
-      amount: p.amount,
-    })),
-    ...state.expenses.map((e) => ({ id: e.id, date: e.date, label: e.category, amount: -e.amount })),
+    ...(view !== "gastos"
+      ? state.payments
+          .filter((p) => p.method !== "debe")
+          .map((p) => ({
+            id: p.id,
+            date: p.date,
+            label: `Pago de ${clientById(p.clientId)?.name ?? "cliente"}`,
+            detail: paymentMethodLabel[p.method],
+            amount: p.amount,
+            category: undefined as Expense["category"] | undefined,
+          }))
+      : []),
+    ...(view !== "ingresos"
+      ? state.expenses.map((e) => ({
+          id: e.id,
+          date: e.date,
+          label: e.category,
+          detail: e.note,
+          amount: -e.amount,
+          category: e.category as Expense["category"] | undefined,
+        }))
+      : []),
   ]
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 10);
+    .slice(0, view === "resumen" ? 10 : 30);
 
   return (
     <Screen>
       <PageTitle title="Tu dinero" subtitle="Resumen de este mes" />
 
       <div className="mb-4 grid grid-cols-3 rounded-xl bg-muted p-1 text-center text-[11px] font-semibold text-muted-foreground">
-        <span className="rounded-lg bg-primary px-2 py-2 text-primary-foreground">Resumen</span><span className="px-2 py-2">Ingresos</span><span className="px-2 py-2">Gastos</span>
+        {views.map((v) => (
+          <button
+            key={v.key}
+            onClick={() => setView(v.key)}
+            className={cn(
+              "rounded-lg px-2 py-2",
+              view === v.key && "bg-primary text-primary-foreground",
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
       </div>
 
       <Card className="relative overflow-hidden bg-primary text-primary-foreground">
-        <div className="absolute bottom-5 right-5 flex h-16 items-end gap-1 opacity-55"><span className="h-7 w-2 rounded-t-sm bg-accent" /><span className="h-12 w-2 rounded-t-sm bg-accent" /><span className="h-9 w-2 rounded-t-sm bg-accent" /><span className="h-16 w-2 rounded-t-sm bg-accent" /><span className="h-12 w-2 rounded-t-sm bg-accent" /></div>
-        <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/60">Este mes</p>
-        <p className="mt-2 text-[34px] font-semibold leading-none">{money(profit)}</p>
+        <div className="absolute bottom-5 right-5 flex h-16 items-end gap-1 opacity-55">
+          <span className="h-7 w-2 rounded-t-sm bg-accent" />
+          <span className="h-12 w-2 rounded-t-sm bg-accent" />
+          <span className="h-9 w-2 rounded-t-sm bg-accent" />
+          <span className="h-16 w-2 rounded-t-sm bg-accent" />
+          <span className="h-12 w-2 rounded-t-sm bg-accent" />
+        </div>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/60">
+          Este mes
+        </p>
+        <p className="mt-2 text-[34px] font-semibold leading-none">
+          {profit < 0 ? "−" : ""}
+          {money(profit)}
+        </p>
         <p className="mt-1 text-[13px] text-primary-foreground/70">Ganancia</p>
         <div className="relative mt-5 grid grid-cols-2 gap-4 border-t border-primary-foreground/15 pt-4">
           <div>
@@ -70,24 +120,43 @@ function Dinero() {
         </Card>
       ) : null}
 
-      <SectionTitle>Últimos movimientos</SectionTitle>
-      <Card className="divide-y divide-border p-0">
+      <SectionTitle>
+        {view === "ingresos"
+          ? "Pagos recibidos"
+          : view === "gastos"
+            ? "Gastos"
+            : "Últimos movimientos"}
+      </SectionTitle>
+      {movements.length === 0 ? (
+        <Empty title="Nada por aquí." hint="Todavía no hay movimientos." />
+      ) : null}
+      <Card className={cn("divide-y divide-border p-0", movements.length === 0 && "hidden")}>
         {movements.map((m) => (
           <div key={m.id} className="flex items-center gap-3 px-4 py-3.5">
+            {m.category ? (
+              <IconChip
+                icon={expenseVisual[m.category].icon}
+                tone={expenseVisual[m.category].tone}
+                size="sm"
+                className="rounded-full"
+              />
+            ) : (
+              <IconChip icon={ArrowDownLeft} tone="success" size="sm" className="rounded-full" />
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] font-medium">{m.label}</span>
+              <span className="block truncate text-[12px] text-muted-foreground">
+                {prettyDate(m.date)}
+                {m.detail ? ` · ${m.detail}` : ""}
+              </span>
+            </span>
             <span
               className={
                 m.amount > 0
-                  ? "flex size-9 items-center justify-center rounded-full bg-success/12 text-success"
-                  : "flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                  ? "text-[15px] font-semibold text-success"
+                  : "text-[15px] font-semibold"
               }
             >
-              {m.amount > 0 ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[15px] font-medium">{m.label}</span>
-              <span className="block text-[12px] text-muted-foreground">{prettyDate(m.date)}</span>
-            </span>
-            <span className={m.amount > 0 ? "text-[15px] font-semibold text-success" : "text-[15px] font-semibold"}>
               {m.amount > 0 ? "+" : "−"}
               {money(m.amount)}
             </span>

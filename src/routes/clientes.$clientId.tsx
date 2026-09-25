@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowLeft, Phone, MessageSquare, CalendarPlus, MapPin } from "lucide-react";
 import { Badge, Button, Card, Field, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { ClientAvatar } from "@/components/marcelo/visual";
 import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
 import { toast } from "sonner";
 
@@ -10,9 +11,15 @@ export const Route = createFileRoute("/clientes/$clientId")({
   head: () => ({
     meta: [
       { title: "Ficha de cliente — Marcelo" },
-      { name: "description", content: "Datos del cliente, trabajos próximos, historial y lo que te debe." },
+      {
+        name: "description",
+        content: "Datos del cliente, trabajos próximos, historial y lo que te debe.",
+      },
       { property: "og:title", content: "Ficha de cliente — Marcelo" },
-      { property: "og:description", content: "Datos del cliente, trabajos próximos y lo que te debe." },
+      {
+        property: "og:description",
+        content: "Datos del cliente, trabajos próximos y lo que te debe.",
+      },
     ],
   }),
   component: ClienteDetalle,
@@ -35,7 +42,9 @@ function ClienteDetalle() {
     );
   }
 
-  const jobs = state.jobs.filter((j) => j.clientId === client.id).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const jobs = state.jobs
+    .filter((j) => j.clientId === client.id)
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
   const upcoming = jobs.filter((j) => j.date >= todayISO());
   const past = jobs.filter((j) => j.date < todayISO());
   const owed = state.pendings
@@ -44,29 +53,40 @@ function ClienteDetalle() {
 
   return (
     <Screen>
-      <button onClick={() => navigate({ to: "/clientes" })} className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground">
+      <button
+        onClick={() => navigate({ to: "/clientes" })}
+        className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground"
+      >
         <ArrowLeft className="size-4" /> Cliente
       </button>
 
       <div className="text-center">
-        <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-[20px] font-bold text-primary-foreground">{client.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span>
-      <h1 className="mt-3 text-[22px] font-bold leading-tight">{client.name}</h1>
-      <p className="mt-1 text-[13px] text-muted-foreground">
-        {client.service}
-        {client.price ? ` · ${money(client.price)} habitual` : ""}
-      </p>
-      {owed > 0 ? (
-        <div className="mt-3">
-          <Badge tone="danger">Te debe {money(owed)}</Badge>
-        </div>
-      ) : null}
+        <ClientAvatar name={client.name} size="lg" className="mx-auto" />
+        <h1 className="mt-3 text-[22px] font-bold leading-tight">{client.name}</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          {client.service}
+          {client.price ? ` · ${money(client.price)} habitual` : ""}
+        </p>
+        {owed > 0 ? (
+          <div className="mt-3">
+            <Badge tone="danger">Te debe {money(owed)}</Badge>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-2">
-        <Button variant="secondary" size="sm" onClick={() => (window.location.href = `tel:${client.phone}`)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => (window.location.href = `tel:${client.phone}`)}
+        >
           <Phone className="size-4" /> Llamar
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => navigate({ to: "/mensaje/$clientId", params: { clientId: client.id } })}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => navigate({ to: "/mensaje/$clientId", params: { clientId: client.id } })}
+        >
           <MessageSquare className="size-4" /> Mensaje
         </Button>
         <Button variant="accent" size="sm" onClick={() => setScheduling((v) => !v)}>
@@ -82,7 +102,12 @@ function ClienteDetalle() {
           </p>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Día" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            <Field label="Hora" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <Field
+              label="Hora"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
           </div>
           <Button
             className="w-full"
@@ -108,17 +133,26 @@ function ClienteDetalle() {
       <SectionTitle>Datos</SectionTitle>
       <Card className="space-y-4">
         <InfoLine label="Teléfono" value={client.phone || "Sin teléfono"} />
-        <InfoLine label="Dirección" value={`${client.address}${client.city ? `, ${client.city}` : ""}`} icon />
+        <InfoLine
+          label="Dirección"
+          value={`${client.address}${client.city ? `, ${client.city}` : ""}`}
+          icon
+        />
         {client.notes ? <InfoLine label="Notas" value={client.notes} /> : null}
       </Card>
 
       <SectionTitle>Próximos trabajos</SectionTitle>
       {upcoming.length === 0 ? (
-        <Card className="py-6 text-center text-[14px] text-muted-foreground">Sin trabajos agendados.</Card>
+        <Card className="py-6 text-center text-[14px] text-muted-foreground">
+          Sin trabajos agendados.
+        </Card>
       ) : (
         <div className="space-y-3">
           {upcoming.map((j) => (
-            <Card key={j.id} onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: j.id } })}>
+            <Card
+              key={j.id}
+              onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: j.id } })}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-semibold text-accent">
@@ -135,7 +169,9 @@ function ClienteDetalle() {
 
       <SectionTitle>Trabajos anteriores</SectionTitle>
       {past.length === 0 ? (
-        <Card className="py-6 text-center text-[14px] text-muted-foreground">Todavía no hay historial.</Card>
+        <Card className="py-6 text-center text-[14px] text-muted-foreground">
+          Todavía no hay historial.
+        </Card>
       ) : (
         <Card className="divide-y divide-border p-0">
           {past.map((j) => (
@@ -156,7 +192,9 @@ function ClienteDetalle() {
 function InfoLine({ label, value, icon }: { label: string; value: string; icon?: boolean }) {
   return (
     <div>
-      <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-0.5 flex items-center gap-1.5 text-[15px]">
         {icon ? <MapPin className="size-4 text-muted-foreground" /> : null}
         {value}

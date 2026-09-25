@@ -11,11 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgendaRouteImport } from './routes/agenda'
+import { Route as ConexionesRouteImport } from './routes/conexiones'
 import { Route as DineroRouteImport } from './routes/dinero'
 import { Route as DocumentosRouteImport } from './routes/documentos'
 import { Route as GastosRouteImport } from './routes/gastos'
 import { Route as MasRouteImport } from './routes/mas'
 import { Route as PendientesRouteImport } from './routes/pendientes'
+import { Route as ServiciosRouteImport } from './routes/servicios'
+import { Route as BandejaIndexRouteImport } from './routes/bandeja.index'
+import { Route as BandejaConversationIdRouteImport } from './routes/bandeja.$conversationId'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
 import { Route as MensajeClientIdRouteImport } from './routes/mensaje.$clientId'
@@ -29,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
 const AgendaRoute = AgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConexionesRoute = ConexionesRouteImport.update({
+  id: '/conexiones',
+  path: '/conexiones',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DineroRoute = DineroRouteImport.update({
@@ -56,6 +65,21 @@ const PendientesRoute = PendientesRouteImport.update({
   path: '/pendientes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ServiciosRoute = ServiciosRouteImport.update({
+  id: '/servicios',
+  path: '/servicios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BandejaIndexRoute = BandejaIndexRouteImport.update({
+  id: '/bandeja/',
+  path: '/bandeja/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BandejaConversationIdRoute = BandejaConversationIdRouteImport.update({
+  id: '/bandeja/$conversationId',
+  path: '/bandeja/$conversationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
   id: '/clientes/',
   path: '/clientes/',
@@ -80,41 +104,53 @@ const TrabajoJobIdRoute = TrabajoJobIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
+  '/conexiones': typeof ConexionesRoute
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
+  '/servicios': typeof ServiciosRoute
+  '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
+  '/bandeja/': typeof BandejaIndexRoute
   '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
+  '/conexiones': typeof ConexionesRoute
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
+  '/servicios': typeof ServiciosRoute
+  '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
+  '/bandeja': typeof BandejaIndexRoute
   '/clientes': typeof ClientesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
+  '/conexiones': typeof ConexionesRoute
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
+  '/servicios': typeof ServiciosRoute
+  '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
+  '/bandeja/': typeof BandejaIndexRoute
   '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRouteTypes {
@@ -122,54 +158,70 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agenda'
+    | '/conexiones'
     | '/dinero'
     | '/documentos'
     | '/gastos'
     | '/mas'
     | '/pendientes'
+    | '/servicios'
+    | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
+    | '/bandeja/'
     | '/clientes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agenda'
+    | '/conexiones'
     | '/dinero'
     | '/documentos'
     | '/gastos'
     | '/mas'
     | '/pendientes'
+    | '/servicios'
+    | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
+    | '/bandeja'
     | '/clientes'
   id:
     | '__root__'
     | '/'
     | '/agenda'
+    | '/conexiones'
     | '/dinero'
     | '/documentos'
     | '/gastos'
     | '/mas'
     | '/pendientes'
+    | '/servicios'
+    | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/trabajo/$jobId'
+    | '/bandeja/'
     | '/clientes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
+  ConexionesRoute: typeof ConexionesRoute
   DineroRoute: typeof DineroRoute
   DocumentosRoute: typeof DocumentosRoute
   GastosRoute: typeof GastosRoute
   MasRoute: typeof MasRoute
   PendientesRoute: typeof PendientesRoute
+  ServiciosRoute: typeof ServiciosRoute
+  BandejaConversationIdRoute: typeof BandejaConversationIdRoute
   ClientesClientIdRoute: typeof ClientesClientIdRoute
   MensajeClientIdRoute: typeof MensajeClientIdRoute
   TrabajoJobIdRoute: typeof TrabajoJobIdRoute
+  BandejaIndexRoute: typeof BandejaIndexRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
 }
 
@@ -187,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/agenda'
       fullPath: '/agenda'
       preLoaderRoute: typeof AgendaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conexiones': {
+      id: '/conexiones'
+      path: '/conexiones'
+      fullPath: '/conexiones'
+      preLoaderRoute: typeof ConexionesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dinero': {
@@ -224,6 +283,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PendientesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/servicios': {
+      id: '/servicios'
+      path: '/servicios'
+      fullPath: '/servicios'
+      preLoaderRoute: typeof ServiciosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bandeja/': {
+      id: '/bandeja/'
+      path: '/bandeja'
+      fullPath: '/bandeja/'
+      preLoaderRoute: typeof BandejaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bandeja/$conversationId': {
+      id: '/bandeja/$conversationId'
+      path: '/bandeja/$conversationId'
+      fullPath: '/bandeja/$conversationId'
+      preLoaderRoute: typeof BandejaConversationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes/': {
       id: '/clientes/'
       path: '/clientes'
@@ -258,14 +338,18 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
+  ConexionesRoute: ConexionesRoute,
   DineroRoute: DineroRoute,
   DocumentosRoute: DocumentosRoute,
   GastosRoute: GastosRoute,
   MasRoute: MasRoute,
   PendientesRoute: PendientesRoute,
+  ServiciosRoute: ServiciosRoute,
+  BandejaConversationIdRoute: BandejaConversationIdRoute,
   ClientesClientIdRoute: ClientesClientIdRoute,
   MensajeClientIdRoute: MensajeClientIdRoute,
   TrabajoJobIdRoute: TrabajoJobIdRoute,
+  BandejaIndexRoute: BandejaIndexRoute,
   ClientesIndexRoute: ClientesIndexRoute,
 }
 export const routeTree = rootRouteImport
