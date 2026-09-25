@@ -7,7 +7,25 @@ import { useMarcelo } from "@/lib/marcelo-store";
 import { money, prettyTime, todayISO } from "@/lib/marcelo-data";
 import { askMarcelo } from "@/lib/marcelo.functions";
 
-type MarceloAction = Record<string, any> & { type: string };
+type MarceloAction = {
+  type: string;
+  clientName?: string;
+  name?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  service?: string;
+  price?: number | string;
+  date?: string;
+  time?: string;
+  category?: string;
+  amount?: number | string;
+  note?: string;
+  method?: string;
+  text?: string;
+  es?: string;
+  en?: string;
+};
 
 type AssistantCtx = { open: (seed?: string) => void };
 const Ctx = createContext<AssistantCtx>({ open: () => {} });

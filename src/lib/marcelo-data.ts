@@ -6,7 +6,7 @@ export type Client = {
   city: string;
   service: string;
   price: number;
-  notes?: string;
+  notes?: string | undefined;
 };
 
 export type JobStatus = "confirmado" | "por_confirmar" | "completado";
@@ -24,7 +24,7 @@ export type Job = {
 export type Payment = {
   id: string;
   clientId: string;
-  jobId?: string;
+  jobId?: string | undefined;
   amount: number;
   method: "efectivo" | "zelle" | "cheque" | "debe";
   date: string;
@@ -34,16 +34,16 @@ export type Expense = {
   id: string;
   category: "Gasolina" | "Herramientas" | "Materiales" | "Vehículo" | "Publicidad" | "Otros";
   amount: number;
-  note?: string;
+  note?: string | undefined;
   date: string;
-  receipt?: string;
+  receipt?: string | undefined;
 };
 
 export type Pending = {
   id: string;
   text: string;
-  clientId?: string;
-  amount?: number;
+  clientId?: string | undefined;
+  amount?: number | undefined;
   done: boolean;
   createdAt: string;
 };
@@ -85,7 +85,9 @@ export const money = (n: number) =>
   `$${Math.abs(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 export const prettyTime = (t: string) => {
-  const [h, m] = t.split(":").map(Number);
+  const [rawH, rawM] = t.split(":").map(Number);
+  const h = rawH ?? 0;
+  const m = rawM ?? 0;
   const suffix = h >= 12 ? "PM" : "AM";
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;

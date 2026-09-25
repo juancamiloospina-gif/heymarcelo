@@ -34,7 +34,7 @@ export function Onboarding() {
     );
   }
 
-  const current = steps[step];
+  const current = steps[step] ?? steps[0];
   const value = values[current.key];
 
   return (

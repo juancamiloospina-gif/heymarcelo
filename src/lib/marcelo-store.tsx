@@ -136,7 +136,7 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
         if (!n) return undefined;
         return (
           state.clients.find((c) => c.name.toLowerCase() === n) ??
-          state.clients.find((c) => c.name.toLowerCase().includes(n) || n.includes(c.name.split(" ")[0].toLowerCase()))
+          state.clients.find((c) => c.name.toLowerCase().includes(n) || n.includes((c.name.split(" ")[0] ?? "").toLowerCase()))
         );
       },
     }),
