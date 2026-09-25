@@ -11,6 +11,11 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { MarceloProvider, useMarcelo } from "../lib/marcelo-store";
+import { AssistantProvider } from "../components/marcelo/assistant";
+import { AppShell } from "../components/marcelo/shell";
+import { Onboarding } from "../components/marcelo/onboarding";
+import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
   return (
