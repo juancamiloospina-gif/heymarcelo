@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Wallet, Receipt, ListChecks, FileText, RotateCcw, ChevronRight } from "lucide-react";
+import { Wallet, Receipt, ListChecks, FileText, RotateCcw, ChevronRight, User, Settings, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
@@ -16,11 +16,11 @@ export const Route = createFileRoute("/mas")({
   component: Mas,
 });
 
-const links = [
-  { to: "/dinero", label: "Tu dinero", hint: "Ingresos, gastos y ganancia", icon: Wallet },
-  { to: "/gastos", label: "Gastos", hint: "Anota lo que gastas", icon: Receipt },
-  { to: "/pendientes", label: "Pendientes", hint: "Cobros y recados", icon: ListChecks },
-  { to: "/documentos", label: "Documentos", hint: "Resumen para tu contador", icon: FileText },
+const mainLinks = [
+  { to: "/dinero", label: "Tu dinero", hint: "Ingresos, gastos y ganancia", icon: Wallet, color: "text-accent bg-accent/10" },
+  { to: "/gastos", label: "Gastos", hint: "Anota lo que gastas", icon: Receipt, color: "text-destructive bg-destructive/10" },
+  { to: "/pendientes", label: "Pendientes", hint: "Cobros y recados", icon: ListChecks, color: "text-warning-foreground bg-warning/15" },
+  { to: "/documentos", label: "Documentos", hint: "Resumen para tu contador", icon: FileText, color: "text-success bg-success/10" },
 ] as const;
 
 function Mas() {
@@ -29,40 +29,65 @@ function Mas() {
 
   return (
     <Screen>
-      <PageTitle title="Más" subtitle={`${state.profile.name || "Carlos"} · ${state.profile.trade || "Servicios"}`} />
+      <PageTitle title="Más opciones" />
 
-      <Card className="divide-y divide-border p-0">
-        {links.map(({ to, label, hint, icon: Icon }) => (
-          <button key={to} onClick={() => navigate({ to })} className="flex w-full items-center gap-3 px-4 py-4 text-left">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-accent">
-              <Icon className="size-4.5" />
+      <div className="mb-8 flex items-center gap-4 p-4 surface border-none shadow-sm rounded-3xl">
+        <div className="size-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
+          <User className="size-8" />
+        </div>
+        <div>
+          <h2 className="text-[18px] font-bold">{state.profile.name || "Carlos"}</h2>
+          <p className="text-[14px] text-muted-foreground">{state.profile.trade || "Servicios profesionales"}</p>
+        </div>
+      </div>
+
+      <SectionTitle>Herramientas</SectionTitle>
+      <div className="grid grid-cols-2 gap-3 mb-8">
+        {mainLinks.map(({ to, label, hint, icon: Icon, color }) => (
+          <button 
+            key={to} 
+            onClick={() => navigate({ to })} 
+            className="flex flex-col gap-3 p-4 surface border-none shadow-sm rounded-3xl text-left active:scale-[0.98] transition-all"
+          >
+            <span className={`flex size-10 items-center justify-center rounded-xl ${color}`}>
+              <Icon className="size-5" />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold">{label}</span>
-              <span className="block text-[13px] text-muted-foreground">{hint}</span>
-            </span>
-            <ChevronRight className="size-4 text-muted-foreground" />
+            <div>
+              <span className="block text-[15px] font-bold">{label}</span>
+              <span className="block text-[11px] text-muted-foreground leading-tight mt-0.5">{hint}</span>
+            </div>
           </button>
         ))}
-      </Card>
+      </div>
 
-      <SectionTitle>Tu perfil</SectionTitle>
-      <Card className="space-y-2 text-[15px]">
-        <p>{state.profile.name || "Carlos"}</p>
-        <p className="text-muted-foreground">{state.profile.trade || "Jardinería y mantenimiento"}</p>
-        <p className="text-muted-foreground">{state.profile.city || "Los Ángeles, CA"}</p>
+      <SectionTitle>Cuenta y seguridad</SectionTitle>
+      <Card className="divide-y divide-border p-0 mb-8 border-none shadow-sm overflow-hidden rounded-3xl">
+        <button className="flex items-center gap-3 px-5 py-4 w-full text-left hover:bg-muted/30">
+          <Settings className="size-5 text-muted-foreground" />
+          <span className="flex-1 text-[15px] font-medium">Configuración</span>
+          <ChevronRight className="size-4 text-muted-foreground/30" />
+        </button>
+        <button className="flex items-center gap-3 px-5 py-4 w-full text-left hover:bg-muted/30">
+          <ShieldCheck className="size-5 text-muted-foreground" />
+          <span className="flex-1 text-[15px] font-medium">Privacidad</span>
+          <ChevronRight className="size-4 text-muted-foreground/30" />
+        </button>
       </Card>
 
       <Button
         variant="secondary"
-        className="mt-5 w-full"
+        className="w-full h-14 rounded-2xl border-none shadow-sm text-destructive"
         onClick={() => {
-          reset();
-          toast.success("Marcelo empezó de nuevo");
+          if (confirm("¿Estás seguro de que quieres borrar todos los datos?")) {
+            reset();
+            toast.success("Marcelo empezó de nuevo");
+          }
         }}
       >
-        <RotateCcw className="size-4" /> Empezar de nuevo
+        <RotateCcw className="size-5" /> Empezar de nuevo
       </Button>
+      
+      <p className="mt-6 text-center text-[12px] text-muted-foreground">Versión 1.0.4 · Hecho con ♡</p>
     </Screen>
   );
 }

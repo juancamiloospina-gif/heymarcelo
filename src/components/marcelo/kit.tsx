@@ -2,13 +2,13 @@ import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
 export function Screen({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("px-5 pb-28 pt-5", className)}>{children}</div>;
+  return <div className={cn("px-4 pb-28 pt-5", className)}>{children}</div>;
 }
 
 export function PageTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-6">
-      <h1 className="text-[26px] font-bold leading-tight text-foreground">{title}</h1>
+      <h1 className="text-[22px] font-bold leading-tight text-foreground">{title}</h1>
       {subtitle ? <p className="mt-1 text-[14px] text-muted-foreground">{subtitle}</p> : null}
     </div>
   );
@@ -48,7 +48,7 @@ export function Card({
 }
 
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "accent";
   size?: "md" | "sm";
 };
 
@@ -60,6 +60,7 @@ export function Button({ variant = "primary", size = "md", className, ...props }
         "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-colors disabled:opacity-50",
         size === "md" ? "h-12 px-5 text-[15px]" : "h-10 px-4 text-[14px]",
         variant === "primary" && "bg-primary text-primary-foreground hover:bg-primary/90",
+        variant === "accent" && "bg-accent text-accent-foreground hover:bg-accent/90",
         variant === "secondary" && "border border-border bg-card text-foreground hover:bg-muted",
         variant === "ghost" && "text-muted-foreground hover:bg-muted",
         variant === "danger" && "border border-destructive/30 bg-card text-destructive hover:bg-destructive/5",

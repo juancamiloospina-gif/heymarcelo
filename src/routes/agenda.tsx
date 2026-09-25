@@ -39,19 +39,32 @@ function Agenda() {
     (acc[j.date] ??= []).push(j);
     return acc;
   }, {});
+  const weekdays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(`${todayISO(index)}T12:00:00`);
+    return { day: date.toLocaleDateString("es-US", { weekday: "narrow" }), number: date.getDate(), active: index === 0 };
+  });
 
   return (
     <Screen>
-      <PageTitle title="Agenda" subtitle="Lo que tienes por delante." />
+      <PageTitle title="Agenda" subtitle={prettyDate(todayISO())} />
 
-      <div className="mb-5 flex gap-2">
+      <div className="mb-4 grid grid-cols-7 rounded-2xl border border-border bg-card p-2 shadow-[var(--shadow-card)]">
+        {weekdays.map((day, index) => (
+          <div key={index} className="flex flex-col items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+            <span className="uppercase">{day.day}</span>
+            <span className={cn("flex size-8 items-center justify-center rounded-full text-[12px]", day.active && "bg-primary text-primary-foreground")}>{day.number}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-5 flex rounded-2xl bg-muted p-1">
         {filters.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
             className={cn(
-              "rounded-full px-4 py-2 text-[13px] font-semibold transition-colors",
-              filter === f.key ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground",
+              "flex-1 rounded-xl px-2 py-2 text-[12px] font-semibold transition-colors",
+              filter === f.key ? "bg-primary text-primary-foreground" : "text-muted-foreground",
             )}
           >
             {f.label}
@@ -71,7 +84,8 @@ function Agenda() {
               {list.map((job) => {
                 const client = clientById(job.clientId);
                 return (
-                  <Card key={job.id} onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } })}>
+                  <Card key={job.id} className="relative overflow-hidden pl-5" onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } })}>
+                    <span className="absolute inset-y-0 left-0 w-1 bg-accent" />
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-[13px] font-semibold text-accent">{prettyTime(job.time)}</p>

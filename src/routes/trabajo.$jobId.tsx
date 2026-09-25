@@ -59,14 +59,14 @@ function TrabajoDetalle() {
 
   return (
     <Screen>
-      <button onClick={() => navigate({ to: "/agenda" })} className="mb-4 flex items-center gap-1.5 text-[14px] text-muted-foreground">
-        <ArrowLeft className="size-4" /> Agenda
+      <button onClick={() => navigate({ to: "/agenda" })} className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground">
+        <ArrowLeft className="size-4" /> Crear un trabajo
       </button>
 
       <h1 className="text-[24px] font-semibold leading-tight">{client?.name ?? "Cliente"}</h1>
       <p className="mt-1 text-[15px] text-muted-foreground">{job.service}</p>
 
-      <Card className="mt-5 space-y-4">
+      <Card className="mt-5 space-y-4 border-l-4 border-l-accent">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">Cuándo</p>
@@ -149,7 +149,7 @@ function TrabajoDetalle() {
               </Button>
             </Card>
           ) : (
-            <Button className="w-full" onClick={() => setCharging(true)}>
+            <Button variant="accent" className="w-full" onClick={() => setCharging(true)}>
               <CheckCircle2 className="size-4" /> Completar y cobrar
             </Button>
           )}

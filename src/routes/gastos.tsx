@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { Camera, Plus } from "lucide-react";
+import { Camera, Plus, ChevronRight, Receipt, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Field, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
@@ -41,26 +41,36 @@ function Gastos() {
 
   return (
     <Screen>
+      <div className="flex items-center justify-between mb-2">
+         <button onClick={() => window.history.back()} className="text-muted-foreground">
+           <ArrowLeft className="size-6" />
+         </button>
+      </div>
+      
       <PageTitle title="Gastos" subtitle={`Llevas ${money(total)} este mes.`} />
 
-      <Card className="space-y-4">
+      <Card className="space-y-6 p-6 border-none shadow-sm mb-8">
         <Field
           label="¿Cuánto gastaste?"
           inputMode="decimal"
-          placeholder="45"
+          placeholder="$ 0.00"
+          className="text-[20px] font-bold h-14"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
+        
         <div>
-          <p className="mb-2 text-[13px] font-medium text-muted-foreground">¿En qué?</p>
+          <p className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">¿En qué?</p>
           <div className="flex flex-wrap gap-2">
             {categories.map((c) => (
               <button
                 key={c}
                 onClick={() => setCategory(c)}
                 className={cn(
-                  "rounded-full px-3.5 py-2 text-[13px] font-medium transition-colors",
-                  category === c ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground",
+                  "rounded-full px-4 py-2 text-[14px] font-medium transition-all",
+                  category === c 
+                    ? "bg-primary text-primary-foreground shadow-md" 
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
                 {c}
@@ -68,7 +78,13 @@ function Gastos() {
             ))}
           </div>
         </div>
-        <Field label="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} />
+
+        <Field 
+          label="Nota (opcional)" 
+          placeholder="Ej. Home Depot, Chevron..."
+          value={note} 
+          onChange={(e) => setNote(e.target.value)} 
+        />
 
         <input
           ref={fileRef}
@@ -87,40 +103,52 @@ function Gastos() {
             reader.readAsDataURL(file);
           }}
         />
-        <Button variant="secondary" className="w-full" onClick={() => fileRef.current?.click()}>
-          <Camera className="size-4" /> {receipt ? "Recibo adjuntado" : "Tomar foto del recibo"}
-        </Button>
-
-        <Button
-          className="w-full"
-          disabled={!Number(amount)}
-          onClick={() => {
-            addExpense({ amount: Number(amount), category, note: note || undefined, date: todayISO(), receipt });
-            setAmount("");
-            setNote("");
-            setReceipt(undefined);
-            toast.success("Gasto registrado");
-          }}
-        >
-          <Plus className="size-4" /> Guardar gasto
-        </Button>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="secondary" className="h-14 min-w-0 rounded-2xl border-dashed px-3 text-[12px]" onClick={() => fileRef.current?.click()}>
+            <Camera className="size-5" /> 
+            <span className="truncate">{receipt ? "Cambiar foto" : "Foto del recibo"}</span>
+          </Button>
+          
+          <Button
+            className="h-14 min-w-0 rounded-2xl bg-primary px-3 text-[12px] text-primary-foreground shadow-lg"
+            disabled={!Number(amount)}
+            onClick={() => {
+              addExpense({ amount: Number(amount), category, note: note || undefined, date: todayISO(), receipt });
+              setAmount("");
+              setNote("");
+              setReceipt(undefined);
+              toast.success("Gasto registrado");
+            }}
+          >
+            <Plus className="size-5" /> Guardar gasto
+          </Button>
+        </div>
       </Card>
 
       <SectionTitle>Últimos gastos</SectionTitle>
-      <Card className="divide-y divide-border p-0">
+      <div className="space-y-3">
         {state.expenses.map((e) => (
-          <div key={e.id} className="flex items-center justify-between px-4 py-3.5">
-            <div className="min-w-0">
-              <p className="truncate text-[15px] font-medium">{e.category}</p>
-              <p className="truncate text-[12px] text-muted-foreground">
-                {prettyDate(e.date)}
-                {e.note ? ` · ${e.note}` : ""}
-              </p>
+          <div key={e.id} className="surface flex items-center justify-between px-4 py-4 border-none shadow-sm rounded-2xl">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                <Receipt className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[15px] font-bold text-foreground">{e.category}</p>
+                <p className="truncate text-[12px] text-muted-foreground">
+                  {prettyDate(e.date)}
+                  {e.note ? ` · ${e.note}` : ""}
+                </p>
+              </div>
             </div>
-            <p className="text-[15px] font-semibold">−{money(e.amount)}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[16px] font-bold text-destructive">−{money(e.amount)}</p>
+              <ChevronRight className="size-4 text-muted-foreground/30" />
+            </div>
           </div>
         ))}
-      </Card>
+      </div>
     </Screen>
   );
 }
