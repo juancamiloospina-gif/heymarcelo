@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Marcelo uses Plus Jakarta Sans with a white, warm-gray, mandarin, and graphite visual system; this matches the approved brand direction and avoids blue dominance.
