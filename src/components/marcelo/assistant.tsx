@@ -286,7 +286,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={value}>
       {children}
       {isOpen ? (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[#0A1629] text-white">
+        <div className="fixed inset-0 z-50 flex flex-col bg-primary text-primary-foreground">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full bg-accent/10 blur-[100px]" />
           </div>
@@ -295,7 +295,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
             <button
               onClick={close}
               aria-label="Cerrar"
-              className="flex size-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/10 transition-colors hover:bg-primary-foreground/20"
             >
               <X className="size-5" />
             </button>
@@ -304,19 +304,14 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
           </div>
 
           <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center">
-            <div className="mb-8 flex size-24 items-center justify-center rounded-[32px] bg-accent/20 ring-1 ring-accent/30 shadow-[0_0_40px_rgba(var(--accent-rgb),0.2)]">
-              <img src="/lovable-uploads/marcelo-logo.png" alt="Marcelo" className="size-16 object-contain" onError={(e) => {
-                // Fallback to a simple icon if logo is not found
-                e.currentTarget.style.display = 'none';
-                const parent = e.currentTarget.parentElement;
-                if (parent) parent.innerHTML = '<div class="text-4xl">🧹</div>';
-              }} />
+            <div className="mb-8 flex size-24 items-center justify-center rounded-[2rem] bg-accent/20 text-[38px] font-bold text-accent ring-1 ring-accent/30">
+              M
             </div>
 
             <h2 className="text-[28px] font-bold tracking-tight">
               {listening ? "Escuchando..." : thinking ? "Un momento…" : "Habla con Marcelo"}
             </h2>
-            <p className="mt-3 max-w-[280px] text-[16px] leading-relaxed text-white/60">
+             <p className="mt-3 max-w-[280px] text-[16px] leading-relaxed text-primary-foreground/60">
               {listening ? "Te escucho..." : thinking ? "Estoy pensando..." : reply ? "" : "Di lo que necesitas en español. Él se encarga del resto."}
             </p>
 
@@ -326,15 +321,15 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 
             {reply ? (
               <div className="mt-8 w-full max-w-sm">
-                <div className="rounded-3xl bg-white/5 border border-white/10 p-6 text-left shadow-xl backdrop-blur-sm">
+                <div className="rounded-3xl border border-primary-foreground/10 bg-primary-foreground/5 p-6 text-left shadow-xl backdrop-blur-sm">
                   <p className="text-[12px] font-bold uppercase tracking-wider text-accent mb-2">Marcelo</p>
-                  <p className="text-[17px] leading-relaxed text-white">{reply}</p>
+                   <p className="text-[17px] leading-relaxed text-primary-foreground">{reply}</p>
                   {pendingAction ? (
                     <div className="mt-6 flex gap-3">
-                      <Button className="flex-1 bg-accent text-white border-none" onClick={() => runAction(pendingAction)}>
+                      <Button className="flex-1 border-none bg-accent text-accent-foreground" onClick={() => runAction(pendingAction)}>
                         <Check className="size-4" /> Confirmar
                       </Button>
-                      <Button variant="secondary" className="flex-1 bg-white/10 border-none text-white" onClick={() => setPendingAction(null)}>
+                      <Button variant="secondary" className="flex-1 border-none bg-primary-foreground/10 text-primary-foreground" onClick={() => setPendingAction(null)}>
                         <Pencil className="size-4" /> Cambiar
                       </Button>
                     </div>
@@ -344,7 +339,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
             ) : null}
 
             {heard && !reply ? (
-              <div className="mt-6 text-[18px] font-medium text-white/80 animate-in fade-in slide-in-from-bottom-2">
+               <div className="mt-6 text-[18px] font-medium text-primary-foreground/80 animate-in fade-in slide-in-from-bottom-2">
                 "{heard}"
               </div>
             ) : null}
@@ -355,7 +350,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
               <button
                 onClick={listening ? () => recognitionRef.current?.stop() : startListening}
                 aria-label={listening ? "Detener" : "Hablar con Marcelo"}
-                className="relative flex size-20 items-center justify-center rounded-full bg-accent text-white shadow-[0_0_30px_rgba(var(--accent-rgb),0.5)] transition-transform active:scale-95"
+                 className="relative flex size-20 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-[var(--shadow-lift)] transition-transform active:scale-95"
               >
                 {listening ? (
                   <span className="absolute inset-0 rounded-full bg-accent/40 animate-ping" />
@@ -376,7 +371,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
                   placeholder="Habla o escribe en español..."
-                  className="h-14 w-full rounded-2xl border border-white/10 bg-white/5 pl-5 pr-12 text-[16px] text-white outline-none placeholder:text-white/30 focus:border-accent/50 focus:bg-white/10 transition-all"
+                   className="h-14 w-full rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 pl-5 pr-12 text-[16px] text-primary-foreground outline-none placeholder:text-primary-foreground/30 focus:border-accent/50 focus:bg-primary-foreground/10 transition-all"
                 />
                 <button
                   type="submit"

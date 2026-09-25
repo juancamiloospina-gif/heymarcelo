@@ -108,15 +108,15 @@ function Mensaje() {
         {history.map((m) => (
           <div key={m.id} className="space-y-4">
             <div className="flex justify-end">
-              <div className="max-w-[85%] bg-[#E7F5E9] text-foreground p-4 rounded-2xl rounded-tr-none shadow-sm relative">
-                 <p className="text-[15px] leading-relaxed">✦ {m.es}</p>
+              <div className="relative max-w-[85%] rounded-2xl rounded-tr-none bg-success/10 p-4 text-foreground shadow-sm">
+                 <p className="text-[15px] leading-relaxed">{m.es}</p>
                  <p className="text-[12px] text-muted-foreground mt-2">Tu mensaje (español)</p>
               </div>
             </div>
             <div className="flex justify-start">
-              <div className="max-w-[85%] bg-[#E3F2FD] text-foreground p-4 rounded-2xl rounded-tl-none shadow-sm border border-blue-100 relative">
-                 <p className="text-[15px] leading-relaxed">✦ {m.en}</p>
-                 <p className="text-[12px] text-blue-600 mt-2">Mensaje para el cliente (inglés)</p>
+              <div className="relative max-w-[85%] rounded-2xl rounded-tl-none border border-accent/15 bg-accent/10 p-4 text-foreground shadow-sm">
+                 <p className="text-[15px] leading-relaxed">{m.en}</p>
+                 <p className="mt-2 text-[12px] text-accent">Mensaje para el cliente (inglés)</p>
               </div>
             </div>
           </div>
@@ -125,12 +125,12 @@ function Mensaje() {
         {en && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex justify-end">
-              <div className="max-w-[85%] bg-[#E7F5E9] text-foreground p-4 rounded-2xl rounded-tr-none shadow-sm">
-                 <p className="text-[15px] leading-relaxed">✦ {es}</p>
+               <div className="max-w-[85%] rounded-2xl rounded-tr-none bg-success/10 p-4 text-foreground shadow-sm">
+                  <p className="text-[15px] leading-relaxed">{es}</p>
               </div>
             </div>
             <div className="flex justify-start">
-              <div className="max-w-[85%] bg-white border border-accent p-4 rounded-2xl rounded-tl-none shadow-md">
+               <div className="max-w-[85%] rounded-2xl rounded-tl-none border border-accent bg-card p-4 shadow-md">
                  <p className="text-[15px] leading-relaxed">{en}</p>
                  <div className="mt-4 flex gap-2">
                     <Button 
@@ -159,7 +159,7 @@ function Mensaje() {
       <div className="p-4 bg-card border-t pb-8">
         <div className="flex items-center gap-2">
           <button 
-            className="size-10 rounded-full bg-accent text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform active:scale-95"
             onClick={() => open(`Dile a ${client.name} que `)}
           >
             <Mic className="size-5" />
