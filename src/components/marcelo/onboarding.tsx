@@ -20,7 +20,9 @@ export function Onboarding() {
           <div className="mx-auto flex size-24 items-center justify-center rounded-[2rem] bg-accent/10 text-accent shadow-[var(--shadow-card)]">
             <span className="text-[42px] font-bold">M</span>
           </div>
-          <p className="mt-8 text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">Marcelo</p>
+          <p className="mt-8 text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">
+            Marcelo
+          </p>
           <h1 className="mt-3 text-[30px] font-bold leading-tight">Tu trabajo, más simple.</h1>
           <p className="mx-auto mt-3 max-w-[300px] text-[16px] leading-relaxed text-muted-foreground">
             Te ayudo a organizar tu negocio. Háblame en español y yo me encargo del resto.
@@ -40,17 +42,31 @@ export function Onboarding() {
   const value = values[current.key];
 
   return (
-    <div className="flex min-h-screen flex-col justify-between px-6 pb-10 pt-20">
+    <form
+      className="flex min-h-screen flex-col justify-between px-6 pb-10 pt-20"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!value.trim()) return;
+        if (step < steps.length - 1) setStep(step + 1);
+        else setProfile({ ...values, onboarded: true });
+      }}
+    >
       <div>
         <div className="mb-8 flex gap-1.5">
           {steps.map((s, i) => (
             <span
               key={s.key}
-              className={i <= step ? "h-1 flex-1 rounded-full bg-accent" : "h-1 flex-1 rounded-full bg-border"}
+              className={
+                i <= step
+                  ? "h-1 flex-1 rounded-full bg-accent"
+                  : "h-1 flex-1 rounded-full bg-border"
+              }
             />
           ))}
         </div>
-        <h1 className="mb-6 text-[24px] font-semibold leading-tight text-foreground">{current.label}</h1>
+        <h1 className="mb-6 text-[24px] font-semibold leading-tight text-foreground">
+          {current.label}
+        </h1>
         <Field
           label=""
           autoFocus
@@ -59,16 +75,9 @@ export function Onboarding() {
           onChange={(e) => setValues({ ...values, [current.key]: e.target.value })}
         />
       </div>
-      <Button
-        className="w-full"
-        disabled={!value.trim()}
-        onClick={() => {
-          if (step < steps.length - 1) setStep(step + 1);
-          else setProfile({ ...values, onboarded: true });
-        }}
-      >
+      <Button type="submit" className="w-full" disabled={!value.trim()}>
         {step < steps.length - 1 ? "Continuar" : "Entrar a Marcelo"}
       </Button>
-    </div>
+    </form>
   );
 }

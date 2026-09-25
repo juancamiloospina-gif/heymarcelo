@@ -1,10 +1,27 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Mic, Send, X, Check, Pencil, Languages } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button, Card } from "./kit";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { money, prettyTime, todayISO } from "@/lib/marcelo-data";
+import {
+  expenseCategories,
+  money,
+  monthISO,
+  prettyTime,
+  todayISO,
+  type Expense,
+  type Payment,
+} from "@/lib/marcelo-data";
 import { askMarcelo } from "@/lib/marcelo.functions";
 
 type MarceloAction = {
@@ -26,6 +43,26 @@ type MarceloAction = {
   es?: string;
   en?: string;
 };
+
+// Minimal typing for the Web Speech API, which isn't in TypeScript's DOM lib.
+type SpeechResultList = ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((e: { results: SpeechResultList }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+const toCategory = (value?: string): Expense["category"] =>
+  expenseCategories.find((c) => c.toLowerCase() === value?.toLowerCase()) ?? "Otros";
+
+const toMethod = (value?: string): Exclude<Payment["method"], "debe"> =>
+  value === "zelle" || value === "cheque" ? value : "efectivo";
 
 type AssistantCtx = { open: (seed?: string) => void };
 const Ctx = createContext<AssistantCtx>({ open: () => {} });
@@ -51,8 +88,16 @@ function Wave({ active }: { active: boolean }) {
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
         <span
           key={i}
-          className={active ? "w-1.5 rounded-full bg-accent/80 animate-wave" : "w-1.5 rounded-full bg-white/20"}
-          style={{ height: 32, animationDelay: `${i * 0.11}s`, transform: active ? undefined : "scaleY(0.2)" }}
+          className={
+            active
+              ? "w-1.5 rounded-full bg-accent/80 animate-wave"
+              : "w-1.5 rounded-full bg-white/20"
+          }
+          style={{
+            height: 32,
+            animationDelay: `${i * 0.11}s`,
+            transform: active ? undefined : "scaleY(0.2)",
+          }}
         />
       ))}
     </div>
@@ -67,7 +112,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [typed, setTyped] = useState("");
   const [reply, setReply] = useState("");
   const [pendingAction, setPendingAction] = useState<MarceloAction | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const navigate = useNavigate();
   const store = useMarcelo();
 
@@ -93,25 +138,39 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const snapshot = useMemo(() => {
     const { clients, jobs, expenses, pendings, payments, profile } = store.state;
     const name = (id: string) => clients.find((c) => c.id === id)?.name ?? "cliente";
-    const month = new Date().toISOString().slice(0, 7);
+    const month = monthISO();
     const income = payments
       .filter((p) => p.date.startsWith(month) && p.method !== "debe")
       .reduce((a, b) => a + b.amount, 0);
-    const spent = expenses.filter((e) => e.date.startsWith(month)).reduce((a, b) => a + b.amount, 0);
+    const spent = expenses
+      .filter((e) => e.date.startsWith(month))
+      .reduce((a, b) => a + b.amount, 0);
     return [
-      `Usuario: ${profile.name || "Carlos"} — ${profile.trade || "servicios"} en ${profile.city || "Los Ángeles, CA"}`,
+      `Usuario: ${profile.name || "sin nombre"} — ${profile.trade || "servicios"} en ${profile.city || "ciudad sin indicar"}`,
       `Clientes: ${clients
-        .map((c) => `${c.name} (${c.service}, ${money(c.price)} habitual, ${c.address}, ${c.city}, tel ${c.phone})`)
+        .map(
+          (c) =>
+            `${c.name} (${c.service}, ${money(c.price)} habitual, ${c.address}, ${c.city}, tel ${c.phone})`,
+        )
         .join("; ")}`,
       `Trabajos próximos: ${jobs
         .filter((j) => j.date >= todayISO())
         .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
         .slice(0, 12)
-        .map((j) => `${j.date} ${prettyTime(j.time)} ${name(j.clientId)} — ${j.service} ${money(j.price)} (${j.status})`)
+        .map(
+          (j) =>
+            `${j.date} ${prettyTime(j.time)} ${name(j.clientId)} — ${j.service} ${money(j.price)} (${j.status})`,
+        )
         .join("; ")}`,
       `Ingresos del mes: ${money(income)}. Gastos del mes: ${money(spent)}. Ganancia: ${money(income - spent)}.`,
-      `Gastos recientes: ${expenses.slice(0, 6).map((e) => `${e.category} ${money(e.amount)} ${e.date}`).join("; ")}`,
-      `Pendientes: ${pendings.filter((p) => !p.done).map((p) => p.text).join("; ")}`,
+      `Gastos recientes: ${expenses
+        .slice(0, 6)
+        .map((e) => `${e.category} ${money(e.amount)} ${e.date}`)
+        .join("; ")}`,
+      `Pendientes: ${pendings
+        .filter((p) => !p.done)
+        .map((p) => p.text)
+        .join("; ")}`,
     ].join("\n");
   }, [store.state]);
 
@@ -158,7 +217,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         }
         case "CREATE_EXPENSE": {
           store.addExpense({
-            category: (action.category ?? "Otros") as any,
+            category: toCategory(action.category),
             amount: Number(action.amount ?? 0),
             note: action.note ? String(action.note) : undefined,
             date: todayISO(),
@@ -168,17 +227,23 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         }
         case "RECORD_PAYMENT": {
           const client = store.findClientByName(String(action.clientName ?? ""));
+          if (!client) {
+            toast.error("No encontré ese cliente");
+            break;
+          }
           store.addPayment({
-            clientId: client?.id ?? "",
+            clientId: client.id,
             amount: Number(action.amount ?? 0),
-            method: (action.method ?? "efectivo") as any,
+            method: toMethod(action.method),
             date: todayISO(),
           });
           toast.success(`Pago registrado: ${money(Number(action.amount ?? 0))}`);
           break;
         }
         case "CREATE_PENDING": {
-          const client = action.clientName ? store.findClientByName(String(action.clientName)) : undefined;
+          const client = action.clientName
+            ? store.findClientByName(String(action.clientName))
+            : undefined;
           store.addPending(String(action.text ?? "Pendiente"), {
             clientId: client?.id,
             amount: action.amount ? Number(action.amount) : undefined,
@@ -237,7 +302,11 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   );
 
   const startListening = useCallback(() => {
-    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+    const w = window as unknown as {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    };
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SR) {
       toast.info("Tu navegador no permite dictado. Escribe lo que necesitas.");
       return;
@@ -249,12 +318,11 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       rec.lang = "es-US";
       rec.interimResults = true;
       rec.continuous = false;
-      rec.onresult = (e: any) => {
-        const transcript = Array.from(e.results)
-          .map((r: any) => r[0].transcript)
-          .join(" ");
+      rec.onresult = (e) => {
+        const results = Array.from(e.results);
+        const transcript = results.map((r) => r[0]?.transcript ?? "").join(" ");
         setHeard(transcript);
-        if (e.results[e.results.length - 1].isFinal) {
+        if (results[results.length - 1]?.isFinal) {
           setListening(false);
           void send(transcript);
         }
@@ -311,8 +379,14 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
             <h2 className="text-[28px] font-bold tracking-tight">
               {listening ? "Escuchando..." : thinking ? "Un momento…" : "Habla con Marcelo"}
             </h2>
-             <p className="mt-3 max-w-[280px] text-[16px] leading-relaxed text-primary-foreground/60">
-              {listening ? "Te escucho..." : thinking ? "Estoy pensando..." : reply ? "" : "Di lo que necesitas en español. Él se encarga del resto."}
+            <p className="mt-3 max-w-[280px] text-[16px] leading-relaxed text-primary-foreground/60">
+              {listening
+                ? "Te escucho..."
+                : thinking
+                  ? "Estoy pensando..."
+                  : reply
+                    ? ""
+                    : "Di lo que necesitas en español. Él se encarga del resto."}
             </p>
 
             <div className="mt-12 w-full max-w-sm">
@@ -322,14 +396,23 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
             {reply ? (
               <div className="mt-8 w-full max-w-sm">
                 <div className="rounded-3xl border border-primary-foreground/10 bg-primary-foreground/5 p-6 text-left shadow-xl backdrop-blur-sm">
-                  <p className="text-[12px] font-bold uppercase tracking-wider text-accent mb-2">Marcelo</p>
-                   <p className="text-[17px] leading-relaxed text-primary-foreground">{reply}</p>
+                  <p className="text-[12px] font-bold uppercase tracking-wider text-accent mb-2">
+                    Marcelo
+                  </p>
+                  <p className="text-[17px] leading-relaxed text-primary-foreground">{reply}</p>
                   {pendingAction ? (
                     <div className="mt-6 flex gap-3">
-                      <Button className="flex-1 border-none bg-accent text-accent-foreground" onClick={() => runAction(pendingAction)}>
+                      <Button
+                        className="flex-1 border-none bg-accent text-accent-foreground"
+                        onClick={() => runAction(pendingAction)}
+                      >
                         <Check className="size-4" /> Confirmar
                       </Button>
-                      <Button variant="secondary" className="flex-1 border-none bg-primary-foreground/10 text-primary-foreground" onClick={() => setPendingAction(null)}>
+                      <Button
+                        variant="secondary"
+                        className="flex-1 border-none bg-primary-foreground/10 text-primary-foreground"
+                        onClick={() => setPendingAction(null)}
+                      >
                         <Pencil className="size-4" /> Cambiar
                       </Button>
                     </div>
@@ -339,7 +422,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
             ) : null}
 
             {heard && !reply ? (
-               <div className="mt-6 text-[18px] font-medium text-primary-foreground/80 animate-in fade-in slide-in-from-bottom-2">
+              <div className="mt-6 text-[18px] font-medium text-primary-foreground/80 animate-in fade-in slide-in-from-bottom-2">
                 "{heard}"
               </div>
             ) : null}
@@ -350,7 +433,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
               <button
                 onClick={listening ? () => recognitionRef.current?.stop() : startListening}
                 aria-label={listening ? "Detener" : "Hablar con Marcelo"}
-                 className="relative flex size-20 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-[var(--shadow-lift)] transition-transform active:scale-95"
+                className="relative flex size-20 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-[var(--shadow-lift)] transition-transform active:scale-95"
               >
                 {listening ? (
                   <span className="absolute inset-0 rounded-full bg-accent/40 animate-ping" />
@@ -371,7 +454,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
                   value={typed}
                   onChange={(e) => setTyped(e.target.value)}
                   placeholder="Habla o escribe en español..."
-                   className="h-14 w-full rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 pl-5 pr-12 text-[16px] text-primary-foreground outline-none placeholder:text-primary-foreground/30 focus:border-accent/50 focus:bg-primary-foreground/10 transition-all"
+                  className="h-14 w-full rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 pl-5 pr-12 text-[16px] text-primary-foreground outline-none placeholder:text-primary-foreground/30 focus:border-accent/50 focus:bg-primary-foreground/10 transition-all"
                 />
                 <button
                   type="submit"

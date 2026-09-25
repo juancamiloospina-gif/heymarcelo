@@ -154,3 +154,10 @@
 @utility animate-wave {
   animation: wave-bar 1s ease-in-out infinite;
 }
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

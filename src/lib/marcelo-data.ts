@@ -75,10 +75,31 @@ export type MarceloState = {
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
+// Local calendar date (not UTC), so "hoy" doesn't roll over early in the evening in the US.
 export const todayISO = (offset = 0) => {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
+export const monthISO = () => todayISO().slice(0, 7);
+
+export const expenseCategories: Expense["category"][] = [
+  "Gasolina",
+  "Herramientas",
+  "Materiales",
+  "Vehículo",
+  "Publicidad",
+  "Otros",
+];
+
+export const paymentMethodLabel: Record<Payment["method"], string> = {
+  efectivo: "Efectivo",
+  zelle: "Zelle",
+  cheque: "Cheque",
+  debe: "Pendiente",
 };
 
 export const money = (n: number) =>
@@ -202,14 +223,45 @@ export function demoState(): MarceloState {
     ],
     expenses: [
       { id: uid(), category: "Gasolina", amount: 45, date: todayISO(-1), note: "Tanque lleno" },
-      { id: uid(), category: "Herramientas", amount: 85, date: todayISO(-4), note: "Tijeras nuevas" },
-      { id: uid(), category: "Materiales", amount: 32, date: todayISO(-8), note: "Bolsas y guantes" },
+      {
+        id: uid(),
+        category: "Herramientas",
+        amount: 85,
+        date: todayISO(-4),
+        note: "Tijeras nuevas",
+      },
+      {
+        id: uid(),
+        category: "Materiales",
+        amount: 32,
+        date: todayISO(-8),
+        note: "Bolsas y guantes",
+      },
     ],
     pendings: [
-      { id: uid(), text: "John me debe $90", clientId: c1, amount: 90, done: false, createdAt: todayISO(-2) },
-      { id: uid(), text: "Enviar factura a Robert", clientId: c3, done: false, createdAt: todayISO(-1) },
+      {
+        id: uid(),
+        text: "John me debe $90",
+        clientId: c1,
+        amount: 90,
+        done: false,
+        createdAt: todayISO(-2),
+      },
+      {
+        id: uid(),
+        text: "Enviar factura a Robert",
+        clientId: c3,
+        done: false,
+        createdAt: todayISO(-1),
+      },
       { id: uid(), text: "Comprar fertilizante orgánico", done: false, createdAt: todayISO(-1) },
-      { id: uid(), text: "Volver a casa de Sarah a limpiar hojas", clientId: c2, done: false, createdAt: todayISO() },
+      {
+        id: uid(),
+        text: "Volver a casa de Sarah a limpiar hojas",
+        clientId: c2,
+        done: false,
+        createdAt: todayISO(),
+      },
     ],
     messages: [],
   };

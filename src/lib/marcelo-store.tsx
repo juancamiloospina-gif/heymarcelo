@@ -1,6 +1,15 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   demoState,
+  monthISO,
   todayISO,
   uid,
   type Client,
@@ -27,6 +36,8 @@ type Store = {
   addPayment: (p: Omit<Payment, "id">) => Payment;
   addPending: (text: string, extra?: Partial<Pending>) => Pending;
   togglePending: (id: string) => void;
+  removeExpense: (id: string) => void;
+  clearDonePendings: () => void;
   addMessage: (m: Omit<Message, "id">) => Message;
   reset: () => void;
   clientById: (id?: string) => Client | undefined;
@@ -69,7 +80,10 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateClient = useCallback((id: string, patch: Partial<Client>) => {
-    setState((s) => ({ ...s, clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+    setState((s) => ({
+      ...s,
+      clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    }));
   }, []);
 
   const addJob = useCallback((j: Omit<Job, "id">) => {
@@ -107,6 +121,14 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const removeExpense = useCallback((id: string) => {
+    setState((s) => ({ ...s, expenses: s.expenses.filter((e) => e.id !== id) }));
+  }, []);
+
+  const clearDonePendings = useCallback(() => {
+    setState((s) => ({ ...s, pendings: s.pendings.filter((p) => !p.done) }));
+  }, []);
+
   const addMessage = useCallback((m: Omit<Message, "id">) => {
     const message: Message = { ...m, id: uid() };
     setState((s) => ({ ...s, messages: [message, ...s.messages] }));
@@ -128,6 +150,8 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       addPayment,
       addPending,
       togglePending,
+      removeExpense,
+      clearDonePendings,
       addMessage,
       reset,
       clientById: (id?: string) => state.clients.find((c) => c.id === id),
@@ -136,7 +160,11 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
         if (!n) return undefined;
         return (
           state.clients.find((c) => c.name.toLowerCase() === n) ??
-          state.clients.find((c) => c.name.toLowerCase().includes(n) || n.includes((c.name.split(" ")[0] ?? "").toLowerCase()))
+          state.clients.find(
+            (c) =>
+              c.name.toLowerCase().includes(n) ||
+              n.includes((c.name.split(" ")[0] ?? "").toLowerCase()),
+          )
         );
       },
     }),
@@ -152,6 +180,8 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       addPayment,
       addPending,
       togglePending,
+      removeExpense,
+      clearDonePendings,
       addMessage,
       reset,
     ],
@@ -168,11 +198,13 @@ export function useMarcelo() {
 
 export function useMoney() {
   const { state } = useMarcelo();
-  const month = new Date().toISOString().slice(0, 7);
+  const month = monthISO();
   const income = state.payments
     .filter((p) => p.date.startsWith(month) && p.method !== "debe")
     .reduce((a, b) => a + b.amount, 0);
-  const spent = state.expenses.filter((e) => e.date.startsWith(month)).reduce((a, b) => a + b.amount, 0);
+  const spent = state.expenses
+    .filter((e) => e.date.startsWith(month))
+    .reduce((a, b) => a + b.amount, 0);
   const owed = state.pendings
     .filter((p) => !p.done && typeof p.amount === "number")
     .reduce((a, b) => a + (b.amount ?? 0), 0);

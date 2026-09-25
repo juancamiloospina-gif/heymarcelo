@@ -17,7 +17,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Marcelo — Tu asistente de trabajo" },
       {
         property: "og:description",
-        content: "Agenda, clientes, pagos y gastos en un solo lugar. Solo dile a Marcelo qué necesitas.",
+        content:
+          "Agenda, clientes, pagos y gastos en un solo lugar. Solo dile a Marcelo qué necesitas.",
       },
     ],
   }),
@@ -38,10 +39,12 @@ function Inicio() {
     <Screen className="px-5 pt-7">
       <div className="mb-6 flex items-center justify-between">
         <div>
-        <h1 className="text-[26px] font-bold leading-tight">
-          Hola, {state.profile.name.split(" ")[0] || "Carlos"}
-        </h1>
-        <p className="mt-1 text-[14px] font-medium text-muted-foreground">Aquí tienes tu resumen de hoy.</p>
+          <h1 className="text-[26px] font-bold leading-tight">
+            Hola{state.profile.name ? `, ${state.profile.name.split(" ")[0]}` : ""}
+          </h1>
+          <p className="mt-1 text-[14px] font-medium text-muted-foreground">
+            Aquí tienes tu resumen de hoy.
+          </p>
         </div>
         <span className="flex size-11 items-center justify-center rounded-full bg-muted text-[14px] font-bold text-foreground ring-2 ring-card shadow-[var(--shadow-card)]">
           {(state.profile.name.charAt(0) || "C").toUpperCase()}
@@ -69,14 +72,26 @@ function Inicio() {
       </button>
 
       <div className="mt-7 grid grid-cols-4 gap-2">
-        <QuickAction icon={<Plus className="size-4" />} label="Nueva cita" onClick={() => open("Agenda una cita")} />
+        <QuickAction
+          icon={<Plus className="size-4" />}
+          label="Nueva cita"
+          onClick={() => open("Agenda una cita")}
+        />
         <QuickAction
           icon={<UserPlus className="size-4" />}
           label="Cliente"
           onClick={() => navigate({ to: "/clientes" })}
         />
-        <QuickAction icon={<Receipt className="size-4" />} label="Gasto" onClick={() => navigate({ to: "/gastos" })} />
-        <QuickAction icon={<ClipboardCheck className="size-4" />} label="Pendientes" onClick={() => navigate({ to: "/pendientes" })} />
+        <QuickAction
+          icon={<Receipt className="size-4" />}
+          label="Gasto"
+          onClick={() => navigate({ to: "/gastos" })}
+        />
+        <QuickAction
+          icon={<ClipboardCheck className="size-4" />}
+          label="Pendientes"
+          onClick={() => navigate({ to: "/pendientes" })}
+        />
       </div>
 
       <SectionTitle>Hoy</SectionTitle>
@@ -90,12 +105,23 @@ function Inicio() {
           {today.map((job) => {
             const client = clientById(job.clientId);
             return (
-              <Card key={job.id} className="p-5" onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } })}>
+              <Card
+                key={job.id}
+                className="p-5"
+                onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } })}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 text-[13px] font-bold text-foreground"><span className="size-2 rounded-full bg-accent" />{prettyTime(job.time)}</p>
-                    <p className="mt-0.5 truncate text-[16px] font-semibold">{client?.name ?? "Cliente"}</p>
-                    <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{job.service}</p>
+                    <p className="flex items-center gap-2 text-[13px] font-bold text-foreground">
+                      <span className="size-2 rounded-full bg-accent" />
+                      {prettyTime(job.time)}
+                    </p>
+                    <p className="mt-0.5 truncate text-[16px] font-semibold">
+                      {client?.name ?? "Cliente"}
+                    </p>
+                    <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                      {job.service}
+                    </p>
                     {client ? (
                       <p className="mt-2 flex items-center gap-1.5 truncate text-[12px] text-muted-foreground">
                         <MapPin className="size-3.5 shrink-0" />
@@ -160,13 +186,23 @@ function Inicio() {
   );
 }
 
-function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+function QuickAction({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
       className="flex min-w-0 flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3 text-center text-[10px] font-semibold text-foreground shadow-[var(--shadow-card)] transition-transform active:scale-95"
     >
-      <span className="flex size-9 items-center justify-center rounded-xl bg-accent/10 text-accent">{icon}</span>
+      <span className="flex size-9 items-center justify-center rounded-xl bg-accent/10 text-accent">
+        {icon}
+      </span>
       <span className="w-full truncate">{label}</span>
     </button>
   );

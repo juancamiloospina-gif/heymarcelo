@@ -14,13 +14,15 @@ const items = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { open } = useAssistant();
+  // The chat screen has its own back button and input bar at the bottom.
+  const hideNav = pathname.startsWith("/mensaje/");
 
   return (
     <div className="min-h-screen bg-muted">
       <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-background shadow-[var(--shadow-lift)]">
         <main className="flex-1">{children}</main>
 
-        <nav className="sticky bottom-0 z-30 bg-transparent px-4 pb-4">
+        <nav className={cn("sticky bottom-0 z-30 bg-transparent px-4 pb-4", hideNav && "hidden")}>
           <div className="grid grid-cols-5 items-center rounded-[1.75rem] border border-border bg-card/90 px-2 py-2 shadow-[var(--shadow-lift)] backdrop-blur-xl">
             {items.slice(0, 2).map((i) => (
               <NavItem key={i.to} {...i} active={isActive(pathname, i.to)} />
