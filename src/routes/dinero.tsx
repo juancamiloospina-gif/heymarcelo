@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowDownLeft, ChevronRight } from "lucide-react";
+import { IconChip, expenseVisual } from "@/components/marcelo/visual";
 import { Button, Card, Empty, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo, useMoney } from "@/lib/marcelo-store";
-import { money, paymentMethodLabel, prettyDate } from "@/lib/marcelo-data";
+import { money, paymentMethodLabel, prettyDate, type Expense } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
 
 const views = [
@@ -43,6 +44,7 @@ function Dinero() {
             label: `Pago de ${clientById(p.clientId)?.name ?? "cliente"}`,
             detail: paymentMethodLabel[p.method],
             amount: p.amount,
+            category: undefined as Expense["category"] | undefined,
           }))
       : []),
     ...(view !== "ingresos"
@@ -52,6 +54,7 @@ function Dinero() {
           label: e.category,
           detail: e.note,
           amount: -e.amount,
+          category: e.category as Expense["category"] | undefined,
         }))
       : []),
   ]
@@ -130,19 +133,16 @@ function Dinero() {
       <Card className={cn("divide-y divide-border p-0", movements.length === 0 && "hidden")}>
         {movements.map((m) => (
           <div key={m.id} className="flex items-center gap-3 px-4 py-3.5">
-            <span
-              className={
-                m.amount > 0
-                  ? "flex size-9 items-center justify-center rounded-full bg-success/12 text-success"
-                  : "flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground"
-              }
-            >
-              {m.amount > 0 ? (
-                <ArrowDownLeft className="size-4" />
-              ) : (
-                <ArrowUpRight className="size-4" />
-              )}
-            </span>
+            {m.category ? (
+              <IconChip
+                icon={expenseVisual[m.category].icon}
+                tone={expenseVisual[m.category].tone}
+                size="sm"
+                className="rounded-full"
+              />
+            ) : (
+              <IconChip icon={ArrowDownLeft} tone="success" size="sm" className="rounded-full" />
+            )}
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[15px] font-medium">{m.label}</span>
               <span className="block truncate text-[12px] text-muted-foreground">

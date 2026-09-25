@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Search, Plus, ChevronRight } from "lucide-react";
 import { Button, Card, Empty, Field, PageTitle, Screen } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { ClientAvatar } from "@/components/marcelo/visual";
 import { money } from "@/lib/marcelo-data";
 
 export const Route = createFileRoute("/clientes/")({
@@ -71,13 +72,7 @@ function Clientes() {
               onClick={() => navigate({ to: "/clientes/$clientId", params: { clientId: c.id } })}
               className="surface flex w-full items-center gap-3 px-4 py-3.5 text-left"
             >
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[14px] font-bold text-accent">
-                {c.name
-                  .split(" ")
-                  .map((p) => p[0])
-                  .slice(0, 2)
-                  .join("")}
-              </span>
+              <ClientAvatar name={c.name} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-semibold">{c.name}</span>
                 <span className="block truncate text-[13px] text-muted-foreground">

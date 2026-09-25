@@ -21,6 +21,7 @@ import {
   type Expense,
 } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
+import { IconChip, expenseVisual, toneChip } from "@/components/marcelo/visual";
 
 export const Route = createFileRoute("/gastos")({
   head: () => ({
@@ -79,20 +80,33 @@ function Gastos() {
             ¿En qué?
           </p>
           <div className="flex flex-wrap gap-2">
-            {expenseCategories.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={cn(
-                  "rounded-full px-4 py-2 text-[14px] font-medium transition-all",
-                  category === c
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80",
-                )}
-              >
-                {c}
-              </button>
-            ))}
+            {expenseCategories.map((c) => {
+              const { icon: Icon, tone } = expenseVisual[c];
+              return (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3.5 text-[14px] font-medium transition-all",
+                    category === c
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-6 items-center justify-center rounded-full",
+                      category === c
+                        ? "bg-primary-foreground/15 text-primary-foreground"
+                        : toneChip[tone],
+                    )}
+                  >
+                    <Icon className="size-3.5" />
+                  </span>
+                  {c}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -167,9 +181,10 @@ function Gastos() {
             className="surface flex items-center justify-between px-4 py-4 border-none shadow-sm rounded-2xl"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-                <Receipt className="size-5" />
-              </div>
+              <IconChip
+                icon={expenseVisual[e.category].icon}
+                tone={expenseVisual[e.category].tone}
+              />
               <div className="min-w-0">
                 <p className="truncate text-[15px] font-bold text-foreground">{e.category}</p>
                 <p className="truncate text-[12px] text-muted-foreground">

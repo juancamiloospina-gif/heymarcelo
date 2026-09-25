@@ -4,6 +4,7 @@ import { ArrowLeft, Phone, Map, MessageSquare, CheckCircle2 } from "lucide-react
 import { toast } from "sonner";
 import { Badge, Button, Card, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { ServiceIcon } from "@/components/marcelo/visual";
 import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
 
 export const Route = createFileRoute("/trabajo/$jobId")({
@@ -72,11 +73,18 @@ function TrabajoDetalle() {
         onClick={() => navigate({ to: "/agenda" })}
         className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground"
       >
-        <ArrowLeft className="size-4" /> Crear un trabajo
+        <ArrowLeft className="size-4" /> Agenda
       </button>
 
-      <h1 className="text-[24px] font-semibold leading-tight">{client?.name ?? "Cliente"}</h1>
-      <p className="mt-1 text-[15px] text-muted-foreground">{job.service}</p>
+      <div className="flex items-center gap-3">
+        <ServiceIcon kind={state.services.find((s) => s.name === job.service)?.kind} size="lg" />
+        <div className="min-w-0">
+          <h1 className="truncate text-[24px] font-semibold leading-tight">
+            {client?.name ?? "Cliente"}
+          </h1>
+          <p className="mt-0.5 truncate text-[15px] text-muted-foreground">{job.service}</p>
+        </div>
+      </div>
 
       <Card className="mt-5 space-y-4 border-l-4 border-l-accent">
         <div className="flex items-start justify-between">
@@ -101,7 +109,7 @@ function TrabajoDetalle() {
               Dónde
             </p>
             <p className="mt-0.5 text-[15px]">
-              {client.address}
+              {client.address || "Sin dirección todavía"}
               <br />
               {client.city}
             </p>

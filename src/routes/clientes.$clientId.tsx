@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowLeft, Phone, MessageSquare, CalendarPlus, MapPin } from "lucide-react";
 import { Badge, Button, Card, Field, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { ClientAvatar } from "@/components/marcelo/visual";
 import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
 import { toast } from "sonner";
 
@@ -60,13 +61,7 @@ function ClienteDetalle() {
       </button>
 
       <div className="text-center">
-        <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-[20px] font-bold text-primary-foreground">
-          {client.name
-            .split(" ")
-            .map((part) => part[0])
-            .slice(0, 2)
-            .join("")}
-        </span>
+        <ClientAvatar name={client.name} size="lg" className="mx-auto" />
         <h1 className="mt-3 text-[22px] font-bold leading-tight">{client.name}</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
           {client.service}

@@ -37,6 +37,10 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-teal: var(--teal);
+  --color-plum: var(--plum);
+  --color-sky: var(--sky);
+  --color-whatsapp: var(--whatsapp);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -68,6 +72,11 @@
   --success-foreground: oklch(0.985 0.004 85);
   --warning: oklch(0.75 0.11 75);
   --warning-foreground: oklch(0.28 0.05 75);
+  /* Secondary hues for icons and category chips only — never as surfaces. */
+  --teal: oklch(0.58 0.09 195);
+  --plum: oklch(0.55 0.13 340);
+  --sky: oklch(0.6 0.1 235);
+  --whatsapp: oklch(0.64 0.15 150);
   --border: oklch(0.91 0.006 80);
   --input: oklch(0.91 0.006 80);
   --ring: oklch(0.7 0.19 48);
@@ -94,6 +103,10 @@
   --success-foreground: oklch(0.19 0.035 258);
   --warning: oklch(0.78 0.11 75);
   --warning-foreground: oklch(0.22 0.04 75);
+  --teal: oklch(0.7 0.08 195);
+  --plum: oklch(0.7 0.11 340);
+  --sky: oklch(0.72 0.09 235);
+  --whatsapp: oklch(0.72 0.14 150);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.65 0.07 185);

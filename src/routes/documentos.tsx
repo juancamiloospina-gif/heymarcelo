@@ -20,6 +20,7 @@ import {
   todayISO,
 } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
+import { expenseVisual, toneBar } from "@/components/marcelo/visual";
 
 export const Route = createFileRoute("/documentos")({
   head: () => ({
@@ -267,7 +268,7 @@ function Documentos() {
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-accent"
+                      className={cn("h-full rounded-full", toneBar[expenseVisual[c.category].tone])}
                       style={{ width: `${(c.total / spent) * 100}%` }}
                     />
                   </div>

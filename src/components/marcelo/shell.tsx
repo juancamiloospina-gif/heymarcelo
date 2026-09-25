@@ -1,13 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, CalendarDays, Users, LayoutGrid, Mic } from "lucide-react";
+import { Home, CalendarDays, MessagesSquare, LayoutGrid, Mic } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useAssistant } from "./assistant";
+import { useMarcelo } from "@/lib/marcelo-store";
 
 const items = [
   { to: "/", label: "Inicio", icon: Home },
   { to: "/agenda", label: "Agenda", icon: CalendarDays },
-  { to: "/clientes", label: "Clientes", icon: Users },
+  { to: "/bandeja", label: "Mensajes", icon: MessagesSquare },
   { to: "/mas", label: "Más", icon: LayoutGrid },
 ] as const;
 
@@ -15,7 +16,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { open } = useAssistant();
   // The chat screen has its own back button and input bar at the bottom.
-  const hideNav = pathname.startsWith("/mensaje/");
+  const hideNav = pathname.startsWith("/mensaje/") || /^\/bandeja\/.+/.test(pathname);
+  const { state } = useMarcelo();
+  const unread = state.conversations.filter((c) => c.unread || c.stage === "tu_turno").length;
 
   return (
     <div className="min-h-screen bg-muted">
@@ -37,7 +40,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
             {items.slice(2).map((i) => (
-              <NavItem key={i.to} {...i} active={isActive(pathname, i.to)} />
+              <NavItem
+                key={i.to}
+                {...i}
+                active={isActive(pathname, i.to)}
+                badge={i.to === "/bandeja" ? unread : 0}
+              />
             ))}
           </div>
         </nav>
@@ -55,11 +63,13 @@ function NavItem({
   label,
   icon: Icon,
   active,
+  badge = 0,
 }: {
   to: string;
   label: string;
   icon: typeof Home;
   active: boolean;
+  badge?: number;
 }) {
   return (
     <Link
@@ -69,7 +79,14 @@ function NavItem({
         active ? "text-accent" : "text-muted-foreground",
       )}
     >
-      <Icon className="size-5" strokeWidth={active ? 2.2 : 1.8} />
+      <span className="relative">
+        <Icon className="size-5" strokeWidth={active ? 2.2 : 1.8} />
+        {badge > 0 ? (
+          <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">
+            {badge}
+          </span>
+        ) : null}
+      </span>
       {label}
     </Link>
   );

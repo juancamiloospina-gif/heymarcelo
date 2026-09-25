@@ -4,6 +4,7 @@ import { Badge, Card, Empty, PageTitle, Screen } from "@/components/marcelo/kit"
 import { useMarcelo } from "@/lib/marcelo-store";
 import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
+import { ServiceIcon } from "@/components/marcelo/visual";
 
 export const Route = createFileRoute("/agenda")({
   head: () => ({
@@ -33,6 +34,7 @@ function Agenda() {
   const { state, clientById } = useMarcelo();
   const [filter, setFilter] = useState<(typeof filters)[number]["key"]>("hoy");
   const navigate = useNavigate();
+  const serviceKind = (name: string) => state.services.find((s) => s.name === name)?.kind;
 
   const weekEnd = todayISO(7);
   const jobs = state.jobs
@@ -116,9 +118,19 @@ function Agenda() {
                     className="relative overflow-hidden pl-5"
                     onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } })}
                   >
-                    <span className="absolute inset-y-0 left-0 w-1 bg-accent" />
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                    <span
+                      className={cn(
+                        "absolute inset-y-0 left-0 w-1",
+                        job.status === "completado"
+                          ? "bg-success"
+                          : job.status === "por_confirmar"
+                            ? "bg-warning"
+                            : "bg-accent",
+                      )}
+                    />
+                    <div className="flex items-start gap-3">
+                      <ServiceIcon kind={serviceKind(job.service)} />
+                      <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-semibold text-accent">
                           {prettyTime(job.time)}
                         </p>

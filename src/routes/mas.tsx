@@ -7,10 +7,14 @@ import {
   FileText,
   RotateCcw,
   ChevronDown,
-  User,
   Settings,
   ShieldCheck,
+  Users,
+  MessagesSquare,
+  Tags,
+  Plug,
 } from "lucide-react";
+import { ClientAvatar, toneChip } from "@/components/marcelo/visual";
 import { toast } from "sonner";
 import { Button, Card, Field, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { todayISO } from "@/lib/marcelo-data";
@@ -33,33 +37,49 @@ export const Route = createFileRoute("/mas")({
 });
 
 const mainLinks = [
+  { to: "/clientes", label: "Clientes", hint: "Tu lista de clientes", icon: Users, tone: "teal" },
+  {
+    to: "/bandeja",
+    label: "Mensajes",
+    hint: "WhatsApp y SMS",
+    icon: MessagesSquare,
+    tone: "success",
+  },
+  {
+    to: "/servicios",
+    label: "Servicios y precios",
+    hint: "Lo que cobra Marcelo",
+    icon: Tags,
+    tone: "accent",
+  },
+  {
+    to: "/conexiones",
+    label: "Conexiones",
+    hint: "WhatsApp Business, SMS",
+    icon: Plug,
+    tone: "sky",
+  },
   {
     to: "/dinero",
     label: "Tu dinero",
     hint: "Ingresos, gastos y ganancia",
     icon: Wallet,
-    color: "text-accent bg-accent/10",
+    tone: "success",
   },
-  {
-    to: "/gastos",
-    label: "Gastos",
-    hint: "Anota lo que gastas",
-    icon: Receipt,
-    color: "text-destructive bg-destructive/10",
-  },
+  { to: "/gastos", label: "Gastos", hint: "Anota lo que gastas", icon: Receipt, tone: "danger" },
   {
     to: "/pendientes",
     label: "Pendientes",
     hint: "Cobros y recados",
     icon: ListChecks,
-    color: "text-warning-foreground bg-warning/15",
+    tone: "plum",
   },
   {
     to: "/documentos",
     label: "Documentos",
     hint: "Resumen para tu contador",
     icon: FileText,
-    color: "text-success bg-success/10",
+    tone: "warning",
   },
 ] as const;
 
@@ -90,9 +110,7 @@ function Mas() {
       <PageTitle title="Más opciones" />
 
       <div className="mb-8 flex items-center gap-4 p-4 surface border-none shadow-sm rounded-3xl">
-        <div className="size-14 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground">
-          <User className="size-8" />
-        </div>
+        <ClientAvatar name={state.profile.name || "?"} size="lg" />
         <div>
           <h2 className="text-[18px] font-bold">{state.profile.name || "Tu perfil"}</h2>
           <p className="text-[14px] text-muted-foreground">
@@ -105,13 +123,15 @@ function Mas() {
 
       <SectionTitle>Herramientas</SectionTitle>
       <div className="grid grid-cols-2 gap-3 mb-8">
-        {mainLinks.map(({ to, label, hint, icon: Icon, color }) => (
+        {mainLinks.map(({ to, label, hint, icon: Icon, tone }) => (
           <button
             key={to}
             onClick={() => navigate({ to })}
             className="flex flex-col gap-3 p-4 surface border-none shadow-sm rounded-3xl text-left active:scale-[0.98] transition-all"
           >
-            <span className={`flex size-10 items-center justify-center rounded-xl ${color}`}>
+            <span
+              className={cn("flex size-10 items-center justify-center rounded-xl", toneChip[tone])}
+            >
               <Icon className="size-5" />
             </span>
             <div>
