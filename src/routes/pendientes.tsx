@@ -29,10 +29,10 @@ function Pendientes() {
 
   const getIcon = (text: string) => {
     const t = text.toLowerCase();
-    if (t.includes("cobrar") || t.includes("dinero") || t.includes("pago")) return { icon: AlertCircle, color: "bg-red-100 text-red-600" };
-    if (t.includes("volver") || t.includes("casa") || t.includes("visita")) return { icon: House, color: "bg-blue-100 text-blue-600" };
-    if (t.includes("factura") || t.includes("enviar")) return { icon: FileText, color: "bg-purple-100 text-purple-600" };
-    return { icon: MessageSquare, color: "bg-orange-100 text-orange-600" };
+    if (t.includes("cobrar") || t.includes("dinero") || t.includes("pago")) return { icon: AlertCircle, color: "bg-destructive/10 text-destructive" };
+    if (t.includes("volver") || t.includes("casa") || t.includes("visita")) return { icon: House, color: "bg-accent/10 text-accent" };
+    if (t.includes("factura") || t.includes("enviar")) return { icon: FileText, color: "bg-warning/15 text-warning-foreground" };
+    return { icon: MessageSquare, color: "bg-muted text-muted-foreground" };
   };
 
   return (
@@ -52,7 +52,7 @@ function Pendientes() {
             onClick={() => setActiveTab(tab)}
             className={cn(
               "px-4 py-1.5 rounded-full text-[14px] font-medium whitespace-nowrap transition-colors",
-              activeTab === tab ? "bg-[#1B2B48] text-white" : "bg-muted text-muted-foreground"
+               activeTab === tab ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
             )}
           >
             {tab}
@@ -105,7 +105,7 @@ function Pendientes() {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline gap-2">
                     <span className="block text-[16px] font-semibold text-foreground truncate">{p.text}</span>
-                    <span className="text-[12px] font-medium text-orange-500 whitespace-nowrap">Hoy</span>
+                    <span className="whitespace-nowrap text-[12px] font-medium text-accent">Hoy</span>
                   </div>
                   <span className="block text-[13px] text-muted-foreground truncate">{p.clientId ? "John Smith · $120" : "Recordatorio"}</span>
                 </div>

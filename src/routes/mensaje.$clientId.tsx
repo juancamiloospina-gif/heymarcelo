@@ -1,22 +1,23 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, Send, Mic, Phone, MoreVertical } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, Send, Mic, Phone, MoreHorizontal, User } from "lucide-react";
 import { toast } from "sonner";
-import { Button, Card, Screen, SectionTitle } from "@/components/marcelo/kit";
+import { Button, Card, Screen } from "@/components/marcelo/kit";
 import { useAssistant } from "@/components/marcelo/assistant";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { askMarcelo } from "@/lib/marcelo.functions";
 import { todayISO } from "@/lib/marcelo-data";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/mensaje/$clientId")({
   head: () => ({
     meta: [
-      { title: "Mensaje al cliente — Marcelo" },
+      { title: "Comunicación con clientes — Marcelo" },
       {
         name: "description",
         content: "Dile a Marcelo qué quieres decir en español y él lo escribe en inglés profesional.",
       },
-      { property: "og:title", content: "Mensaje al cliente — Marcelo" },
+      { property: "og:title", content: "Comunicación con clientes — Marcelo" },
       { property: "og:description", content: "Tú hablas español, tu cliente lee inglés. Marcelo traduce por ti." },
     ],
   }),
@@ -31,9 +32,16 @@ function Mensaje() {
   const [es, setEs] = useState("");
   const [en, setEn] = useState("");
   const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const client = clientById(clientId);
   const history = state.messages.filter((m) => m.clientId === clientId);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [history, en]);
 
   if (!client) {
     return (
@@ -55,8 +63,11 @@ function Mensaje() {
         },
       });
       const action = (res as any).action;
-      if (action?.type === "TRANSLATE_MESSAGE" && action.en) setEn(String(action.en));
-      else setEn(res.reply);
+      if (action?.type === "TRANSLATE_MESSAGE" && action.en) {
+        setEn(String(action.en));
+      } else {
+        setEn(res.reply);
+      }
     } catch {
       toast.error("No pude preparar el mensaje. Intenta otra vez.");
     } finally {
@@ -65,75 +76,117 @@ function Mensaje() {
   };
 
   return (
-    <Screen>
-      <button
-        onClick={() => navigate({ to: "/clientes/$clientId", params: { clientId } })}
-        className="mb-4 flex items-center gap-1.5 text-[14px] text-muted-foreground"
-      >
-        <ArrowLeft className="size-4" /> {client.name}
-      </button>
-
-      <Card className="flex items-center gap-3 p-3">
-        <span className="flex size-11 items-center justify-center rounded-full bg-primary text-[13px] font-bold text-primary-foreground">{client.name.split(" ").map((part) => part[0]).slice(0,2).join("")}</span>
-        <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold">{client.name}</span><span className="block text-[12px] text-muted-foreground">{client.city}</span></span>
-        <Phone className="size-4 text-accent" /><MoreVertical className="size-4 text-muted-foreground" />
-      </Card>
-
-      <SectionTitle>Lo que quieres decir</SectionTitle>
-      <Card className="space-y-3">
-        <textarea
-          value={es}
-          onChange={(e) => setEs(e.target.value)}
-          rows={3}
-          placeholder="Escríbelo en español, como se lo dirías a un amigo."
-          className="w-full resize-none rounded-xl border border-input bg-background p-3 text-[15px] outline-none focus:border-accent"
-        />
-        <div className="flex gap-2">
-          <Button className="flex-1" onClick={() => void translate()} disabled={!es.trim() || loading}>
-            {loading ? "Preparando…" : "Preparar mensaje"}
-          </Button>
-          <Button variant="secondary" aria-label="Dictar" onClick={() => open(`Dile a ${client.name} que `)}>
-            <Mic className="size-4" />
-          </Button>
-        </div>
-      </Card>
-
-      {en ? (
-        <>
-          <SectionTitle>Mensaje en inglés para {client.name.split(" ")[0]}</SectionTitle>
-          <Card>
-            <p className="text-[15px] leading-relaxed">{en}</p>
-            <div className="mt-4 flex gap-2">
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  addMessage({ clientId, es, en, date: todayISO() });
-                  window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(en)}`;
-                  toast.success("Mensaje listo para enviar");
-                  setEs("");
-                  setEn("");
-                }}
-              >
-                <Send className="size-4" /> Enviar
-              </Button>
-              <Button variant="secondary" onClick={() => setEn("")}>
-                Editar
-              </Button>
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-4 border-b bg-card">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate({ to: "/clientes/$clientId", params: { clientId } })} className="p-1">
+            <ArrowLeft className="size-6" />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+               <User className="size-6 text-muted-foreground" />
             </div>
-          </Card>
-        </>
-      ) : null}
-
-      {history.length > 0 ? (
-        <>
-          <SectionTitle>Mensajes anteriores</SectionTitle>
-          <div className="space-y-3">
-            {history.map((m) => (
-              <div key={m.id} className="space-y-2"><div className="ml-8 rounded-2xl rounded-tr-sm bg-accent/10 p-3 text-[14px]">{m.es}</div><div className="mr-8 rounded-2xl rounded-tl-sm bg-card p-3 text-[14px] shadow-[var(--shadow-card)]">{m.en}<p className="mt-1 text-[10px] font-semibold text-accent">Traducción</p></div></div>
-            ))}
+            <div>
+              <h1 className="text-[17px] font-bold leading-tight">{client.name}</h1>
+              <p className="text-[12px] text-muted-foreground">{client.city}, CA</p>
+            </div>
           </div>
-        </>
-      ) : null}
-    </Screen>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="p-2 rounded-full hover:bg-muted"><Phone className="size-5" /></button>
+          <button className="p-2 rounded-full hover:bg-muted"><MoreHorizontal className="size-5" /></button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="text-center">
+          <span className="text-[12px] font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full uppercase tracking-wider">Hoy</span>
+        </div>
+
+        {history.map((m) => (
+          <div key={m.id} className="space-y-4">
+            <div className="flex justify-end">
+              <div className="max-w-[85%] bg-[#E7F5E9] text-foreground p-4 rounded-2xl rounded-tr-none shadow-sm relative">
+                 <p className="text-[15px] leading-relaxed">✦ {m.es}</p>
+                 <p className="text-[12px] text-muted-foreground mt-2">Tu mensaje (español)</p>
+              </div>
+            </div>
+            <div className="flex justify-start">
+              <div className="max-w-[85%] bg-[#E3F2FD] text-foreground p-4 rounded-2xl rounded-tl-none shadow-sm border border-blue-100 relative">
+                 <p className="text-[15px] leading-relaxed">✦ {m.en}</p>
+                 <p className="text-[12px] text-blue-600 mt-2">Mensaje para el cliente (inglés)</p>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {en && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex justify-end">
+              <div className="max-w-[85%] bg-[#E7F5E9] text-foreground p-4 rounded-2xl rounded-tr-none shadow-sm">
+                 <p className="text-[15px] leading-relaxed">✦ {es}</p>
+              </div>
+            </div>
+            <div className="flex justify-start">
+              <div className="max-w-[85%] bg-white border border-accent p-4 rounded-2xl rounded-tl-none shadow-md">
+                 <p className="text-[15px] leading-relaxed">{en}</p>
+                 <div className="mt-4 flex gap-2">
+                    <Button 
+                      className="flex-1 h-10 text-[14px]" 
+                      onClick={() => {
+                        addMessage({ clientId, es, en, date: todayISO() });
+                        window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(en)}`;
+                        toast.success("Mensaje listo para enviar");
+                        setEs("");
+                        setEn("");
+                      }}
+                    >
+                      <Send className="size-4" /> Enviar
+                    </Button>
+                    <Button variant="secondary" className="h-10 text-[14px]" onClick={() => setEn("")}>
+                      Editar
+                    </Button>
+                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input Bar */}
+      <div className="p-4 bg-card border-t pb-8">
+        <div className="flex items-center gap-2">
+          <button 
+            className="size-10 rounded-full bg-accent text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+            onClick={() => open(`Dile a ${client.name} que `)}
+          >
+            <Mic className="size-5" />
+          </button>
+          <div className="flex-1 relative">
+            <input
+              value={es}
+              onChange={(e) => setEs(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && es.trim()) translate();
+              }}
+              placeholder="Habla o escribe en español..."
+              className="w-full h-12 bg-muted/50 rounded-2xl px-4 pr-12 text-[15px] outline-none focus:ring-1 focus:ring-accent/30 transition-all"
+            />
+            <button 
+              className={cn(
+                "absolute right-2 top-2 size-8 rounded-xl flex items-center justify-center transition-colors",
+                es.trim() ? "text-accent bg-accent/10" : "text-muted-foreground/30"
+              )}
+              disabled={!es.trim() || loading}
+              onClick={translate}
+            >
+              <Send className="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

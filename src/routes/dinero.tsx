@@ -42,7 +42,7 @@ function Dinero() {
       </div>
 
       <Card className="relative overflow-hidden bg-primary text-primary-foreground">
-        <div className="absolute bottom-5 right-5 flex h-16 items-end gap-1 opacity-55">{[30,48,38,64,52].map((h,i)=><span key={i} className="w-2 rounded-t-sm bg-accent" style={{height:h}} />)}</div>
+        <div className="absolute bottom-5 right-5 flex h-16 items-end gap-1 opacity-55"><span className="h-7 w-2 rounded-t-sm bg-accent" /><span className="h-12 w-2 rounded-t-sm bg-accent" /><span className="h-9 w-2 rounded-t-sm bg-accent" /><span className="h-16 w-2 rounded-t-sm bg-accent" /><span className="h-12 w-2 rounded-t-sm bg-accent" /></div>
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/60">Este mes</p>
         <p className="mt-2 text-[34px] font-semibold leading-none">{money(profit)}</p>
         <p className="mt-1 text-[13px] text-primary-foreground/70">Ganancia</p>

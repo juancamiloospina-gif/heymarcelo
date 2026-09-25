@@ -79,7 +79,7 @@ function Documentos() {
 
       {activeTab === "Resumen" && (
         <>
-          <Card className="bg-[#E7F5E9] border-none mb-6 relative overflow-hidden p-5">
+          <Card className="relative mb-6 overflow-hidden border-success/15 bg-success/10 p-5">
             <div className="relative z-10">
               <div className="flex items-start gap-3 mb-4">
                 <div className="size-10 rounded-xl bg-success/20 flex items-center justify-center text-success">
@@ -121,7 +121,7 @@ function Documentos() {
             </button>
           </Card>
 
-          <Button className="w-full h-14 rounded-2xl bg-[#1B2B48] text-white hover:bg-[#1B2B48]/90" onClick={exportSummary}>
+          <Button className="h-14 w-full rounded-2xl" onClick={exportSummary}>
             Ver todos los documentos
           </Button>
         </>

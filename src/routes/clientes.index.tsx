@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, Plus, ChevronRight, UserRound } from "lucide-react";
+import { Search, Plus, ChevronRight } from "lucide-react";
 import { Button, Card, Empty, Field, PageTitle, Screen } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { money } from "@/lib/marcelo-data";
