@@ -15,17 +15,19 @@ export function Onboarding() {
 
   if (step === -1) {
     return (
-      <div className="flex min-h-screen flex-col justify-between bg-primary px-6 pb-10 pt-24 text-primary-foreground">
-        <div>
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/60">Marcelo</p>
-          <h1 className="mt-4 text-[30px] font-semibold leading-tight">Soy Marcelo.</h1>
-          <p className="mt-3 max-w-[300px] text-[16px] leading-relaxed text-primary-foreground/80">
+      <div className="flex min-h-screen flex-col justify-between bg-background px-6 pb-10 pt-24 text-foreground">
+        <div className="text-center">
+          <div className="mx-auto flex size-24 items-center justify-center rounded-[2rem] bg-accent/10 text-accent shadow-[var(--shadow-card)]">
+            <span className="text-[42px] font-bold">M</span>
+          </div>
+          <p className="mt-8 text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">Marcelo</p>
+          <h1 className="mt-3 text-[30px] font-bold leading-tight">Tu trabajo, más simple.</h1>
+          <p className="mx-auto mt-3 max-w-[300px] text-[16px] leading-relaxed text-muted-foreground">
             Te ayudo a organizar tu negocio. Háblame en español y yo me encargo del resto.
           </p>
         </div>
         <Button
-          variant="secondary"
-          className="w-full"
+          className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
           onClick={() => setStep(0)}
         >
           Empezar

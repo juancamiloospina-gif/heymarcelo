@@ -6,7 +6,7 @@
 
 /*
  * MARCELO design system.
- * Deep navy primary, muted teal secondary, warm off-white canvas, white cards.
+ * Graphite primary, mandarin accent, soft warm-gray canvas, white cards.
  * All colors are oklch semantic tokens. Never hardcode colors in components.
  */
 
@@ -42,35 +42,35 @@
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --shadow-card: 0 1px 2px oklch(0.25 0.05 255 / 0.06), 0 6px 20px oklch(0.25 0.05 255 / 0.05);
-  --shadow-lift: 0 8px 30px oklch(0.25 0.05 255 / 0.12);
+  --shadow-card: 0 1px 2px oklch(0.23 0.01 75 / 0.04), 0 8px 24px oklch(0.23 0.01 75 / 0.06);
+  --shadow-lift: 0 16px 40px oklch(0.23 0.01 75 / 0.14);
 }
 
 :root {
-  --radius: 0.875rem;
-  --background: oklch(0.977 0.006 85);
-  --foreground: oklch(0.255 0.045 258);
+  --radius: 1rem;
+  --background: oklch(0.982 0.004 80);
+  --foreground: oklch(0.27 0.015 265);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.255 0.045 258);
+  --card-foreground: oklch(0.27 0.015 265);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.255 0.045 258);
-  --primary: oklch(0.29 0.062 258);
-  --primary-foreground: oklch(0.985 0.004 85);
-  --secondary: oklch(0.955 0.009 85);
-  --secondary-foreground: oklch(0.29 0.062 258);
-  --muted: oklch(0.958 0.007 85);
-  --muted-foreground: oklch(0.56 0.018 258);
-  --accent: oklch(0.6 0.068 185);
-  --accent-foreground: oklch(0.985 0.004 85);
+  --popover-foreground: oklch(0.27 0.015 265);
+  --primary: oklch(0.27 0.015 265);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.965 0.004 80);
+  --secondary-foreground: oklch(0.27 0.015 265);
+  --muted: oklch(0.955 0.005 80);
+  --muted-foreground: oklch(0.55 0.015 265);
+  --accent: oklch(0.7 0.19 48);
+  --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.55 0.13 25);
   --destructive-foreground: oklch(0.985 0.004 85);
   --success: oklch(0.62 0.085 155);
   --success-foreground: oklch(0.985 0.004 85);
   --warning: oklch(0.75 0.11 75);
   --warning-foreground: oklch(0.28 0.05 75);
-  --border: oklch(0.915 0.008 258);
-  --input: oklch(0.915 0.008 258);
-  --ring: oklch(0.6 0.068 185);
+  --border: oklch(0.91 0.006 80);
+  --input: oklch(0.91 0.006 80);
+  --ring: oklch(0.7 0.19 48);
 }
 
 .dark {
@@ -119,7 +119,7 @@
 @utility surface {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
-  border-radius: 1rem;
+  border-radius: 1.5rem;
   box-shadow: var(--shadow-card);
 }
 

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Mic, Plus, UserPlus, Receipt, ChevronRight, MapPin } from "lucide-react";
+import { Mic, Plus, UserPlus, Receipt, ChevronRight, MapPin, ClipboardCheck } from "lucide-react";
 import { Badge, Button, Card, Empty, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useAssistant } from "@/components/marcelo/assistant";
 import { useMarcelo } from "@/lib/marcelo-store";
@@ -35,34 +35,40 @@ function Inicio() {
   const pendings = state.pendings.filter((p) => !p.done).slice(0, 4);
 
   return (
-    <Screen>
-      <div className="mb-5">
-        <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+    <Screen className="px-5 pt-7">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+        <h1 className="text-[26px] font-bold leading-tight">
           Hola, {state.profile.name.split(" ")[0] || "Carlos"}
         </h1>
-        <p className="mt-1 text-[14px] text-muted-foreground">Aquí tienes tu día.</p>
+        <p className="mt-1 text-[14px] font-medium text-muted-foreground">Aquí tienes tu resumen de hoy.</p>
+        </div>
+        <span className="flex size-11 items-center justify-center rounded-full bg-muted text-[14px] font-bold text-foreground ring-2 ring-card shadow-[var(--shadow-card)]">
+          {(state.profile.name.charAt(0) || "C").toUpperCase()}
+        </span>
       </div>
 
       <button
         onClick={() => open()}
-        className="w-full rounded-2xl bg-primary p-5 text-left text-primary-foreground shadow-[var(--shadow-lift)]"
+        className="relative w-full overflow-hidden rounded-[2rem] bg-primary px-6 py-7 text-center text-primary-foreground shadow-[var(--shadow-lift)] transition-transform active:scale-[0.99]"
       >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/60">Marcelo</p>
-        <div className="mt-3 flex items-center gap-4">
-          <span className="relative flex size-14 shrink-0 items-center justify-center rounded-full bg-primary-foreground/10">
-            <span className="absolute inset-0 rounded-full bg-accent/40 animate-pulse-ring" />
-            <Mic className="relative size-6" />
+        <span className="absolute -right-12 -top-12 size-36 rounded-full bg-accent/15 blur-2xl" />
+        <div className="relative flex flex-col items-center">
+          <span className="mb-3 flex size-12 items-center justify-center rounded-2xl border border-primary-foreground/15 bg-primary-foreground/10 text-accent">
+            <Mic className="size-5" />
           </span>
-          <span>
-            <span className="block text-[17px] font-semibold">Habla con Marcelo</span>
-            <span className="mt-0.5 block text-[13px] leading-relaxed text-primary-foreground/75">
-              Cuéntame qué necesitas y yo me encargo.
-            </span>
+          <span className="block text-[19px] font-bold">Habla con Marcelo</span>
+          <span className="mt-1 block max-w-[260px] text-[13px] leading-relaxed text-primary-foreground/65">
+            Di lo que necesitas en español. Yo me encargo del resto.
+          </span>
+          <span className="mt-5 flex size-14 items-center justify-center rounded-full bg-card text-accent shadow-[var(--shadow-card)]">
+            <span className="absolute size-14 rounded-full bg-accent/25 animate-pulse-ring" />
+            <Mic className="relative size-6" />
           </span>
         </div>
       </button>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-7 grid grid-cols-4 gap-2">
         <QuickAction icon={<Plus className="size-4" />} label="Nueva cita" onClick={() => open("Agenda una cita")} />
         <QuickAction
           icon={<UserPlus className="size-4" />}
@@ -70,6 +76,7 @@ function Inicio() {
           onClick={() => navigate({ to: "/clientes" })}
         />
         <QuickAction icon={<Receipt className="size-4" />} label="Gasto" onClick={() => navigate({ to: "/gastos" })} />
+        <QuickAction icon={<ClipboardCheck className="size-4" />} label="Pendientes" onClick={() => navigate({ to: "/pendientes" })} />
       </div>
 
       <SectionTitle>Hoy</SectionTitle>
@@ -83,10 +90,10 @@ function Inicio() {
           {today.map((job) => {
             const client = clientById(job.clientId);
             return (
-              <Card key={job.id} onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } })}>
+              <Card key={job.id} className="p-5" onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } })}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-accent">{prettyTime(job.time)}</p>
+                    <p className="flex items-center gap-2 text-[13px] font-bold text-foreground"><span className="size-2 rounded-full bg-accent" />{prettyTime(job.time)}</p>
                     <p className="mt-0.5 truncate text-[16px] font-semibold">{client?.name ?? "Cliente"}</p>
                     <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{job.service}</p>
                     {client ? (
@@ -157,10 +164,10 @@ function QuickAction({ icon, label, onClick }: { icon: React.ReactNode; label: s
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card px-2 py-3 text-[12px] font-medium text-foreground"
+      className="flex min-w-0 flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3 text-center text-[10px] font-semibold text-foreground shadow-[var(--shadow-card)] transition-transform active:scale-95"
     >
-      <span className="text-accent">{icon}</span>
-      {label}
+      <span className="flex size-9 items-center justify-center rounded-xl bg-accent/10 text-accent">{icon}</span>
+      <span className="w-full truncate">{label}</span>
     </button>
   );
 }

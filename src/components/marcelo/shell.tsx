@@ -16,12 +16,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { open } = useAssistant();
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-muted">
       <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-background shadow-[var(--shadow-lift)]">
         <main className="flex-1">{children}</main>
 
-        <nav className="sticky bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur">
-          <div className="grid grid-cols-5 items-end px-2 pb-3 pt-2">
+        <nav className="sticky bottom-0 z-30 bg-transparent px-4 pb-4">
+          <div className="grid grid-cols-5 items-center rounded-[1.75rem] border border-border bg-card/90 px-2 py-2 shadow-[var(--shadow-lift)] backdrop-blur-xl">
             {items.slice(0, 2).map((i) => (
               <NavItem key={i.to} {...i} active={isActive(pathname, i.to)} />
             ))}
@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 onClick={() => open()}
                 aria-label="Hablar con Marcelo"
-                className="-mt-6 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-lift)]"
+                className="flex size-14 items-center justify-center rounded-2xl bg-accent text-accent-foreground shadow-[var(--shadow-card)] transition-transform active:scale-95"
               >
                 <Mic className="size-5" />
               </button>
@@ -64,10 +64,10 @@ function NavItem({
       to={to}
       className={cn(
         "flex flex-col items-center gap-1 rounded-lg py-1.5 text-[11px] font-medium transition-colors",
-        active ? "text-foreground" : "text-muted-foreground",
+        active ? "text-accent" : "text-muted-foreground",
       )}
     >
-      <Icon className={cn("size-5", active && "text-accent")} strokeWidth={active ? 2.2 : 1.8} />
+      <Icon className="size-5" strokeWidth={active ? 2.2 : 1.8} />
       {label}
     </Link>
   );
