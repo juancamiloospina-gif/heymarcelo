@@ -149,7 +149,7 @@ function TrabajoDetalle() {
               </Button>
             </Card>
           ) : (
-            <Button className="w-full" onClick={() => setCharging(true)}>
+            <Button variant="accent" className="w-full" onClick={() => setCharging(true)}>
               <CheckCircle2 className="size-4" /> Completar y cobrar
             </Button>
           )}

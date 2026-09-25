@@ -62,7 +62,7 @@ function Dinero() {
         <Card className="mt-3" onClick={() => navigate({ to: "/pendientes" })}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[15px] font-semibold">Te deben {money(owed)}</p>
+              <p className="text-[15px] font-semibold text-accent">Te deben {money(owed)}</p>
               <p className="mt-0.5 text-[13px] text-muted-foreground">Ver a quién cobrarle</p>
             </div>
             <ChevronRight className="size-4 text-muted-foreground" />

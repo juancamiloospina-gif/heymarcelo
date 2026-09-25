@@ -69,7 +69,7 @@ function ClienteDetalle() {
         <Button variant="secondary" size="sm" onClick={() => navigate({ to: "/mensaje/$clientId", params: { clientId: client.id } })}>
           <MessageSquare className="size-4" /> Mensaje
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => setScheduling((v) => !v)}>
+        <Button variant="accent" size="sm" onClick={() => setScheduling((v) => !v)}>
           <CalendarPlus className="size-4" /> Cita
         </Button>
       </div>
