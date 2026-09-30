@@ -9,38 +9,39 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import {
-  detectLang,
-  offerPrice as buildOffer,
-  runAutopilot,
-  type AutopilotResult,
-} from "./marcelo-autopilot";
+import { detectLang, runAutopilot, type AutopilotResult } from "./marcelo-autopilot";
 import {
   demoState,
   digits,
+  migrate,
   monthISO,
   nowISO,
   prettyDate,
   prettyTime,
   todayISO,
   uid,
+  type AutoMessageKind,
   type Channel,
   type Client,
   type Connection,
   type Conversation,
-  type InboxMessage,
-  type Service,
-  type Settings,
   type Expense,
+  type InboxMessage,
   type Job,
   type MarceloState,
   type Message,
-  type Payment,
+  type MileLog,
+  type PaymentMethod,
   type Pending,
   type Profile,
+  type Receivable,
+  type Service,
+  type Settings,
 } from "./marcelo-data";
+import * as ops from "./marcelo-ops";
 
 const KEY = "marcelo.state.v1";
+const TICK_MS = 60_000;
 
 type Store = {
   state: MarceloState;
@@ -51,16 +52,41 @@ type Store = {
   addJob: (j: Omit<Job, "id">) => Job;
   updateJob: (id: string, patch: Partial<Job>) => void;
   removeJob: (id: string) => void;
+  /** "Terminé": amount paid and method, or null when the client still owes it. */
+  finishJob: (jobId: string, amount: number, method: PaymentMethod | null) => void;
+  /** Sets the job en camino and prepares the "Voy en camino" message. */
+  startTrip: (jobId: string) => void;
+  queueJobMessage: (
+    kind: AutoMessageKind | "invoice",
+    jobId: string,
+    force?: "ask" | "auto",
+  ) => void;
+  sendOutbox: (id: string, always: boolean) => void;
+  dismissOutbox: (id: string) => void;
   addExpense: (e: Omit<Expense, "id">) => Expense;
-  addPayment: (p: Omit<Payment, "id">) => Payment;
+  updateExpense: (id: string, patch: Partial<Expense>) => void;
+  removeExpense: (id: string) => Expense | undefined;
+  restoreExpense: (e: Expense) => void;
+  recordPayment: (p: {
+    clientId: string;
+    amount: number;
+    method: PaymentMethod;
+    receivableId?: string | undefined;
+    note?: string | undefined;
+  }) => void;
+  addReceivable: (r: Omit<Receivable, "id" | "createdAt">) => void;
+  addMiles: (m: Omit<MileLog, "id">) => void;
+  removeMiles: (id: string) => void;
   addPending: (text: string, extra?: Partial<Pending>) => Pending;
   togglePending: (id: string) => void;
-  removeExpense: (id: string) => void;
+  removePending: (id: string) => Pending | undefined;
+  restorePending: (p: Pending) => void;
   clearDonePendings: () => void;
   addMessage: (m: Omit<Message, "id">) => Message;
   addService: (s: Omit<Service, "id">) => void;
   updateService: (id: string, patch: Partial<Service>) => void;
-  removeService: (id: string) => void;
+  removeService: (id: string) => Service | undefined;
+  restoreService: (s: Service) => void;
   setSettings: (patch: Partial<Settings>) => void;
   setConnection: (channel: Channel, patch: Partial<Connection>) => void;
   receiveClientMessage: (input: {
@@ -69,9 +95,11 @@ type Store = {
     contactName: string;
     phone: string;
     text: string;
+    photo?: boolean;
   }) => string;
   sendUserMessage: (conversationId: string, text: string, es?: string) => void;
-  offerPrice: (conversationId: string, price: number) => void;
+  /** Sends a reply the user reviewed (one-tap decisions, corrections). */
+  sendPrepared: (conversationId: string, result: AutopilotResult) => void;
   setConversationStage: (conversationId: string, stage: Conversation["stage"]) => void;
   markConversationRead: (conversationId: string) => void;
   typingIn: string[];
@@ -82,18 +110,53 @@ type Store = {
 
 const Ctx = createContext<Store | null>(null);
 
+function announce(events: ops.OpEvent[]) {
+  for (const e of events) {
+    if (e.type === "booked") {
+      toast.success(`Marcelo agendó a ${e.name}`, {
+        description: `${e.job.service} · ${prettyDate(e.job.date)}, ${prettyTime(e.job.time)}`,
+      });
+    } else if (e.type === "handoff") {
+      toast(`${e.name} necesita tu respuesta`, { description: e.note });
+    } else if (e.type === "blocked") {
+      toast.error(`Marcelo frenó una cotización a ${e.name}`, {
+        description: "El precio no coincidía con tu tabla. Revísalo tú.",
+      });
+    } else if (e.type === "queued") {
+      toast(`Mensaje listo para ${e.name}`, { description: "Revísalo y toca Enviar." });
+    }
+  }
+}
+
 export function MarceloProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<MarceloState>(() => demoState());
   const [ready, setReady] = useState(false);
   const [typingIn, setTypingIn] = useState<string[]>([]);
-  // Autopilot replies run after a short delay and must see the latest state.
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  // Single source of truth for writes, so back-to-back actions never overwrite each other.
+  const ref = useRef(state);
+
+  const commit = useCallback((fn: (s: MarceloState) => MarceloState) => {
+    const next = fn(ref.current);
+    ref.current = next;
+    setState(next);
+    return next;
+  }, []);
+
+  const run = useCallback((fn: (s: MarceloState) => { s: MarceloState; events: ops.OpEvent[] }) => {
+    const out = fn(ref.current);
+    ref.current = out.s;
+    setState(out.s);
+    announce(out.events);
+  }, []);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(KEY);
-      if (raw) setState({ ...demoState(), ...(JSON.parse(raw) as MarceloState) });
+      if (raw) {
+        const loaded = migrate(JSON.parse(raw));
+        ref.current = loaded;
+        setState(loaded);
+      }
     } catch {
       /* ignore corrupted storage */
     }
@@ -109,208 +172,261 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
     }
   }, [state, ready]);
 
-  const setProfile = useCallback((p: Partial<Profile>) => {
-    setState((s) => ({ ...s, profile: { ...s.profile, ...p } }));
-  }, []);
+  // Automations run while the app is open: expiring quotes, 15-min bridge, 24 h reminders.
+  useEffect(() => {
+    if (!ready) return;
+    // Background work speaks through "Necesitan tu atención"; only bookings/handoffs toast.
+    const tick = () =>
+      run((s) => {
+        const out = ops.tick(s);
+        return {
+          ...out,
+          events: out.events.filter((e) => e.type !== "queued" && e.type !== "expired"),
+        };
+      });
+    tick();
+    const id = window.setInterval(tick, TICK_MS);
+    return () => window.clearInterval(id);
+  }, [ready, run]);
 
-  const addClient = useCallback((c: Omit<Client, "id">) => {
-    const client: Client = { ...c, id: uid() };
-    setState((s) => ({ ...s, clients: [...s.clients, client] }));
-    return client;
-  }, []);
+  const setProfile = useCallback(
+    (p: Partial<Profile>) => commit((s) => ({ ...s, profile: { ...s.profile, ...p } })),
+    [commit],
+  );
 
-  const updateClient = useCallback((id: string, patch: Partial<Client>) => {
-    setState((s) => ({
-      ...s,
-      clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-    }));
-  }, []);
+  const addClient = useCallback(
+    (c: Omit<Client, "id">) => {
+      const client: Client = { ...c, id: uid() };
+      commit((s) => ({ ...s, clients: [...s.clients, client] }));
+      return client;
+    },
+    [commit],
+  );
 
-  const addJob = useCallback((j: Omit<Job, "id">) => {
-    const job: Job = { ...j, id: uid() };
-    setState((s) => ({ ...s, jobs: [...s.jobs, job] }));
-    return job;
-  }, []);
+  const updateClient = useCallback(
+    (id: string, patch: Partial<Client>) =>
+      commit((s) => ({
+        ...s,
+        clients: s.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      })),
+    [commit],
+  );
 
-  const updateJob = useCallback((id: string, patch: Partial<Job>) => {
-    setState((s) => ({ ...s, jobs: s.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) }));
-  }, []);
+  const addJob = useCallback(
+    (j: Omit<Job, "id">) => {
+      const job: Job = { ...j, id: uid() };
+      commit((s) => ({ ...s, jobs: [...s.jobs, job] }));
+      return job;
+    },
+    [commit],
+  );
 
-  const removeJob = useCallback((id: string) => {
-    setState((s) => ({ ...s, jobs: s.jobs.filter((j) => j.id !== id) }));
-  }, []);
+  const updateJob = useCallback(
+    (id: string, patch: Partial<Job>) =>
+      commit((s) => ({ ...s, jobs: s.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) })),
+    [commit],
+  );
 
-  const addExpense = useCallback((e: Omit<Expense, "id">) => {
-    const expense: Expense = { ...e, id: uid() };
-    setState((s) => ({ ...s, expenses: [expense, ...s.expenses] }));
-    return expense;
-  }, []);
+  const removeJob = useCallback(
+    (id: string) => commit((s) => ({ ...s, jobs: s.jobs.filter((j) => j.id !== id) })),
+    [commit],
+  );
 
-  const addPayment = useCallback((p: Omit<Payment, "id">) => {
-    const payment: Payment = { ...p, id: uid() };
-    setState((s) => ({ ...s, payments: [payment, ...s.payments] }));
-    return payment;
-  }, []);
+  const finishJob = useCallback(
+    (jobId: string, amount: number, method: PaymentMethod | null) =>
+      commit((s) => ops.finishJob(s, jobId, amount, method)),
+    [commit],
+  );
 
-  const addPending = useCallback((text: string, extra?: Partial<Pending>) => {
-    const pending: Pending = { id: uid(), text, done: false, createdAt: todayISO(), ...extra };
-    setState((s) => ({ ...s, pendings: [pending, ...s.pendings] }));
-    return pending;
-  }, []);
+  const queueJobMessage = useCallback(
+    (kind: AutoMessageKind | "invoice", jobId: string, force?: "ask" | "auto") =>
+      run((s) => ops.queueJobMessage(s, kind, jobId, force ? { force } : {})),
+    [run],
+  );
 
-  const togglePending = useCallback((id: string) => {
-    setState((s) => ({
-      ...s,
-      pendings: s.pendings.map((p) => (p.id === id ? { ...p, done: !p.done } : p)),
-    }));
-  }, []);
+  const startTrip = useCallback(
+    (jobId: string) =>
+      run((s) =>
+        ops.queueJobMessage(
+          { ...s, jobs: s.jobs.map((j) => (j.id === jobId ? { ...j, status: "en_camino" } : j)) },
+          "onTheWay",
+          jobId,
+        ),
+      ),
+    [run],
+  );
 
-  const removeExpense = useCallback((id: string) => {
-    setState((s) => ({ ...s, expenses: s.expenses.filter((e) => e.id !== id) }));
-  }, []);
+  const sendOutbox = useCallback(
+    (id: string, always: boolean) => run((s) => ops.sendOutbox(s, id, always)),
+    [run],
+  );
 
-  const clearDonePendings = useCallback(() => {
-    setState((s) => ({ ...s, pendings: s.pendings.filter((p) => !p.done) }));
-  }, []);
+  const dismissOutbox = useCallback(
+    (id: string) => commit((s) => ({ ...s, outbox: s.outbox.filter((o) => o.id !== id) })),
+    [commit],
+  );
 
-  const addMessage = useCallback((m: Omit<Message, "id">) => {
-    const message: Message = { ...m, id: uid() };
-    setState((s) => ({ ...s, messages: [message, ...s.messages] }));
-    return message;
-  }, []);
+  const addExpense = useCallback(
+    (e: Omit<Expense, "id">) => {
+      const expense: Expense = { ...e, id: uid() };
+      commit((s) => ({ ...s, expenses: [expense, ...s.expenses] }));
+      return expense;
+    },
+    [commit],
+  );
 
-  const addService = useCallback((svc: Omit<Service, "id">) => {
-    setState((s) => ({ ...s, services: [...s.services, { ...svc, id: uid() }] }));
-  }, []);
+  const updateExpense = useCallback(
+    (id: string, patch: Partial<Expense>) =>
+      commit((s) => ({
+        ...s,
+        expenses: s.expenses.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+      })),
+    [commit],
+  );
 
-  const updateService = useCallback((id: string, patch: Partial<Service>) => {
-    setState((s) => ({
-      ...s,
-      services: s.services.map((x) => (x.id === id ? { ...x, ...patch } : x)),
-    }));
-  }, []);
+  const removeExpense = useCallback(
+    (id: string) => {
+      const found = ref.current.expenses.find((e) => e.id === id);
+      commit((s) => ({ ...s, expenses: s.expenses.filter((e) => e.id !== id) }));
+      return found;
+    },
+    [commit],
+  );
 
-  const removeService = useCallback((id: string) => {
-    setState((s) => ({ ...s, services: s.services.filter((x) => x.id !== id) }));
-  }, []);
+  const restoreExpense = useCallback(
+    (e: Expense) =>
+      commit((s) => ({ ...s, expenses: [e, ...s.expenses.filter((x) => x.id !== e.id)] })),
+    [commit],
+  );
 
-  const setSettings = useCallback((patch: Partial<Settings>) => {
-    setState((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
-  }, []);
+  const recordPayment = useCallback(
+    (p: Parameters<Store["recordPayment"]>[0]) => commit((s) => ops.recordPayment(s, p)),
+    [commit],
+  );
 
-  const setConnection = useCallback((channel: Channel, patch: Partial<Connection>) => {
-    setState((s) => ({
-      ...s,
-      connections: { ...s.connections, [channel]: { ...s.connections[channel], ...patch } },
-    }));
-  }, []);
+  const addReceivable = useCallback(
+    (r: Omit<Receivable, "id" | "createdAt">) =>
+      commit((s) => ({
+        ...s,
+        receivables: [{ ...r, id: uid(), createdAt: todayISO() }, ...s.receivables],
+      })),
+    [commit],
+  );
+
+  const addMiles = useCallback(
+    (m: Omit<MileLog, "id">) => commit((s) => ({ ...s, miles: [{ ...m, id: uid() }, ...s.miles] })),
+    [commit],
+  );
+
+  const removeMiles = useCallback(
+    (id: string) => commit((s) => ({ ...s, miles: s.miles.filter((m) => m.id !== id) })),
+    [commit],
+  );
+
+  const addPending = useCallback(
+    (text: string, extra?: Partial<Pending>) => {
+      const pending: Pending = { id: uid(), text, done: false, createdAt: todayISO(), ...extra };
+      commit((s) => ({ ...s, pendings: [pending, ...s.pendings] }));
+      return pending;
+    },
+    [commit],
+  );
+
+  const togglePending = useCallback(
+    (id: string) =>
+      commit((s) => ({
+        ...s,
+        pendings: s.pendings.map((p) => (p.id === id ? { ...p, done: !p.done } : p)),
+      })),
+    [commit],
+  );
+
+  const removePending = useCallback(
+    (id: string) => {
+      const found = ref.current.pendings.find((p) => p.id === id);
+      commit((s) => ({ ...s, pendings: s.pendings.filter((p) => p.id !== id) }));
+      return found;
+    },
+    [commit],
+  );
+
+  const restorePending = useCallback(
+    (p: Pending) =>
+      commit((s) => ({ ...s, pendings: [p, ...s.pendings.filter((x) => x.id !== p.id)] })),
+    [commit],
+  );
+
+  const clearDonePendings = useCallback(
+    () => commit((s) => ({ ...s, pendings: s.pendings.filter((p) => !p.done) })),
+    [commit],
+  );
+
+  const addMessage = useCallback(
+    (m: Omit<Message, "id">) => {
+      const message: Message = { ...m, id: uid() };
+      commit((s) => ({ ...s, messages: [message, ...s.messages] }));
+      return message;
+    },
+    [commit],
+  );
+
+  const addService = useCallback(
+    (svc: Omit<Service, "id">) =>
+      commit((s) => ({ ...s, services: [...s.services, { ...svc, id: uid() }] })),
+    [commit],
+  );
+
+  const updateService = useCallback(
+    (id: string, patch: Partial<Service>) =>
+      commit((s) => ({
+        ...s,
+        services: s.services.map((x) => (x.id === id ? { ...x, ...patch } : x)),
+      })),
+    [commit],
+  );
+
+  const removeService = useCallback(
+    (id: string) => {
+      const found = ref.current.services.find((x) => x.id === id);
+      commit((s) => ({ ...s, services: s.services.filter((x) => x.id !== id) }));
+      return found;
+    },
+    [commit],
+  );
+
+  const restoreService = useCallback(
+    (svc: Service) =>
+      commit((s) => ({ ...s, services: [...s.services.filter((x) => x.id !== svc.id), svc] })),
+    [commit],
+  );
+
+  const setSettings = useCallback(
+    (patch: Partial<Settings>) => commit((s) => ({ ...s, settings: { ...s.settings, ...patch } })),
+    [commit],
+  );
+
+  const setConnection = useCallback(
+    (channel: Channel, patch: Partial<Connection>) =>
+      commit((s) => ({
+        ...s,
+        connections: { ...s.connections, [channel]: { ...s.connections[channel], ...patch } },
+      })),
+    [commit],
+  );
 
   const patchConversation = useCallback(
     (id: string, fn: (c: Conversation) => Conversation) =>
-      setState((s) => ({
+      commit((s) => ({
         ...s,
         conversations: s.conversations.map((c) => (c.id === id ? fn(c) : c)),
       })),
-    [],
+    [commit],
   );
 
-  /** Applies an autopilot result: reply, conversation patch, booking, address and follow-ups. */
-  const applyResult = useCallback((conversationId: string, result: AutopilotResult) => {
-    const s = stateRef.current;
-    const conv = s.conversations.find((c) => c.id === conversationId);
-    if (!conv) return;
-
-    let clientId = conv.clientId;
-    let newClient: Client | undefined;
-    let job: Job | undefined;
-    if (result.book) {
-      if (!clientId) {
-        newClient = {
-          id: uid(),
-          name: conv.contactName,
-          phone: conv.phone,
-          address: "",
-          city: s.profile.city,
-          service: result.book.service.name,
-          price: result.book.price,
-        };
-        clientId = newClient.id;
-      }
-      job = {
-        id: uid(),
-        clientId,
-        date: result.book.date,
-        time: result.book.time,
-        service: result.book.service.name,
-        price: result.book.price,
-        status: "confirmado",
-      };
-    }
-    const reply: InboxMessage | undefined = result.reply
-      ? { id: uid(), from: "marcelo", text: result.reply.text, es: result.reply.es, at: nowISO() }
-      : undefined;
-
-    setState((prev) => ({
-      ...prev,
-      clients: [
-        ...prev.clients.map((c) =>
-          c.id === clientId && result.saveAddress ? { ...c, address: result.saveAddress } : c,
-        ),
-        ...(newClient ? [newClient] : []),
-      ],
-      jobs: job ? [...prev.jobs, job] : prev.jobs,
-      pendings: result.pending
-        ? [
-            {
-              id: uid(),
-              text: result.pending.text,
-              clientId,
-              amount: result.pending.amount,
-              done: false,
-              createdAt: todayISO(),
-            },
-            ...prev.pendings,
-          ]
-        : prev.pendings,
-      conversations: prev.conversations.map((c) => {
-        if (c.id !== conversationId) return c;
-        const messages = [...c.messages];
-        const last = messages[messages.length - 1];
-        if (result.clientNote && last?.from === "client") {
-          messages[messages.length - 1] = { ...last, note: result.clientNote };
-        }
-        if (reply) messages.push(reply);
-        return {
-          ...c,
-          ...result.patch,
-          clientId,
-          jobId: job?.id ?? c.jobId,
-          messages,
-          unread: true,
-          updatedAt: nowISO(),
-        };
-      }),
-    }));
-
-    const first = conv.contactName.split(" ")[0];
-    if (result.event === "booked" && result.book) {
-      toast.success(`Marcelo agendó a ${first}`, {
-        description: `${result.book.service.name} · ${prettyDate(result.book.date)}, ${prettyTime(result.book.time)}`,
-      });
-    } else if (result.event === "handoff") {
-      toast(`${first} necesita tu respuesta`, { description: result.clientNote });
-    }
-  }, []);
-
   const receiveClientMessage = useCallback(
-    (input: {
-      conversationId?: string;
-      channel: Channel;
-      contactName: string;
-      phone: string;
-      text: string;
-    }) => {
-      const s = stateRef.current;
+    (input: Parameters<Store["receiveClientMessage"]>[0]) => {
+      const s = ref.current;
+      const text = input.text.slice(0, 1000); // client text is untrusted input
       const existing =
         s.conversations.find((c) => c.id === input.conversationId) ??
         s.conversations.find(
@@ -323,7 +439,13 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       const knownClient = s.clients.find(
         (c) => digits(c.phone) !== "" && digits(c.phone) === digits(input.phone),
       );
-      const message: InboxMessage = { id: uid(), from: "client", text: input.text, at: nowISO() };
+      const message: InboxMessage = {
+        id: uid(),
+        from: "client",
+        text,
+        photo: input.photo,
+        at: nowISO(),
+      };
       const conv: Conversation = existing
         ? {
             ...existing,
@@ -337,13 +459,14 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
             contactName: knownClient?.name ?? input.contactName,
             phone: input.phone,
             clientId: knownClient?.id,
-            lang: detectLang(input.text),
+            address: knownClient?.address || undefined,
+            lang: detectLang(text),
             stage: "nuevo",
             messages: [message],
             unread: true,
             updatedAt: nowISO(),
           };
-      setState((prev) => ({
+      commit((prev) => ({
         ...prev,
         conversations: existing
           ? prev.conversations.map((c) => (c.id === id ? conv : c))
@@ -356,36 +479,32 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       setTypingIn((t) => [...t, id]);
       window.setTimeout(() => {
         setTypingIn((t) => t.filter((x) => x !== id));
-        const latest = stateRef.current.conversations.find((c) => c.id === id) ?? conv;
-        applyResult(id, runAutopilot(stateRef.current, latest, input.text));
+        const latest = ref.current.conversations.find((c) => c.id === id) ?? conv;
+        run((st) =>
+          ops.applyResult(st, id, runAutopilot(st, latest, text, { photo: input.photo })),
+        );
       }, 1100);
       return id;
     },
-    [applyResult],
+    [commit, run],
   );
 
   const sendUserMessage = useCallback(
-    (conversationId: string, text: string, es?: string) => {
-      // Once the user writes by hand, Marcelo stays quiet in this chat until handed back.
+    (conversationId: string, text: string, es?: string) =>
+      // Once the user writes by hand, Marcelo stays quiet in this chat until reactivated.
       patchConversation(conversationId, (c) => ({
         ...c,
         stage: c.stage === "agendado" ? c.stage : "manual",
         messages: [...c.messages, { id: uid(), from: "user", text, es, at: nowISO() }],
         updatedAt: nowISO(),
-      }));
-    },
+      })),
     [patchConversation],
   );
 
-  const offerPrice = useCallback(
-    (conversationId: string, price: number) => {
-      const s = stateRef.current;
-      const conv = s.conversations.find((c) => c.id === conversationId);
-      const service = s.services.find((x) => x.id === conv?.serviceId);
-      if (!conv || !service) return;
-      applyResult(conversationId, buildOffer(s, conv, service, price));
-    },
-    [applyResult],
+  const sendPrepared = useCallback(
+    (conversationId: string, result: AutopilotResult) =>
+      run((s) => ops.applyResult(s, conversationId, result)),
+    [run],
   );
 
   const setConversationStage = useCallback(
@@ -400,7 +519,7 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
     [patchConversation],
   );
 
-  const reset = useCallback(() => setState(demoState()), []);
+  const reset = useCallback(() => commit(() => demoState()), [commit]);
 
   const value = useMemo<Store>(
     () => ({
@@ -412,21 +531,34 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       addJob,
       updateJob,
       removeJob,
+      finishJob,
+      startTrip,
+      queueJobMessage,
+      sendOutbox,
+      dismissOutbox,
       addExpense,
-      addPayment,
+      updateExpense,
+      removeExpense,
+      restoreExpense,
+      recordPayment,
+      addReceivable,
+      addMiles,
+      removeMiles,
       addPending,
       togglePending,
-      removeExpense,
+      removePending,
+      restorePending,
       clearDonePendings,
       addMessage,
       addService,
       updateService,
       removeService,
+      restoreService,
       setSettings,
       setConnection,
       receiveClientMessage,
       sendUserMessage,
-      offerPrice,
+      sendPrepared,
       setConversationStage,
       markConversationRead,
       typingIn,
@@ -454,21 +586,34 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       addJob,
       updateJob,
       removeJob,
+      finishJob,
+      startTrip,
+      queueJobMessage,
+      sendOutbox,
+      dismissOutbox,
       addExpense,
-      addPayment,
+      updateExpense,
+      removeExpense,
+      restoreExpense,
+      recordPayment,
+      addReceivable,
+      addMiles,
+      removeMiles,
       addPending,
       togglePending,
-      removeExpense,
+      removePending,
+      restorePending,
       clearDonePendings,
       addMessage,
       addService,
       updateService,
       removeService,
+      restoreService,
       setSettings,
       setConnection,
       receiveClientMessage,
       sendUserMessage,
-      offerPrice,
+      sendPrepared,
       setConversationStage,
       markConversationRead,
       typingIn,
@@ -489,13 +634,11 @@ export function useMoney() {
   const { state } = useMarcelo();
   const month = monthISO();
   const income = state.payments
-    .filter((p) => p.date.startsWith(month) && p.method !== "debe")
+    .filter((p) => p.date.startsWith(month))
     .reduce((a, b) => a + b.amount, 0);
   const spent = state.expenses
     .filter((e) => e.date.startsWith(month))
     .reduce((a, b) => a + b.amount, 0);
-  const owed = state.pendings
-    .filter((p) => !p.done && typeof p.amount === "number")
-    .reduce((a, b) => a + (b.amount ?? 0), 0);
+  const owed = state.receivables.filter((r) => !r.paidAt).reduce((a, b) => a + b.amount, 0);
   return { income, spent, profit: income - spent, owed };
 }

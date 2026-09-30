@@ -1,171 +1,108 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Badge, Card, Empty, PageTitle, Screen } from "@/components/marcelo/kit";
+import { CalendarPlus, Users } from "lucide-react";
+import { Button, PageTitle, Screen } from "@/components/marcelo/kit";
+import { JobCard, NewJobSheet } from "@/components/marcelo/jobs";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
+import { dayShort, isActiveJob, prettyDate, todayISO } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
-import { ServiceIcon } from "@/components/marcelo/visual";
 
 export const Route = createFileRoute("/agenda")({
   head: () => ({
     meta: [
       { title: "Agenda — Marcelo" },
-      {
-        name: "description",
-        content: "Tus citas de hoy, mañana y esta semana en una lista clara y sencilla.",
-      },
-      { property: "og:title", content: "Agenda — Marcelo" },
-      {
-        property: "og:description",
-        content: "Tus citas de hoy, mañana y esta semana en una lista clara.",
-      },
+      { name: "description", content: "Tus trabajos día por día." },
     ],
   }),
   component: Agenda,
 });
 
-const filters = [
-  { key: "hoy", label: "Hoy" },
-  { key: "manana", label: "Mañana" },
-  { key: "semana", label: "Esta semana" },
-] as const;
+const DAYS = 21;
 
 function Agenda() {
-  const { state, clientById } = useMarcelo();
-  const [filter, setFilter] = useState<(typeof filters)[number]["key"]>("hoy");
+  const { state } = useMarcelo();
   const navigate = useNavigate();
-  const serviceKind = (name: string) => state.services.find((s) => s.name === name)?.kind;
+  const [day, setDay] = useState(todayISO());
+  const [adding, setAdding] = useState(false);
 
-  const weekEnd = todayISO(7);
-  const jobs = state.jobs
-    .filter((j) =>
-      filter === "hoy"
-        ? j.date === todayISO()
-        : filter === "manana"
-          ? j.date === todayISO(1)
-          : j.date >= todayISO() && j.date <= weekEnd,
-    )
-    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-
-  const grouped = jobs.reduce<Record<string, typeof jobs>>((acc, j) => {
-    (acc[j.date] ??= []).push(j);
-    return acc;
-  }, {});
-  const weekdays = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(`${todayISO(index)}T12:00:00`);
+  const visible = (d: string) =>
+    state.jobs.filter(
+      (j) => j.date === d && (isActiveJob(j) || j.status === "hecho" || j.status === "cobrado"),
+    );
+  const jobs = visible(day).sort((a, b) => a.time.localeCompare(b.time));
+  const days = Array.from({ length: DAYS }, (_, i) => {
+    const iso = todayISO(i);
+    const d = new Date(`${iso}T12:00:00`);
     return {
-      day: date.toLocaleDateString("es-US", { weekday: "narrow" }),
-      number: date.getDate(),
-      active: index === 0,
+      iso,
+      label: dayShort[d.getDay()],
+      n: d.getDate(),
+      count: visible(iso).length,
+      off: !state.settings.hours[d.getDay()]?.on || state.settings.blocked.includes(iso),
     };
   });
 
   return (
     <Screen>
-      <PageTitle title="Agenda" subtitle={prettyDate(todayISO())} />
-
-      <div className="mb-4 grid grid-cols-7 rounded-2xl border border-border bg-card p-2 shadow-[var(--shadow-card)]">
-        {weekdays.map((day, index) => (
-          <div
-            key={index}
-            className="flex flex-col items-center gap-1 text-[10px] font-semibold text-muted-foreground"
+      <div className="flex items-start justify-between gap-3">
+        <PageTitle title="Agenda" subtitle={prettyDate(day)} />
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-label="Clientes"
+            onClick={() => navigate({ to: "/clientes" })}
           >
-            <span className="uppercase">{day.day}</span>
-            <span
-              className={cn(
-                "flex size-8 items-center justify-center rounded-full text-[12px]",
-                day.active && "bg-primary text-primary-foreground",
-              )}
-            >
-              {day.number}
-            </span>
-          </div>
-        ))}
+            <Users className="size-5" />
+          </Button>
+          <Button size="sm" aria-label="Nuevo trabajo" onClick={() => setAdding(true)}>
+            <CalendarPlus className="size-5" />
+          </Button>
+        </div>
       </div>
 
-      <div className="mb-5 flex rounded-2xl bg-muted p-1">
-        {filters.map((f) => (
+      <div className="no-scrollbar -mx-4 mb-5 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
+        {days.map((d) => (
           <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
+            key={d.iso}
+            onClick={() => setDay(d.iso)}
+            aria-pressed={day === d.iso}
+            aria-label={`${prettyDate(d.iso)}, ${d.count} trabajos`}
             className={cn(
-              "flex-1 rounded-xl px-2 py-2 text-[12px] font-semibold transition-colors",
-              filter === f.key ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+              "flex w-14 shrink-0 snap-start flex-col items-center gap-1 rounded-2xl py-2.5 transition-colors",
+              day === d.iso
+                ? "bg-primary text-primary-foreground"
+                : "bg-card text-foreground shadow-[var(--shadow-card)]",
+              d.off && day !== d.iso && "opacity-50",
             )}
           >
-            {f.label}
+            <span className="text-[12px] font-semibold uppercase">{d.label}</span>
+            <span className="text-[18px] font-bold">{d.n}</span>
+            <span className="flex h-2 gap-0.5">
+              {Array.from({ length: Math.min(d.count, 3) }).map((_, i) => (
+                <span key={i} className="size-1.5 rounded-full bg-accent" />
+              ))}
+            </span>
           </button>
         ))}
       </div>
 
       {jobs.length === 0 ? (
-        <Empty
-          title="No hay trabajos en estos días."
-          hint="Dime a quién tienes que visitar y yo lo agendo por ti."
-        />
+        <div className="surface px-5 py-8 text-center">
+          <p className="text-[16px] font-semibold">No hay trabajos este día.</p>
+          <Button className="mt-4" onClick={() => setAdding(true)}>
+            <CalendarPlus className="size-5" /> Nuevo trabajo
+          </Button>
+        </div>
       ) : (
-        Object.entries(grouped).map(([date, list]) => (
-          <div key={date} className="mb-6">
-            <p className="mb-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              {prettyDate(date)}
-            </p>
-            <div className="space-y-3">
-              {list.map((job) => {
-                const client = clientById(job.clientId);
-                return (
-                  <Card
-                    key={job.id}
-                    className="relative overflow-hidden pl-5"
-                    onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } })}
-                  >
-                    <span
-                      className={cn(
-                        "absolute inset-y-0 left-0 w-1",
-                        job.status === "completado"
-                          ? "bg-success"
-                          : job.status === "por_confirmar"
-                            ? "bg-warning"
-                            : "bg-accent",
-                      )}
-                    />
-                    <div className="flex items-start gap-3">
-                      <ServiceIcon kind={serviceKind(job.service)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-semibold text-accent">
-                          {prettyTime(job.time)}
-                        </p>
-                        <p className="mt-0.5 truncate text-[16px] font-semibold">
-                          {client?.name ?? "Cliente"}
-                        </p>
-                        <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
-                          {job.service}
-                        </p>
-                        {client ? (
-                          <p className="mt-1 truncate text-[12px] text-muted-foreground">
-                            {client.address}, {client.city}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[16px] font-semibold">{money(job.price)}</p>
-                        <div className="mt-2">
-                          {job.status === "completado" ? (
-                            <Badge tone="success">Completado</Badge>
-                          ) : job.status === "confirmado" ? (
-                            <Badge tone="neutral">Confirmado</Badge>
-                          ) : (
-                            <Badge tone="warning">Por confirmar</Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        ))
+        <div className="space-y-3">
+          {jobs.map((job) => (
+            <JobCard key={job.id} job={job} />
+          ))}
+        </div>
       )}
+
+      {adding ? <NewJobSheet date={day} onClose={() => setAdding(false)} /> : null}
     </Screen>
   );
 }

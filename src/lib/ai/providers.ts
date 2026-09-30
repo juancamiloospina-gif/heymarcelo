@@ -18,8 +18,8 @@ export class ProviderError extends Error {
 const TIMEOUT_MS = 45_000;
 
 const friendly: Record<ProviderError["kind"], string> = {
-  auth: "Tu clave no funciona. Revísala en Tu IA.",
-  quota: "Tu proveedor de IA dice que no tienes saldo o llegaste a tu límite.",
+  auth: "Tu conexión de IA no funciona. Revísala en Configuración → Asistente → Avanzado.",
+  quota: "Tu cuenta de IA no tiene saldo o llegó a su límite.",
   refusal: "Tu IA no quiso responder a eso. Intenta decirlo de otra forma.",
   network: "No pude conectar con tu IA. Revisa tu internet.",
   other: "Tu IA no pudo responder en este momento. Intenta de nuevo.",
@@ -241,3 +241,89 @@ const preferFirst = (ids: string[], preferred: string[]) => {
   const top = preferred.filter((p) => ids.includes(p));
   return [...top, ...ids.filter((id) => !top.includes(id))];
 };
+
+/** One image + instruction to the user's own AI (receipt reading). Returns raw text. */
+export async function askOwnAIWithImage(
+  ai: OwnAI,
+  system: string,
+  text: string,
+  dataUrl: string,
+): Promise<string> {
+  const [meta, b64 = ""] = dataUrl.split(",");
+  const mime = (meta?.match(/data:([^;]+)/)?.[1] ?? "image/jpeg") as
+    "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  switch (ai.provider) {
+    case "anthropic": {
+      const client = anthropicClient(ai.apiKey);
+      try {
+        const msg = await client.messages.create({
+          model: ai.model,
+          max_tokens: 1000,
+          system,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image", source: { type: "base64", media_type: mime, data: b64 } },
+                { type: "text", text },
+              ],
+            },
+          ],
+        });
+        return msg.content
+          .map((b) => (b.type === "text" ? b.text : ""))
+          .join("")
+          .trim();
+      } catch (e) {
+        if (e instanceof Anthropic.AuthenticationError) throw new ProviderError("auth", "auth");
+        if (e instanceof Anthropic.RateLimitError) throw new ProviderError("quota", "quota");
+        throw new ProviderError("other", String(e));
+      }
+    }
+    case "openai":
+    case "openrouter": {
+      const url =
+        ai.provider === "openai"
+          ? "https://api.openai.com/v1/chat/completions"
+          : "https://openrouter.ai/api/v1/chat/completions";
+      const data = (await http(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${ai.apiKey}` },
+        body: JSON.stringify({
+          model: ai.model,
+          messages: [
+            { role: "system", content: system },
+            {
+              role: "user",
+              content: [
+                { type: "text", text },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+        }),
+      })) as ChatCompletion;
+      return data.choices?.[0]?.message?.content?.trim() ?? "";
+    }
+    case "gemini": {
+      const data = (await http(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai.model)}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": ai.apiKey },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system }] },
+            contents: [
+              { role: "user", parts: [{ inline_data: { mime_type: mime, data: b64 } }, { text }] },
+            ],
+            generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1000 },
+          }),
+        },
+      )) as GeminiResponse;
+      return (data.candidates?.[0]?.content?.parts ?? [])
+        .map((p) => p.text ?? "")
+        .join("")
+        .trim();
+    }
+  }
+}

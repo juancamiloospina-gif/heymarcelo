@@ -1,6 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Bot, FlaskConical, Link2, MessageCirclePlus, Plug, Send, X } from "lucide-react";
+import {
+  Bot,
+  Camera,
+  FlaskConical,
+  Link2,
+  MessageCirclePlus,
+  Plug,
+  Send,
+  Tags,
+  Users,
+  X,
+} from "lucide-react";
 import {
   Badge,
   Button,
@@ -19,6 +30,8 @@ import {
   stageLabel,
 } from "@/components/marcelo/visual";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { AttentionList } from "@/components/marcelo/attention";
+import { DEMO_MODE } from "@/lib/flags";
 import type { Channel } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
 
@@ -29,12 +42,12 @@ export const Route = createFileRoute("/bandeja/")({
       {
         name: "description",
         content:
-          "Marcelo contesta a tus clientes por WhatsApp o SMS y agenda la cita cuando aceptan tu precio.",
+          "Marcelo contesta a tus clientes por WhatsApp o SMS y agenda el trabajo cuando aceptan tu precio.",
       },
       { property: "og:title", content: "Mensajes de clientes — Marcelo" },
       {
         property: "og:description",
-        content: "Respuestas automáticas con tus precios y citas agendadas solas.",
+        content: "Respuestas automáticas con tus precios y trabajos agendados solos.",
       },
     ],
   }),
@@ -78,6 +91,8 @@ function Bandeja() {
             : "Marcelo contesta por ti"
         }
       />
+
+      <AttentionList limit={6} />
 
       {connected.length === 0 ? (
         <Card
@@ -130,23 +145,28 @@ function Bandeja() {
         </div>
       </Card>
 
-      <div className="mb-2 grid grid-cols-2 gap-2">
+      <div className="mb-2 grid grid-cols-3 gap-2">
+        <Button variant="secondary" size="sm" onClick={() => navigate({ to: "/clientes" })}>
+          <Users className="size-4" /> Clientes
+        </Button>
         <Button variant="secondary" size="sm" onClick={() => navigate({ to: "/servicios" })}>
-          Mis precios
+          <Tags className="size-4" /> Precios
         </Button>
         <Button variant="secondary" size="sm" onClick={() => navigate({ to: "/conexiones" })}>
-          <Link2 className="size-4" /> Conexiones
+          <Link2 className="size-4" /> Canales
         </Button>
       </div>
 
       <SectionTitle
         action={
-          <button
-            onClick={() => setSimOpen(true)}
-            className="flex items-center gap-1 text-[13px] font-semibold text-accent"
-          >
-            <FlaskConical className="size-3.5" /> Simular mensaje
-          </button>
+          DEMO_MODE ? (
+            <button
+              onClick={() => setSimOpen(true)}
+              className="flex h-10 items-center gap-1 text-[15px] font-semibold text-accent"
+            >
+              <FlaskConical className="size-4" /> Simular mensaje
+            </button>
+          ) : undefined
         }
       >
         Conversaciones
@@ -160,12 +180,13 @@ function Bandeja() {
       ) : (
         <Card className="divide-y divide-border p-0">
           {list.map((c) => {
-            const last = c.messages[c.messages.length - 1];
-            const preview = last
-              ? last.from === "client"
-                ? last.text
-                : `${last.from === "marcelo" ? "Marcelo" : "Tú"}: ${last.es ?? last.text}`
-              : "";
+            // Show what the client said last, not Marcelo's reply.
+            const lastClient = [...c.messages].reverse().find((m) => m.from === "client");
+            const preview = lastClient
+              ? lastClient.photo
+                ? "📷 Foto"
+                : lastClient.text
+              : "Sin mensajes del cliente";
             const stage = stageLabel[c.stage];
             return (
               <button
@@ -195,7 +216,7 @@ function Bandeja() {
                   </div>
                   <p
                     className={cn(
-                      "mt-0.5 line-clamp-2 text-[13px] leading-snug",
+                      "mt-0.5 line-clamp-2 text-[15px] leading-snug",
                       c.unread ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
@@ -203,6 +224,11 @@ function Bandeja() {
                   </p>
                   <div className="mt-2 flex items-center gap-2">
                     <Badge tone={stage.tone}>{stage.label}</Badge>
+                    {c.stage === "manual" ? (
+                      <span className="text-[13px] font-semibold text-accent">
+                        Marcelo en pausa
+                      </span>
+                    ) : null}
                     {c.unread ? (
                       <span className="size-2 rounded-full bg-accent" aria-label="Sin leer" />
                     ) : null}
@@ -245,7 +271,13 @@ function Simulator({
 }: {
   channels: Channel[];
   onClose: () => void;
-  onSend: (input: { channel: Channel; contactName: string; phone: string; text: string }) => void;
+  onSend: (input: {
+    channel: Channel;
+    contactName: string;
+    phone: string;
+    text: string;
+    photo?: boolean;
+  }) => void;
 }) {
   const [name, setName] = useState(samples[0]?.name ?? "");
   const [text, setText] = useState(samples[0]?.text ?? "");
@@ -331,20 +363,36 @@ function Simulator({
               </button>
             ))}
           </div>
-          <Button
-            className="w-full"
-            disabled={!name.trim() || !text.trim()}
-            onClick={() =>
-              onSend({
-                channel,
-                contactName: name.trim(),
-                phone: fakePhone(name.trim()),
-                text: text.trim(),
-              })
-            }
-          >
-            <Send className="size-4" /> Recibir mensaje
-          </Button>
+          <div className="grid grid-cols-[auto_1fr] gap-2">
+            <Button
+              variant="secondary"
+              disabled={!name.trim()}
+              onClick={() =>
+                onSend({
+                  channel,
+                  contactName: name.trim(),
+                  phone: fakePhone(name.trim()),
+                  text: text.trim() || "Here's a photo of my yard",
+                  photo: true,
+                })
+              }
+            >
+              <Camera className="size-5" /> Con foto
+            </Button>
+            <Button
+              disabled={!name.trim() || !text.trim()}
+              onClick={() =>
+                onSend({
+                  channel,
+                  contactName: name.trim(),
+                  phone: fakePhone(name.trim()),
+                  text: text.trim(),
+                })
+              }
+            >
+              <Send className="size-5" /> Recibir mensaje
+            </Button>
+          </div>
         </div>
       </div>
     </div>

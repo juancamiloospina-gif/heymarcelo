@@ -4,7 +4,7 @@
  */
 import { askMarcelo, translateMarcelo } from "@/lib/marcelo.functions";
 import { parseModelText, type MarceloAction } from "./actions";
-import { addUsage, costOf, getOwnAI, getUsage, INCLUDED_LIMIT_USD, providers } from "./config";
+import { addUsage, costOf, getOwnAI, getUsage, INCLUDED_LIMIT_USD } from "./config";
 import {
   LIMITS,
   SYSTEM_PROMPT,
@@ -42,7 +42,7 @@ export async function ask(input: {
       return {
         ok: false,
         reason: "error",
-        reply: `${friendlyError(e)} (${providers[own.provider].name})`,
+        reply: friendlyError(e),
       };
     }
   }
@@ -51,7 +51,7 @@ export async function ask(input: {
     return {
       ok: false,
       reason: "limit",
-      reply: `Usaste todo el asistente incluido de este mes. Conecta tu propia IA en Más → Tu IA para seguir sin límite, o espera al 1 de ${nextMonthName()}.`,
+      reply: `Se acabaron las conversaciones de este mes. Vuelven el 1 de ${nextMonthName()}. Puedes ampliarlas en Configuración.`,
     };
   }
 

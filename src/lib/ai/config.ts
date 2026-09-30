@@ -43,8 +43,11 @@ export const providers: Record<
   },
 };
 
-/** Monthly ceiling for what Marcelo pays per user on the included assistant. */
-export const INCLUDED_LIMIT_USD = 2;
+/** Monthly ceiling for what Marcelo pays per user: assistant, translation and receipts together. */
+export const INCLUDED_LIMIT_USD = 4;
+
+/** Typical cost of one assistant turn on the included model, until real usage says otherwise. */
+const TYPICAL_TURN_USD = 0.005;
 
 /**
  * USD per million tokens for the gateway models Marcelo uses. Estimates from public provider
@@ -129,12 +132,19 @@ export function addUsage(usd: number) {
 
 export const includedLeft = () => Math.max(0, INCLUDED_LIMIT_USD - getUsage().usd);
 
+/** How many more assistant conversations fit in this month's allowance (a plain-language count). */
+export function conversationsLeft(u: Usage = getUsage()) {
+  const perTurn = u.calls >= 5 ? Math.max(u.usd / u.calls, 0.001) : TYPICAL_TURN_USD;
+  return Math.max(0, Math.floor((INCLUDED_LIMIT_USD - u.usd) / perTurn));
+}
+
 export function useAIStatus() {
   const own = useSyncExternalStore(subscribe, getOwnAI, () => null);
   const usage = useSyncExternalStore(subscribe, getUsage, getUsage);
   return {
     own,
     usage,
+    left: conversationsLeft(usage),
     percentUsed: Math.min(100, Math.round((usage.usd / INCLUDED_LIMIT_USD) * 100)),
     limitReached: !own && usage.usd >= INCLUDED_LIMIT_USD,
   };

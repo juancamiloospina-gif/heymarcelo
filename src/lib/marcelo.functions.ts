@@ -4,6 +4,7 @@ import {
   LIMITS,
   SYSTEM_PROMPT,
   TRANSLATE_LIMITS,
+  RECEIPT_PROMPT,
   TRANSLATE_PROMPT,
   buildTranslateMessage,
   buildUserMessage,
@@ -23,11 +24,14 @@ const MODELS = ["google/gemini-3.8-flash", "openai/gpt-6-astra"] as const;
 
 type Usage = { model: string; inputTokens: number; outputTokens: number };
 
+type GatewayInput =
+  string | ({ type: "input_text"; text: string } | { type: "input_image"; image_url: string })[];
+
 async function callGateway(
   apiKey: string,
   model: string,
   system: string,
-  user: string,
+  user: GatewayInput,
   maxTokens: number,
 ) {
   return fetch("https://ai.gateway.lovable.dev/v1/responses", {
@@ -87,7 +91,7 @@ async function readStream(body: ReadableStream<Uint8Array>, model: string) {
 }
 
 /** One gateway round with model fallback; never throws. */
-async function runGateway(system: string, user: string, maxTokens: number) {
+async function runGateway(system: string, user: GatewayInput, maxTokens: number) {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) {
     return { ok: false as const, status: 401, reply: "Marcelo no está conectado todavía." };
@@ -97,7 +101,9 @@ async function runGateway(system: string, user: string, maxTokens: number) {
     if (res.ok && res.body) {
       const { text, usage } = await readStream(res.body, model);
       // Gateway didn't report usage: estimate from length (~3 chars per token) so the meter still moves.
-      if (!usage.inputTokens) usage.inputTokens = Math.ceil((system.length + user.length) / 3);
+      if (!usage.inputTokens)
+        usage.inputTokens =
+          typeof user === "string" ? Math.ceil((system.length + user.length) / 3) : 1800;
       if (!usage.outputTokens) usage.outputTokens = Math.ceil(text.length / 3) + 200;
       return { ok: true as const, text, usage };
     }
@@ -145,4 +151,23 @@ export const translateMarcelo = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => translateSchema.parse(data))
   .handler(({ data }) =>
     runGateway(TRANSLATE_PROMPT, buildTranslateMessage(data), TRANSLATE_LIMITS.outputTokens),
+  );
+
+const receiptSchema = z.object({
+  // A downscaled JPEG; ~1.5 MB of base64 at most.
+  image: z.string().startsWith("data:image/").max(1_600_000),
+});
+
+/** Receipt photo on the included gateway. */
+export const readReceiptMarcelo = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => receiptSchema.parse(data))
+  .handler(({ data }) =>
+    runGateway(
+      RECEIPT_PROMPT,
+      [
+        { type: "input_text", text: "Lee este recibo." },
+        { type: "input_image", image_url: data.image },
+      ],
+      800,
+    ),
   );

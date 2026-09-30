@@ -13,19 +13,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button, Card } from "./kit";
 import { useMarcelo } from "@/lib/marcelo-store";
-import {
-  expenseCategories,
-  money,
-  monthISO,
-  prettyTime,
-  todayISO,
-  type Expense,
-  type Payment,
-} from "@/lib/marcelo-data";
+import { isActiveJob, money, monthISO, prettyTime, todayISO } from "@/lib/marcelo-data";
 import { ask } from "@/lib/ai/ask";
 import { needsConfirmation, type MarceloAction } from "@/lib/ai/actions";
-import { useAIStatus, providers } from "@/lib/ai/config";
+import { useAIStatus } from "@/lib/ai/config";
 import mark from "@/assets/marcelo-mark.png";
+import { JobDraftCard } from "./jobs";
 import {
   dictate,
   speak,
@@ -35,6 +28,8 @@ import {
 } from "@/lib/speech";
 
 /** "Traduce", "modo intérprete", "translate"… opens the face-to-face interpreter instead. */
+const EXAMPLES = ["Agenda a Robert el jueves a las 9", "Cóbrale a John", "Anota gasto 45 gasolina"];
+
 const WANTS_INTERPRETER = /\b(traduc\w*|traductor|int[eé]rprete|translate|translator)\b/i;
 
 type AssistantCtx = { open: (seed?: string) => void };
@@ -100,7 +95,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     const name = (id: string) => clients.find((c) => c.id === id)?.name ?? "cliente";
     const month = monthISO();
     const income = payments
-      .filter((p) => p.date.startsWith(month) && p.method !== "debe")
+      .filter((p) => p.date.startsWith(month))
       .reduce((a, b) => a + b.amount, 0);
     const spent = expenses
       .filter((e) => e.date.startsWith(month))
@@ -128,7 +123,13 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         .slice(0, 6)
         .map((e) => `${e.category} ${money(e.amount)} ${e.date}`)
         .join("; ")}`,
-      `Pendientes: ${pendings
+      `Por cobrar: ${
+        store.state.receivables
+          .filter((r) => !r.paidAt)
+          .map((r) => `${name(r.clientId)} ${money(r.amount)}`)
+          .join("; ") || "nada"
+      }`,
+      `Recordatorios: ${pendings
         .filter((p) => !p.done)
         .map((p) => p.text)
         .join("; ")}`,
@@ -150,9 +151,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       };
       const nextJobOf = (clientId: string, date?: string) =>
         store.state.jobs
-          .filter(
-            (j) => j.clientId === clientId && j.status !== "completado" && j.date >= todayISO(),
-          )
+          .filter((j) => j.clientId === clientId && isActiveJob(j) && j.date >= todayISO())
           .filter((j) => !date || j.date === date)
           .sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time))[0];
 
@@ -176,7 +175,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
             price: action.price ?? client.price,
             status: "confirmado",
           });
-          done(`Cita agendada con ${client.name}`);
+          done(`Trabajo agendado con ${client.name}`);
           close();
           navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } });
           return;
@@ -186,22 +185,22 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
           if (!client) return notFound(action.clientName);
           const job = nextJobOf(client.id, action.fromDate);
           if (!job) {
-            toast.error(`${client.name} no tiene citas próximas`);
+            toast.error(`${client.name} no tiene trabajos próximos`);
             return setPendingAction(null);
           }
           store.updateJob(job.id, { date: action.date, time: action.time });
-          return done(`Cita de ${client.name} movida`);
+          return done(`Trabajo de ${client.name} movido`);
         }
         case "CANCEL_JOB": {
           const client = store.findClientByName(action.clientName);
           if (!client) return notFound(action.clientName);
           const job = nextJobOf(client.id, action.date);
           if (!job) {
-            toast.error(`${client.name} no tiene citas próximas`);
+            toast.error(`${client.name} no tiene trabajos próximos`);
             return setPendingAction(null);
           }
           store.removeJob(job.id);
-          return done(`Cita de ${client.name} cancelada`);
+          return done(`Trabajo de ${client.name} cancelado`);
         }
         case "CREATE_CLIENT": {
           const c = store.addClient({
@@ -240,18 +239,22 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         case "RECORD_PAYMENT": {
           const client = store.findClientByName(action.clientName);
           if (!client) return notFound(action.clientName);
-          store.addPayment({
+          store.recordPayment({
             clientId: client.id,
             amount: action.amount,
             method: action.method,
-            date: todayISO(),
           });
           return done(`Pago registrado: ${money(action.amount)}`);
         }
         case "CREATE_PENDING": {
           const client = action.clientName ? store.findClientByName(action.clientName) : undefined;
-          store.addPending(action.text, { clientId: client?.id, amount: action.amount });
-          return done("Pendiente agregado");
+          // Money owed goes to Por cobrar; everything else is a Recordatorio.
+          if (client && action.amount) {
+            store.addReceivable({ clientId: client.id, amount: action.amount, note: action.text });
+            return done(`Anotado en Por cobrar: ${money(action.amount)}`);
+          }
+          store.addPending(action.text, { clientId: client?.id });
+          return done("Recordatorio agregado");
         }
         case "COMPLETE_PENDING": {
           const needle = action.text.toLowerCase();
@@ -384,13 +387,11 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
             <button
               onClick={() => {
                 close();
-                navigate({ to: "/ia" });
+                navigate({ to: "/configuracion" });
               }}
               className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-semibold text-primary-foreground/80"
             >
-              {ai.own
-                ? `Tu IA · ${providers[ai.own.provider].name}`
-                : `Incluido · ${ai.percentUsed}%`}
+              {ai.own ? "Sin límite" : `Quedan ${ai.left}`}
             </button>
           </div>
 
@@ -424,8 +425,22 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
               </button>
             ) : null}
 
-            <div className="mt-12 w-full max-w-sm">
-              <Wave active={listening || thinking} />
+            <div className="mt-10 w-full max-w-sm">
+              {listening || thinking ? (
+                <Wave active />
+              ) : !reply && !heard ? (
+                <div className="flex flex-col items-center gap-2">
+                  {EXAMPLES.map((ex) => (
+                    <button
+                      key={ex}
+                      onClick={() => void send(ex)}
+                      className="min-h-12 rounded-full border border-primary-foreground/15 bg-primary-foreground/5 px-4 text-[15px] text-primary-foreground/85"
+                    >
+                      “{ex}”
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             {reply ? (
@@ -440,13 +455,33 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
                       className="mt-5 w-full border-none bg-accent text-accent-foreground"
                       onClick={() => {
                         close();
-                        navigate({ to: "/ia" });
+                        navigate({ to: "/configuracion" });
                       }}
                     >
-                      Conectar mi IA
+                      Ver opciones
                     </Button>
                   ) : null}
-                  {pendingAction ? (
+                  {pendingAction?.type === "CREATE_JOB" ? (
+                    <div className="mt-5 rounded-2xl bg-card p-4">
+                      <JobDraftCard
+                        initial={{
+                          clientName: pendingAction.clientName,
+                          serviceId: store.state.services.find(
+                            (sv) => sv.name === pendingAction.service,
+                          )?.id,
+                          date: pendingAction.date,
+                          time: pendingAction.time,
+                          price: pendingAction.price,
+                        }}
+                        onCancel={() => setPendingAction(null)}
+                        onDone={(job) => {
+                          setPendingAction(null);
+                          close();
+                          navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } });
+                        }}
+                      />
+                    </div>
+                  ) : pendingAction ? (
                     <div className="mt-6 flex gap-3">
                       <Button
                         className="flex-1 border-none bg-accent text-accent-foreground"

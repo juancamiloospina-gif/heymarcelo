@@ -14,7 +14,15 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Card, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
+import {
+  Badge,
+  Button,
+  Card,
+  PageTitle,
+  Screen,
+  SectionTitle,
+  BackButton,
+} from "@/components/marcelo/kit";
 import { IconChip } from "@/components/marcelo/visual";
 import { providers, saveOwnAI, useAIStatus, type Provider } from "@/lib/ai/config";
 import { friendlyError, listModels } from "@/lib/ai/providers";
@@ -35,7 +43,7 @@ export const Route = createFileRoute("/ia")({
 });
 
 const canDo = [
-  "Agendar, mover y cancelar citas",
+  "Agendar, mover y cancelar trabajos",
   "Agregar clientes y actualizar sus datos",
   "Anotar gastos, cobros y pendientes",
   "Cambiar el precio de tus servicios",
@@ -58,7 +66,7 @@ const renewDay = () => {
 };
 
 function TuIA() {
-  const { own, percentUsed } = useAIStatus();
+  const { own, percentUsed, left } = useAIStatus();
   const [provider, setProvider] = useState<Provider>("anthropic");
   const [key, setKey] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -90,14 +98,11 @@ function TuIA() {
 
   return (
     <Screen>
-      <button
-        onClick={() => window.history.back()}
-        aria-label="Atrás"
-        className="mb-2 text-muted-foreground"
-      >
-        <ArrowLeft className="size-6" />
-      </button>
-      <PageTitle title="Tu IA" subtitle="Quién responde cuando le hablas a Marcelo." />
+      <BackButton />
+      <PageTitle
+        title="Avanzado: tu propia IA"
+        subtitle="Opcional. Usa tu cuenta de IA y no tendrás límite."
+      />
 
       {own ? (
         <Card className="border-success/30 bg-success/5">
@@ -131,13 +136,13 @@ function TuIA() {
           <div className="flex items-start gap-3">
             <IconChip icon={Sparkles} tone="accent" />
             <div className="min-w-0 flex-1">
-              <p className="text-[16px] font-bold">Asistente incluido</p>
+              <p className="text-[16px] font-bold">Conversaciones incluidas</p>
               <p className="mt-0.5 text-[13px] text-muted-foreground">
                 Viene con tu plan de Marcelo.
               </p>
             </div>
             <Badge tone={percentUsed >= 100 ? "danger" : percentUsed >= 80 ? "warning" : "neutral"}>
-              {percentUsed}% usado
+              Quedan {left}
             </Badge>
           </div>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
@@ -150,13 +155,13 @@ function TuIA() {
                     ? "bg-warning"
                     : "bg-accent",
               )}
-              style={{ width: `${percentUsed}%` }}
+              style={{ width: `${100 - percentUsed}%` }}
             />
           </div>
           <p className="mt-2 text-[12px] text-muted-foreground">
             {percentUsed >= 100
-              ? `Se acabó el de este mes. Vuelve el ${renewDay()}, o conecta tu IA abajo.`
-              : `Se renueva el ${renewDay()}. Conecta tu IA si quieres usarlo sin límite.`}
+              ? `Se acabaron este mes. Vuelven el ${renewDay()}, o conecta tu IA abajo.`
+              : `Te quedan ${left} este mes. Se renuevan el ${renewDay()}.`}
           </p>
         </Card>
       )}

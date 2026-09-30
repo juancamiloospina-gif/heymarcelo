@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as ConexionesRouteImport } from './routes/conexiones'
+import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as DineroRouteImport } from './routes/dinero'
 import { Route as DocumentosRouteImport } from './routes/documentos'
 import { Route as GastosRouteImport } from './routes/gastos'
@@ -40,6 +41,11 @@ const AgendaRoute = AgendaRouteImport.update({
 const ConexionesRoute = ConexionesRouteImport.update({
   id: '/conexiones',
   path: '/conexiones',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracionRoute = ConfiguracionRouteImport.update({
+  id: '/configuracion',
+  path: '/configuracion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DineroRoute = DineroRouteImport.update({
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/conexiones': typeof ConexionesRoute
+  '/configuracion': typeof ConfiguracionRoute
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/conexiones': typeof ConexionesRoute
+  '/configuracion': typeof ConfiguracionRoute
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/conexiones': typeof ConexionesRoute
+  '/configuracion': typeof ConfiguracionRoute
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/conexiones'
+    | '/configuracion'
     | '/dinero'
     | '/documentos'
     | '/gastos'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/conexiones'
+    | '/configuracion'
     | '/dinero'
     | '/documentos'
     | '/gastos'
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/conexiones'
+    | '/configuracion'
     | '/dinero'
     | '/documentos'
     | '/gastos'
@@ -235,6 +247,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
   ConexionesRoute: typeof ConexionesRoute
+  ConfiguracionRoute: typeof ConfiguracionRoute
   DineroRoute: typeof DineroRoute
   DocumentosRoute: typeof DocumentosRoute
   GastosRoute: typeof GastosRoute
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: '/conexiones'
       fullPath: '/conexiones'
       preLoaderRoute: typeof ConexionesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracion': {
+      id: '/configuracion'
+      path: '/configuracion'
+      fullPath: '/configuracion'
+      preLoaderRoute: typeof ConfiguracionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dinero': {
@@ -379,6 +399,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
   ConexionesRoute: ConexionesRoute,
+  ConfiguracionRoute: ConfiguracionRoute,
   DineroRoute: DineroRoute,
   DocumentosRoute: DocumentosRoute,
   GastosRoute: GastosRoute,

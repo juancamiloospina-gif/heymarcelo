@@ -1,10 +1,19 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Phone, MessageSquare, CalendarPlus, MapPin, Languages } from "lucide-react";
-import { Badge, Button, Card, Field, Screen, SectionTitle } from "@/components/marcelo/kit";
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Screen,
+  SectionTitle,
+  BackButton,
+} from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { JobCard, NewJobSheet } from "@/components/marcelo/jobs";
 import { ClientAvatar } from "@/components/marcelo/visual";
-import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
+import { money, prettyDate, prettyTime, todayISO, isActiveJob } from "@/lib/marcelo-data";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clientes/$clientId")({
@@ -45,20 +54,17 @@ function ClienteDetalle() {
   const jobs = state.jobs
     .filter((j) => j.clientId === client.id)
     .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-  const upcoming = jobs.filter((j) => j.date >= todayISO());
-  const past = jobs.filter((j) => j.date < todayISO());
-  const owed = state.pendings
-    .filter((p) => !p.done && p.clientId === client.id && p.amount)
-    .reduce((a, b) => a + (b.amount ?? 0), 0);
+  const upcoming = jobs.filter((j) => j.date >= todayISO() && isActiveJob(j));
+  const past = jobs.filter(
+    (j) => j.date < todayISO() || j.status === "hecho" || j.status === "cobrado",
+  );
+  const owed = state.receivables
+    .filter((r) => !r.paidAt && r.clientId === client.id)
+    .reduce((a, b) => a + b.amount, 0);
 
   return (
     <Screen>
-      <button
-        onClick={() => navigate({ to: "/clientes" })}
-        className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Cliente
-      </button>
+      <BackButton onClick={() => navigate({ to: "/clientes" })} label="Clientes" />
 
       <div className="text-center">
         <ClientAvatar name={client.name} size="lg" className="mx-auto" />
@@ -89,8 +95,8 @@ function ClienteDetalle() {
         >
           <MessageSquare className="size-4" /> Mensaje
         </Button>
-        <Button variant="accent" size="sm" onClick={() => setScheduling((v) => !v)}>
-          <CalendarPlus className="size-4" /> Cita
+        <Button variant="accent" size="sm" onClick={() => setScheduling(true)}>
+          <CalendarPlus className="size-4" /> Trabajo
         </Button>
       </div>
 
@@ -102,39 +108,7 @@ function ClienteDetalle() {
       </button>
 
       {scheduling ? (
-        <Card className="mt-4 space-y-3">
-          <p className="text-[15px] font-semibold">Nueva cita</p>
-          <p className="text-[13px] text-muted-foreground">
-            Ya sé la dirección, el servicio y el precio. Solo elige el día y la hora.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Día" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            <Field
-              label="Hora"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </div>
-          <Button
-            className="w-full"
-            onClick={() => {
-              const job = addJob({
-                clientId: client.id,
-                date,
-                time,
-                service: client.service,
-                price: client.price,
-                status: "confirmado",
-              });
-              setScheduling(false);
-              toast.success("Cita agendada");
-              navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } });
-            }}
-          >
-            Agendar
-          </Button>
-        </Card>
+        <NewJobSheet clientName={client.name} onClose={() => setScheduling(false)} />
       ) : null}
 
       <SectionTitle>Datos</SectionTitle>
@@ -150,26 +124,13 @@ function ClienteDetalle() {
 
       <SectionTitle>Próximos trabajos</SectionTitle>
       {upcoming.length === 0 ? (
-        <Card className="py-6 text-center text-[14px] text-muted-foreground">
-          Sin trabajos agendados.
+        <Card className="py-6 text-center text-[15px] text-muted-foreground">
+          Sin trabajos próximos.
         </Card>
       ) : (
         <div className="space-y-3">
           {upcoming.map((j) => (
-            <Card
-              key={j.id}
-              onClick={() => navigate({ to: "/trabajo/$jobId", params: { jobId: j.id } })}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[13px] font-semibold text-accent">
-                    {prettyDate(j.date)} · {prettyTime(j.time)}
-                  </p>
-                  <p className="mt-0.5 text-[15px] font-semibold">{j.service}</p>
-                </div>
-                <p className="text-[15px] font-semibold">{money(j.price)}</p>
-              </div>
-            </Card>
+            <JobCard key={j.id} job={j} showDate />
           ))}
         </div>
       )}
