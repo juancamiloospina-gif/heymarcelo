@@ -39,6 +39,7 @@ import {
   type Settings,
 } from "./marcelo-data";
 import * as ops from "./marcelo-ops";
+import { translate } from "./ai/ask";
 
 const KEY = "marcelo.state.v1";
 const TICK_MS = 60_000;
@@ -98,6 +99,11 @@ type Store = {
     photo?: boolean;
   }) => string;
   sendUserMessage: (conversationId: string, text: string, es?: string) => void;
+  /** Spanish version of a client's English message (done automatically on arrival). */
+  translateClientMessage: (conversationId: string, messageId: string) => Promise<boolean>;
+  /** Moves a booked job; `notify` prepares the new time for the client to review. */
+  moveJobTo: (jobId: string, date: string, time: string, notify: boolean) => void;
+  dismissMove: (conversationId: string, key: string) => void;
   /** Sends a reply the user reviewed (one-tap decisions, corrections). */
   sendPrepared: (conversationId: string, result: AutopilotResult) => void;
   setConversationStage: (conversationId: string, stage: Conversation["stage"]) => void;
@@ -115,6 +121,10 @@ function announce(events: ops.OpEvent[]) {
     if (e.type === "booked") {
       toast.success(`Marcelo agendó a ${e.name}`, {
         description: `${e.job.service} · ${prettyDate(e.job.date)}, ${prettyTime(e.job.time)}`,
+      });
+    } else if (e.type === "moved") {
+      toast.success(`Marcelo movió el trabajo de ${e.name}`, {
+        description: `${prettyDate(e.job.date)}, ${prettyTime(e.job.time)}`,
       });
     } else if (e.type === "handoff") {
       toast(`${e.name} necesita tu respuesta`, { description: e.note });
@@ -423,6 +433,34 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  const translateClientMessage = useCallback(
+    async (conversationId: string, messageId: string) => {
+      const conv = ref.current.conversations.find((c) => c.id === conversationId);
+      const msg = conv?.messages.find((m) => m.id === messageId);
+      if (!conv || !msg || msg.es) return Boolean(msg?.es);
+      const recent = conv.messages
+        .filter((m) => m.id !== messageId)
+        .slice(-4)
+        .map((m) => ({
+          from: m.from === "client" ? ("client" as const) : ("user" as const),
+          text: m.es ?? m.text,
+        }));
+      const res = await translate({
+        text: msg.text,
+        to: "es",
+        trade: ref.current.profile.trade,
+        recent,
+      });
+      if (!res.ok) return false;
+      patchConversation(conversationId, (c) => ({
+        ...c,
+        messages: c.messages.map((m) => (m.id === messageId ? { ...m, es: res.text } : m)),
+      }));
+      return true;
+    },
+    [patchConversation],
+  );
+
   const receiveClientMessage = useCallback(
     (input: Parameters<Store["receiveClientMessage"]>[0]) => {
       const s = ref.current;
@@ -473,6 +511,9 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
           : [conv, ...prev.conversations],
       }));
 
+      // English from the client is translated right away so the user always reads Spanish.
+      if (detectLang(text) === "en" && !input.photo) void translateClientMessage(id, message.id);
+
       const quiet = conv.stage === "tu_turno" || conv.stage === "manual";
       if (!s.settings.autoReply || quiet) return id;
 
@@ -486,7 +527,7 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       }, 1100);
       return id;
     },
-    [commit, run],
+    [commit, run, translateClientMessage],
   );
 
   const sendUserMessage = useCallback(
@@ -494,10 +535,24 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       // Once the user writes by hand, Marcelo stays quiet in this chat until reactivated.
       patchConversation(conversationId, (c) => ({
         ...c,
-        stage: c.stage === "agendado" ? c.stage : "manual",
+        stage: "manual",
         messages: [...c.messages, { id: uid(), from: "user", text, es, at: nowISO() }],
         updatedAt: nowISO(),
       })),
+    [patchConversation],
+  );
+
+  const moveJobTo = useCallback(
+    (jobId: string, date: string, time: string, notify: boolean) => {
+      commit((s) => ops.moveJob(s, jobId, date, time));
+      if (notify) run((s) => ops.queueJobMessage(s, "confirm", jobId, { force: "ask" }));
+    },
+    [commit, run],
+  );
+
+  const dismissMove = useCallback(
+    (conversationId: string, key: string) =>
+      patchConversation(conversationId, (c) => ({ ...c, dismissedMove: key })),
     [patchConversation],
   );
 
@@ -559,6 +614,9 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       receiveClientMessage,
       sendUserMessage,
       sendPrepared,
+      translateClientMessage,
+      moveJobTo,
+      dismissMove,
       setConversationStage,
       markConversationRead,
       typingIn,
@@ -614,6 +672,9 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       receiveClientMessage,
       sendUserMessage,
       sendPrepared,
+      translateClientMessage,
+      moveJobTo,
+      dismissMove,
       setConversationStage,
       markConversationRead,
       typingIn,

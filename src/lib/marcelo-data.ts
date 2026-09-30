@@ -179,6 +179,10 @@ export type Conversation = {
   price?: number | undefined;
   size?: Size | undefined;
   address?: string | undefined;
+  /** A booked job the client wants to move; with date/time once Marcelo offered one. */
+  pendingMove?: { jobId: string; date?: string | undefined; time?: string | undefined } | undefined;
+  /** A day/time change the user said "no" to, so it isn't suggested again. */
+  dismissedMove?: string | undefined;
   /** Day/hour the client asked for, kept while Marcelo asks for address or size. */
   prefer?: { day?: string | undefined; hour?: number | undefined } | undefined;
   /** What Marcelo asked for and is waiting on before it can quote. */
@@ -750,6 +754,7 @@ function demoConversations(): Conversation[] {
           id: uid(),
           from: "client",
           text: "Hi! Do you do hedge trimming? Medium-size yard at 88 Lake Ave, 91101 😅",
+          es: "¡Hola! ¿Hacen poda de arbustos? Es un jardín mediano en 88 Lake Ave, 91101 😅",
           note: "Pide: Poda y limpieza",
           at: at(14),
         },
@@ -780,6 +785,7 @@ function demoConversations(): Conversation[] {
           id: uid(),
           from: "client",
           text: "How much for mowing every week? Could you do $90?",
+          es: "¿Cuánto cobra por cortar el pasto cada semana? ¿Me lo deja en $90?",
           note: "Pidió descuento",
           at: at(97),
         },
