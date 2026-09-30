@@ -13,6 +13,7 @@ import {
   MessagesSquare,
   Tags,
   Plug,
+  Sparkles,
 } from "lucide-react";
 import { ClientAvatar, toneChip } from "@/components/marcelo/visual";
 import { toast } from "sonner";

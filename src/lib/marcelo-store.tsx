@@ -50,6 +50,7 @@ type Store = {
   updateClient: (id: string, patch: Partial<Client>) => void;
   addJob: (j: Omit<Job, "id">) => Job;
   updateJob: (id: string, patch: Partial<Job>) => void;
+  removeJob: (id: string) => void;
   addExpense: (e: Omit<Expense, "id">) => Expense;
   addPayment: (p: Omit<Payment, "id">) => Payment;
   addPending: (text: string, extra?: Partial<Pending>) => Pending;
@@ -133,6 +134,10 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
 
   const updateJob = useCallback((id: string, patch: Partial<Job>) => {
     setState((s) => ({ ...s, jobs: s.jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)) }));
+  }, []);
+
+  const removeJob = useCallback((id: string) => {
+    setState((s) => ({ ...s, jobs: s.jobs.filter((j) => j.id !== id) }));
   }, []);
 
   const addExpense = useCallback((e: Omit<Expense, "id">) => {
@@ -406,6 +411,7 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       updateClient,
       addJob,
       updateJob,
+      removeJob,
       addExpense,
       addPayment,
       addPending,
@@ -447,6 +453,7 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       updateClient,
       addJob,
       updateJob,
+      removeJob,
       addExpense,
       addPayment,
       addPending,

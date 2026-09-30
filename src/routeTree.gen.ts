@@ -15,6 +15,7 @@ import { Route as ConexionesRouteImport } from './routes/conexiones'
 import { Route as DineroRouteImport } from './routes/dinero'
 import { Route as DocumentosRouteImport } from './routes/documentos'
 import { Route as GastosRouteImport } from './routes/gastos'
+import { Route as IaRouteImport } from './routes/ia'
 import { Route as MasRouteImport } from './routes/mas'
 import { Route as PendientesRouteImport } from './routes/pendientes'
 import { Route as ServiciosRouteImport } from './routes/servicios'
@@ -53,6 +54,11 @@ const DocumentosRoute = DocumentosRouteImport.update({
 const GastosRoute = GastosRouteImport.update({
   id: '/gastos',
   path: '/gastos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IaRoute = IaRouteImport.update({
+  id: '/ia',
+  path: '/ia',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MasRoute = MasRouteImport.update({
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
+  '/ia': typeof IaRoute
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
+  '/ia': typeof IaRoute
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/dinero': typeof DineroRoute
   '/documentos': typeof DocumentosRoute
   '/gastos': typeof GastosRoute
+  '/ia': typeof IaRoute
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/dinero'
     | '/documentos'
     | '/gastos'
+    | '/ia'
     | '/mas'
     | '/pendientes'
     | '/servicios'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/dinero'
     | '/documentos'
     | '/gastos'
+    | '/ia'
     | '/mas'
     | '/pendientes'
     | '/servicios'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/dinero'
     | '/documentos'
     | '/gastos'
+    | '/ia'
     | '/mas'
     | '/pendientes'
     | '/servicios'
@@ -214,6 +226,7 @@ export interface RootRouteChildren {
   DineroRoute: typeof DineroRoute
   DocumentosRoute: typeof DocumentosRoute
   GastosRoute: typeof GastosRoute
+  IaRoute: typeof IaRoute
   MasRoute: typeof MasRoute
   PendientesRoute: typeof PendientesRoute
   ServiciosRoute: typeof ServiciosRoute
@@ -267,6 +280,13 @@ declare module '@tanstack/react-router' {
       path: '/gastos'
       fullPath: '/gastos'
       preLoaderRoute: typeof GastosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ia': {
+      id: '/ia'
+      path: '/ia'
+      fullPath: '/ia'
+      preLoaderRoute: typeof IaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mas': {
@@ -342,6 +362,7 @@ const rootRouteChildren: RootRouteChildren = {
   DineroRoute: DineroRoute,
   DocumentosRoute: DocumentosRoute,
   GastosRoute: GastosRoute,
+  IaRoute: IaRoute,
   MasRoute: MasRoute,
   PendientesRoute: PendientesRoute,
   ServiciosRoute: ServiciosRoute,
