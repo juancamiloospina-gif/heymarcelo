@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   Ban,
   BellRing,
+  CalendarClock,
   ChevronRight,
   HandCoins,
   Hand,
@@ -22,11 +23,14 @@ import {
   holdPrice,
   offerPrice,
   requote,
+  suggestedMove,
   type AutopilotResult,
 } from "@/lib/marcelo-autopilot";
 import {
   daysBetween,
   money,
+  prettyDate,
+  prettyTime,
   priceFor,
   todayISO,
   type Conversation,
@@ -69,6 +73,19 @@ export function useAttention(): { items: Item[]; sheet: React.ReactNode } {
       body: note ?? "Marcelo no supo qué contestar.",
       cta: "Responder",
       onClick: () => setDecideId(c.id),
+    });
+  }
+  for (const c of state.conversations) {
+    const move = suggestedMove(state, c);
+    if (!move) continue;
+    items.push({
+      id: `move-${c.id}`,
+      icon: CalendarClock,
+      tone: move.conflicts.length ? "danger" : "accent",
+      title: `${c.contactName.split(" ")[0]} habló de otro horario`,
+      body: `${prettyDate(move.date)}, ${prettyTime(move.time)}${move.conflicts.length ? ` · ${move.conflicts[0]}` : " · Tienes el espacio libre"}`,
+      cta: "Revisar",
+      onClick: () => navigate({ to: "/bandeja/$conversationId", params: { conversationId: c.id } }),
     });
   }
   for (const o of state.outbox) {
@@ -276,9 +293,17 @@ export function DecisionSheet({ conv, onClose }: { conv: Conversation; onClose: 
 
   return (
     <Sheet title={`Responder a ${conv.contactName.split(" ")[0]}`} onClose={onClose}>
-      <p className="mb-3 text-[15px] text-muted-foreground">
-        {[...conv.messages].reverse().find((m) => m.from === "client")?.text}
-      </p>
+      {(() => {
+        const last = [...conv.messages].reverse().find((m) => m.from === "client");
+        return last ? (
+          <div className="mb-3 rounded-2xl bg-muted/60 p-3">
+            <p className="text-[16px] leading-snug">{last.es ?? last.text}</p>
+            {last.es ? (
+              <p className="mt-1 text-[14px] text-muted-foreground">En inglés: {last.text}</p>
+            ) : null}
+          </div>
+        ) : null;
+      })()}
       <div className="space-y-2">
         {options
           .filter((o) => o.show)

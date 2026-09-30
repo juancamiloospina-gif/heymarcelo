@@ -32,7 +32,8 @@ export type OpEvent =
   | { type: "blocked"; name: string }
   | { type: "queued"; kind: AutoMessageKind | "invoice"; name: string }
   | { type: "sent"; kind: AutoMessageKind | "invoice"; name: string }
-  | { type: "expired"; name: string };
+  | { type: "expired"; name: string }
+  | { type: "moved"; name: string; job: Job };
 
 type Out = { s: MarceloState; events: OpEvent[] };
 
@@ -165,6 +166,11 @@ export function applyResult(s: MarceloState, convId: string, result: AutopilotRe
     next = patchJob(next, jobId, (j) =>
       j.status === "cotizado" ? { ...j, status: "cancelado" } : j,
     );
+  }
+  if (result.move) {
+    next = moveJob(next, result.move.jobId, result.move.date, result.move.time);
+    const job = next.jobs.find((j) => j.id === result.move!.jobId);
+    if (job) events.push({ type: "moved", name, job });
   }
   if (result.saveAddress && clientId) {
     next = {
@@ -415,4 +421,12 @@ export function tick(s: MarceloState, now = Date.now()): Out {
     }
   }
   return { s: next, events };
+}
+
+/** Moves a job to a new day/time; the 24 h reminder is re-armed and stale ones dropped. */
+export function moveJob(s: MarceloState, jobId: string, date: string, time: string): MarceloState {
+  return {
+    ...patchJob(s, jobId, (j) => ({ ...j, date, time, sent: { ...j.sent, reminder: false } })),
+    outbox: s.outbox.filter((o) => !(o.jobId === jobId && o.kind === "reminder")),
+  };
 }

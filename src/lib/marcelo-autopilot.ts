@@ -43,7 +43,9 @@ export type AutopilotResult = {
   cancel?: boolean | undefined;
   saveAddress?: string | undefined;
   pending?: { text: string } | undefined;
-  event?: "quoted" | "booked" | "handoff" | "declined" | "asked" | undefined;
+  /** Move an already booked job (the client asked and the new time is free). */
+  move?: { jobId: string; date: string; time: string } | undefined;
+  event?: "quoted" | "booked" | "handoff" | "declined" | "asked" | "moved" | undefined;
 };
 
 export const QUOTE_TTL_MS = 48 * 3_600_000;
@@ -125,6 +127,9 @@ const ASK_PRICE =
   /\b(how much|price|prices|quote|rates?|cost|cuanto|precio|precios|cotizacion|cobra)\b/;
 const GREETING = /\b(hi|hello|hey|good (morning|afternoon)|hola|buenas|buenos dias)\b/;
 const ADDRESS = /^\s*\d{1,6}\s+[a-z0-9 .'-]{3,}/i;
+const MOVE =
+  /\b(reschedul\w*|re-schedul\w*|move (it|the)|change (the )?(day|date|time)|postpone|push it|another day|can'?t make it|won'?t be (home|there)|have to leave|cambiar|mover|moverlo|reprogram\w*|posponer|pasarlo|no puedo|no voy a estar)\b/;
+const SAME_TIME = /\b(same time|misma hora)\b/;
 
 const sizeWords: [RegExp, Size][] = [
   [/\b(small|tiny|little|chico|chica|pequen[oa])\b/, "chico"],
@@ -239,6 +244,68 @@ function preferredHour(t: string): number | undefined {
   return h >= 0 && h <= 23 ? h : undefined;
 }
 
+/** Exact "HH:mm" when the client gave one ("at 10 am", "a las 3:30"). */
+function preferredTime(t: string): string | undefined {
+  const m =
+    t.match(
+      /\b(?:at|a las|around|como a las)?\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)\b/,
+    ) ?? t.match(/\b(?:at|a las)\s+(\d{1,2})(?::(\d{2}))?\b/);
+  const h = preferredHour(t);
+  if (!m || h === undefined) return undefined;
+  return `${String(h).padStart(2, "0")}:${m[2] ?? "00"}`;
+}
+
+/**
+ * A new day/time mentioned in a message, relative to the job it's about:
+ * "tomorrow at the same time", "Friday at 10 am", "mañana a la misma hora".
+ */
+export function parseWhen(text: string, base: { date: string; time: string }) {
+  const t = norm(text);
+  const day = preferredDay(t);
+  const time = SAME_TIME.test(t) ? base.time : preferredTime(t);
+  if (!day && !time) return null;
+  return { date: day ?? base.date, time: time ?? base.time };
+}
+
+/** Why a job can't go at that date/time (in Spanish), or [] when it fits. */
+export function conflictsFor(state: MarceloState, job: Job, date: string, time: string): string[] {
+  const out: string[] = [];
+  const dow = new Date(`${date}T12:00:00`).getDay();
+  const day = state.settings.hours[dow];
+  const minutes =
+    state.services.find((s) => s.id === job.serviceId || s.name === job.service)?.minutes ?? 90;
+  const start = toMin(time);
+  if (new Date(`${date}T${time}:00`).getTime() < Date.now()) out.push("Esa hora ya pasó");
+  if (state.settings.blocked.includes(date)) out.push("Bloqueaste ese día");
+  else if (!day?.on) out.push("Ese día no trabajas");
+  else if (start < toMin(day.start) || start + minutes > toMin(day.end)) {
+    out.push(`Fuera de tu horario (${prettyTime(day.start)}–${prettyTime(day.end)})`);
+  }
+  for (const other of state.jobs) {
+    if (other.id === job.id || other.date !== date || !isActiveJob(other)) continue;
+    const oStart = toMin(other.time);
+    const oEnd =
+      oStart +
+      (state.services.find((s) => s.id === other.serviceId || s.name === other.service)?.minutes ??
+        90);
+    const buffer = state.settings.bufferMin;
+    if (start < oEnd + buffer && start + minutes + buffer > oStart) {
+      const who = state.clients.find((c) => c.id === other.clientId)?.name ?? "otro cliente";
+      out.push(`Choca con ${who} a las ${prettyTime(other.time)}`);
+    }
+  }
+  return out;
+}
+
+/** The booked job a conversation is about: its own, or the client's next one. */
+export function jobForConversation(state: MarceloState, conv: Conversation): Job | undefined {
+  const own = state.jobs.find((j) => j.id === conv.jobId && isActiveJob(j));
+  if (own) return own;
+  return state.jobs
+    .filter((j) => j.clientId === conv.clientId && isActiveJob(j) && j.date >= todayISO())
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
+}
+
 /** "in the morning" / "en la tarde": a preference, not a request to move an offered slot. */
 function vagueHour(t: string): number | undefined {
   if (/\b(morning|la manana|temprano)\b/.test(t)) return 9;
@@ -266,6 +333,8 @@ export function findSlot(
     after?: Slot | undefined;
     /** Conversation asking; its own pending offer doesn't block it. */
     conversationId?: string | undefined;
+    /** A job being moved doesn't block its own new slot. */
+    excludeJobId?: string | undefined;
     zip?: string | undefined;
   } = {},
 ): Slot | undefined {
@@ -283,7 +352,13 @@ export function findSlot(
     if (!day?.on || blocked.includes(date)) return undefined;
     if (opts.after && date < opts.after.date) return undefined;
     const busy = state.jobs
-      .filter((j) => j.date === date && isActiveJob(j) && j.conversationId !== opts.conversationId)
+      .filter(
+        (j) =>
+          j.date === date &&
+          isActiveJob(j) &&
+          j.id !== opts.excludeJobId &&
+          (j.status !== "cotizado" || j.conversationId !== opts.conversationId),
+      )
       .map((j) => [toMin(j.time), toMin(j.time) + durationOf(j)] as const);
     const candidates: number[] = [];
     for (let start = toMin(day.start); start + minutes <= toMin(day.end); start += 60)
@@ -638,6 +713,8 @@ export function runAutopilot(
   }
 
   if (conv.stage === "agendado") {
+    const moved = reschedule(state, conv, raw, lang);
+    if (moved) return moved;
     const client = state.clients.find((c) => c.id === conv.clientId);
     if (client && !client.address && ADDRESS.test(raw)) {
       return {
@@ -857,4 +934,134 @@ export function jobMessage(
         `Hola ${first}, ¡gracias por tu confianza! Factura por ${svcEs.toLowerCase()} del ${prettyDate(job.date).toLowerCase()}: ${money(job.price)}.${extra.instructions ? ` Puedes pagar por ${extra.instructions}.` : ""}`,
       );
   }
+}
+
+/**
+ * A booked client asks to change day/time. Free slot → move it and confirm. Taken → offer the
+ * closest free time that day (or the next free one) and wait for a yes. Nothing to parse → ask.
+ */
+function reschedule(
+  state: MarceloState,
+  conv: Conversation,
+  raw: string,
+  lang: "en" | "es",
+): AutopilotResult | undefined {
+  const job = jobForConversation(state, conv);
+  if (!job) return undefined;
+  const t = norm(raw);
+  const first = firstName(conv);
+  const service = state.services.find((s) => s.id === job.serviceId || s.name === job.service);
+  const svcEn = (service?.nameEn ?? job.service).toLowerCase();
+  const svcEs = job.service.toLowerCase();
+  const pending = conv.pendingMove?.jobId === job.id ? conv.pendingMove : undefined;
+  const asksMove = has(t, MOVE);
+
+  const doMove = (date: string, time: string, note: string): AutopilotResult => ({
+    clientNote: note,
+    reply: say(
+      lang,
+      `Done, ${first}! I moved your ${svcEn} to ${prettyDateEn(date)} at ${prettyTime(time)}. See you then!`,
+      `¡Listo, ${first}! Moví tu ${svcEs} para ${prettyDate(date).toLowerCase()} a las ${prettyTime(time)}. ¡Nos vemos!`,
+    ),
+    patch: { pendingMove: undefined },
+    move: { jobId: job.id, date, time },
+    event: "moved",
+  });
+
+  // The client is answering our offer of a new time.
+  if (pending?.date && pending.time) {
+    if (has(t, ACCEPT) && !has(t, DECLINE))
+      return doMove(pending.date, pending.time, "Aceptó el nuevo horario");
+  }
+
+  const when = parseWhen(raw, job);
+  if (!asksMove && !pending) {
+    // Mentions a different day/time without asking: only act when it's clearly a change.
+    // "OK, see you tomorrow at 10" with a different time is a change, not just an "ok".
+    if (!when || (when.date === job.date && when.time === job.time)) return undefined;
+  }
+  if (!when) {
+    return {
+      clientNote: "Quiere cambiar el horario",
+      reply: say(
+        lang,
+        `No problem, ${first}! What day and time work better for you?`,
+        `¡No hay problema, ${first}! ¿Qué día y hora te quedan mejor?`,
+      ),
+      patch: { pendingMove: { jobId: job.id } },
+      event: "asked",
+    };
+  }
+  if (when.date === job.date && when.time === job.time) return undefined;
+
+  const problems = conflictsFor(state, job, when.date, when.time);
+  const note = `Quiere mover a ${prettyDate(when.date).toLowerCase()}, ${prettyTime(when.time)}`;
+  if (!problems.length) return doMove(when.date, when.time, note);
+
+  const minutes = service?.minutes ?? 90;
+  const alt =
+    findSlot(state, minutes, {
+      day: when.date,
+      hour: toMin(when.time) / 60,
+      excludeJobId: job.id,
+      conversationId: conv.id,
+    }) ??
+    findSlot(state, minutes, {
+      after: { date: when.date, time: when.time },
+      excludeJobId: job.id,
+      conversationId: conv.id,
+    });
+  if (!alt) {
+    return {
+      clientNote: note,
+      reply: say(
+        lang,
+        `Thanks ${first}! That time is taken. Let me check my schedule and I'll get back to you shortly.`,
+        `¡Gracias ${first}! Esa hora está ocupada. Reviso mi agenda y te respondo pronto.`,
+      ),
+      patch: { stage: "tu_turno", pendingMove: undefined },
+      pending: { text: `Buscar otro horario para ${first}` },
+      event: "handoff",
+    };
+  }
+  return {
+    clientNote: note,
+    reply: say(
+      lang,
+      `Sorry ${first}, ${prettyDateEn(when.date)} at ${prettyTime(when.time)} is taken. I can do ${prettyDateEn(alt.date)} at ${prettyTime(alt.time)}. Does that work? Reply YES.`,
+      `Perdona ${first}, ${prettyDate(when.date).toLowerCase()} a las ${prettyTime(when.time)} está ocupado. Puedo ${prettyDate(alt.date).toLowerCase()} a las ${prettyTime(alt.time)}. ¿Te sirve? Responde SÍ.`,
+    ),
+    patch: { pendingMove: { jobId: job.id, date: alt.date, time: alt.time } },
+    event: "asked",
+  };
+}
+
+/**
+ * A new day/time agreed in the chat (even when the user is answering by hand) that differs
+ * from the booked job: shown as "¿Mover el trabajo…?" with any conflicts. Null when nothing changed.
+ */
+export function suggestedMove(state: MarceloState, conv: Conversation) {
+  const job = jobForConversation(state, conv);
+  if (!job) return null;
+  // While Marcelo is negotiating the new time itself, its offer is not an agreement yet.
+  const userInCharge =
+    conv.stage === "manual" || conv.stage === "tu_turno" || !state.settings.autoReply;
+  if (conv.pendingMove && !userInCharge) return null;
+  const said = conv.messages.filter((m) => m.from !== "marcelo");
+  for (const m of said.reverse().slice(0, 3)) {
+    const text = m.from === "client" ? m.text : `${m.text} ${m.es ?? ""}`;
+    const when = parseWhen(text, job);
+    if (!when) continue;
+    if (when.date === job.date && when.time === job.time) return null;
+    const key = `${job.id}:${when.date}:${when.time}`;
+    if (conv.dismissedMove === key) return null;
+    return {
+      job,
+      date: when.date,
+      time: when.time,
+      key,
+      conflicts: conflictsFor(state, job, when.date, when.time),
+    };
+  }
+  return null;
 }

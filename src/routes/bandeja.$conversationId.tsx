@@ -10,6 +10,8 @@ import {
   Send,
   Sparkles,
   Camera,
+  AlertTriangle,
+  CalendarClock,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +19,7 @@ import { Badge, Button, Screen } from "@/components/marcelo/kit";
 import { ChannelBadge, ClientAvatar, ServiceIcon, stageLabel } from "@/components/marcelo/visual";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { DecisionSheet, ServiceFixSheet } from "@/components/marcelo/attention";
+import { jobForConversation, suggestedMove } from "@/lib/marcelo-autopilot";
 import { ask } from "@/lib/ai/ask";
 import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
@@ -46,6 +49,9 @@ function Conversacion() {
     sendUserMessage,
     setConversationStage,
     markConversationRead,
+    translateClientMessage,
+    moveJobTo,
+    dismissMove,
   } = useMarcelo();
   const navigate = useNavigate();
   const [text, setText] = useState("");
@@ -78,7 +84,17 @@ function Conversacion() {
   const stage = stageLabel[conv.stage];
   const price = conv.price ?? service?.price;
   const lastNote = [...conv.messages].reverse().find((m) => m.note)?.note;
-  const handBack = () => setConversationStage(conv.id, conv.proposal ? "cotizado" : "nuevo");
+  const move = suggestedMove(state, conv);
+  // Back to where Marcelo left off: a booked job, an open quote, or a fresh chat.
+  const handBack = () =>
+    setConversationStage(
+      conv.id,
+      jobForConversation(state, conv)?.status === "confirmado"
+        ? "agendado"
+        : conv.proposal
+          ? "cotizado"
+          : "nuevo",
+    );
 
   const send = async () => {
     const value = text.trim();
@@ -226,6 +242,51 @@ function Conversacion() {
         )}
       </StatusBar>
 
+      {move ? (
+        <div className="border-b bg-card px-4 py-3">
+          <p className="flex items-center gap-2 text-[16px] font-semibold">
+            <CalendarClock className="size-5 text-accent" />
+            ¿Mover el trabajo a {prettyDate(move.date).toLowerCase()}, {prettyTime(move.time)}?
+          </p>
+          <p className="mt-0.5 text-[14px] text-muted-foreground">
+            Ahora: {prettyDate(move.job.date)}, {prettyTime(move.job.time)} · {move.job.service}
+          </p>
+          {move.conflicts.length ? (
+            <ul className="mt-2 space-y-1">
+              {move.conflicts.map((c) => (
+                <li
+                  key={c}
+                  className="flex items-center gap-1.5 text-[14px] font-semibold text-destructive"
+                >
+                  <AlertTriangle className="size-4 shrink-0" /> {c}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 flex items-center gap-1.5 text-[14px] font-semibold text-success">
+              <CalendarCheck className="size-4" /> Tienes ese espacio libre.
+            </p>
+          )}
+          <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
+            <Button size="sm" variant="secondary" onClick={() => dismissMove(conv.id, move.key)}>
+              No
+            </Button>
+            <Button
+              size="sm"
+              variant={move.conflicts.length ? "danger" : "accent"}
+              onClick={() => {
+                moveJobTo(move.job.id, move.date, move.time, true);
+                toast.success("Trabajo movido", {
+                  description: `Revisa y envía la confirmación a ${first}.`,
+                });
+              }}
+            >
+              {move.conflicts.length ? "Mover igual" : `Mover y avisar a ${first}`}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {conv.lang === "en" ? (
           <div className="flex justify-center">
@@ -234,7 +295,7 @@ function Conversacion() {
               className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground"
             >
               <Languages className="size-3.5" />
-              {showEs ? "Viendo traducción al español" : "Ver traducción al español"}
+              {showEs ? "Español primero · toca para ver solo inglés" : "Ver en español"}
             </button>
           </div>
         ) : null}
@@ -248,7 +309,30 @@ function Conversacion() {
                     <Camera className="size-4" /> Foto
                   </p>
                 ) : null}
-                <p className="whitespace-pre-line text-[16px] leading-relaxed">{m.text}</p>
+                {showEs && m.es ? (
+                  <>
+                    <p className="whitespace-pre-line text-[17px] leading-relaxed">{m.es}</p>
+                    <p className="mt-2 whitespace-pre-line border-t pt-2 text-[14px] leading-relaxed text-muted-foreground">
+                      <span className="font-semibold">En inglés: </span>
+                      {m.text}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="whitespace-pre-line text-[16px] leading-relaxed">{m.text}</p>
+                    {showEs && conv.lang === "en" && !m.photo ? (
+                      <button
+                        onClick={async () => {
+                          const ok = await translateClientMessage(conv.id, m.id);
+                          if (!ok) toast.error("No pude traducirlo ahora. Intenta en un momento.");
+                        }}
+                        className="mt-2 flex min-h-10 items-center gap-1.5 text-[14px] font-semibold text-accent"
+                      >
+                        <Languages className="size-4" /> Ver en español
+                      </button>
+                    ) : null}
+                  </>
+                )}
                 <p className="mt-1 text-[12px] text-muted-foreground">{hhmm(m.at)}</p>
               </div>
               {m.note ? (
@@ -285,17 +369,21 @@ function Conversacion() {
                     "Tú"
                   )}
                 </p>
-                <p className="whitespace-pre-line text-[15px] leading-relaxed">{m.text}</p>
+                {/* Spanish first for the user; the English below is what the client received. */}
+                <p className="whitespace-pre-line text-[16px] leading-relaxed">
+                  {showEs && m.es ? m.es : m.text}
+                </p>
                 {showEs && m.es ? (
                   <p
                     className={cn(
-                      "mt-2 whitespace-pre-line border-t pt-2 text-[13px] leading-relaxed",
+                      "mt-2 whitespace-pre-line border-t pt-2 text-[14px] leading-relaxed",
                       m.from === "marcelo"
                         ? "border-accent/15 text-muted-foreground"
                         : "border-primary-foreground/15 text-primary-foreground/70",
                     )}
                   >
-                    {m.es}
+                    <span className="font-semibold">Recibió en inglés: </span>
+                    {m.text}
                   </p>
                 ) : null}
                 <p
@@ -385,7 +473,7 @@ function Conversacion() {
             <Send className="size-4" />
           </button>
         </form>
-        {as === "user" && conv.stage !== "manual" && conv.stage !== "agendado" ? (
+        {as === "user" && conv.stage !== "manual" ? (
           <p className="mt-2 text-[11px] text-muted-foreground">
             Si respondes tú, Marcelo se pausa en este chat.
           </p>

@@ -185,7 +185,7 @@ function Bandeja() {
             const preview = lastClient
               ? lastClient.photo
                 ? "📷 Foto"
-                : lastClient.text
+                : (lastClient.es ?? lastClient.text)
               : "Sin mensajes del cliente";
             const stage = stageLabel[c.stage];
             return (
