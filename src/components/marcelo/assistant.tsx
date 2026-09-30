@@ -22,27 +22,10 @@ import {
   type Expense,
   type Payment,
 } from "@/lib/marcelo-data";
-import { askMarcelo } from "@/lib/marcelo.functions";
-
-type MarceloAction = {
-  type: string;
-  clientName?: string;
-  name?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  service?: string;
-  price?: number | string;
-  date?: string;
-  time?: string;
-  category?: string;
-  amount?: number | string;
-  note?: string;
-  method?: string;
-  text?: string;
-  es?: string;
-  en?: string;
-};
+import { ask } from "@/lib/ai/ask";
+import { needsConfirmation, type MarceloAction } from "@/lib/ai/actions";
+import { useAIStatus, providers } from "@/lib/ai/config";
+import mark from "@/assets/marcelo-mark.png";
 
 // Minimal typing for the Web Speech API, which isn't in TypeScript's DOM lib.
 type SpeechResultList = ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
@@ -58,15 +41,19 @@ type SpeechRecognitionLike = {
 };
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
-const toCategory = (value?: string): Expense["category"] =>
-  expenseCategories.find((c) => c.toLowerCase() === value?.toLowerCase()) ?? "Otros";
-
-const toMethod = (value?: string): Exclude<Payment["method"], "debe"> =>
-  value === "zelle" || value === "cheque" ? value : "efectivo";
-
 type AssistantCtx = { open: (seed?: string) => void };
 const Ctx = createContext<AssistantCtx>({ open: () => {} });
 export const useAssistant = () => useContext(Ctx);
+
+/** Prefers natural-sounding US/Mexican Spanish voices over the robotic system default. */
+function bestSpanishVoice(voices: SpeechSynthesisVoice[]) {
+  const spanish = voices.filter((v) => v.lang.toLowerCase().startsWith("es"));
+  const score = (v: SpeechSynthesisVoice) =>
+    (/natural|neural|premium|enhanced|google/i.test(v.name) ? 4 : 0) +
+    (/^es-(us|mx)/i.test(v.lang) ? 2 : /^es-419/i.test(v.lang) ? 1 : 0) +
+    (v.localService ? 0 : 1);
+  return spanish.sort((a, b) => score(b) - score(a))[0];
+}
 
 function speak(text: string) {
   try {
@@ -75,7 +62,9 @@ function speak(text: string) {
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "es-US";
-    u.rate = 1;
+    u.rate = 1.03;
+    const voice = bestSpanishVoice(synth.getVoices());
+    if (voice) u.voice = voice;
     synth.speak(u);
   } catch {
     /* no speech synthesis */
@@ -112,6 +101,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [typed, setTyped] = useState("");
   const [reply, setReply] = useState("");
   const [pendingAction, setPendingAction] = useState<MarceloAction | null>(null);
+  const [limitHit, setLimitHit] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const navigate = useNavigate();
   const store = useMarcelo();
@@ -163,6 +153,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         )
         .join("; ")}`,
       `Ingresos del mes: ${money(income)}. Gastos del mes: ${money(spent)}. Ganancia: ${money(income - spent)}.`,
+      `Servicios y precios: ${store.state.services.map((sv) => `${sv.name} ${money(sv.price)} (${sv.minutes} min)`).join("; ")}`,
       `Gastos recientes: ${expenses
         .slice(0, 6)
         .map((e) => `${e.category} ${money(e.amount)} ${e.date}`)
@@ -174,103 +165,162 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     ].join("\n");
   }, [store.state]);
 
+  const ai = useAIStatus();
+
+  /** Applies one validated action to the user's own data. Nothing else is reachable from here. */
   const runAction = useCallback(
     (action: MarceloAction) => {
+      const done = (msg: string) => {
+        toast.success(msg);
+        setPendingAction(null);
+      };
+      const notFound = (who: string) => {
+        toast.error(`No encontré a ${who} en tus clientes`);
+        setPendingAction(null);
+      };
+      const nextJobOf = (clientId: string, date?: string) =>
+        store.state.jobs
+          .filter(
+            (j) => j.clientId === clientId && j.status !== "completado" && j.date >= todayISO(),
+          )
+          .filter((j) => !date || j.date === date)
+          .sort((x, y) => (x.date + x.time).localeCompare(y.date + y.time))[0];
+
       switch (action.type) {
         case "CREATE_JOB": {
           const client =
-            store.findClientByName(String(action.clientName ?? "")) ??
+            store.findClientByName(action.clientName) ??
             store.addClient({
-              name: String(action.clientName ?? "Cliente nuevo"),
+              name: action.clientName,
               phone: "",
               address: "",
               city: store.state.profile.city || "",
-              service: String(action.service ?? "Servicio"),
-              price: Number(action.price ?? 0),
+              service: action.service ?? "Servicio",
+              price: action.price ?? 0,
             });
           const job = store.addJob({
             clientId: client.id,
-            date: String(action.date ?? todayISO()),
-            time: String(action.time ?? "09:00"),
-            service: String(action.service ?? client.service),
-            price: Number(action.price ?? client.price),
+            date: action.date,
+            time: action.time,
+            service: action.service ?? client.service,
+            price: action.price ?? client.price,
             status: "confirmado",
           });
-          toast.success(`Cita agendada con ${client.name}`);
+          done(`Cita agendada con ${client.name}`);
           close();
           navigate({ to: "/trabajo/$jobId", params: { jobId: job.id } });
           return;
         }
+        case "RESCHEDULE_JOB": {
+          const client = store.findClientByName(action.clientName);
+          if (!client) return notFound(action.clientName);
+          const job = nextJobOf(client.id, action.fromDate);
+          if (!job) {
+            toast.error(`${client.name} no tiene citas próximas`);
+            return setPendingAction(null);
+          }
+          store.updateJob(job.id, { date: action.date, time: action.time });
+          return done(`Cita de ${client.name} movida`);
+        }
+        case "CANCEL_JOB": {
+          const client = store.findClientByName(action.clientName);
+          if (!client) return notFound(action.clientName);
+          const job = nextJobOf(client.id, action.date);
+          if (!job) {
+            toast.error(`${client.name} no tiene citas próximas`);
+            return setPendingAction(null);
+          }
+          store.removeJob(job.id);
+          return done(`Cita de ${client.name} cancelada`);
+        }
         case "CREATE_CLIENT": {
           const c = store.addClient({
-            name: String(action.name ?? "Cliente nuevo"),
-            phone: String(action.phone ?? ""),
-            address: String(action.address ?? ""),
-            city: String(action.city ?? store.state.profile.city ?? ""),
-            service: String(action.service ?? ""),
-            price: Number(action.price ?? 0),
+            name: action.name,
+            phone: action.phone ?? "",
+            address: action.address ?? "",
+            city: action.city ?? store.state.profile.city ?? "",
+            service: action.service ?? "",
+            price: action.price ?? 0,
           });
-          toast.success(`${c.name} agregado a tus clientes`);
+          done(`${c.name} agregado a tus clientes`);
           close();
           navigate({ to: "/clientes/$clientId", params: { clientId: c.id } });
           return;
         }
-        case "CREATE_EXPENSE": {
+        case "UPDATE_CLIENT": {
+          const client = store.findClientByName(action.clientName);
+          if (!client) return notFound(action.clientName);
+          const { phone, address, city, notes } = action;
+          store.updateClient(client.id, {
+            ...(phone ? { phone } : {}),
+            ...(address ? { address } : {}),
+            ...(city ? { city } : {}),
+            ...(notes ? { notes } : {}),
+          });
+          return done(`Datos de ${client.name} actualizados`);
+        }
+        case "CREATE_EXPENSE":
           store.addExpense({
-            category: toCategory(action.category),
-            amount: Number(action.amount ?? 0),
-            note: action.note ? String(action.note) : undefined,
+            category: action.category,
+            amount: action.amount,
+            note: action.note,
             date: todayISO(),
           });
-          toast.success(`Gasto registrado: ${money(Number(action.amount ?? 0))}`);
-          break;
-        }
+          return done(`Gasto registrado: ${money(action.amount)}`);
         case "RECORD_PAYMENT": {
-          const client = store.findClientByName(String(action.clientName ?? ""));
-          if (!client) {
-            toast.error("No encontré ese cliente");
-            break;
-          }
+          const client = store.findClientByName(action.clientName);
+          if (!client) return notFound(action.clientName);
           store.addPayment({
             clientId: client.id,
-            amount: Number(action.amount ?? 0),
-            method: toMethod(action.method),
+            amount: action.amount,
+            method: action.method,
             date: todayISO(),
           });
-          toast.success(`Pago registrado: ${money(Number(action.amount ?? 0))}`);
-          break;
+          return done(`Pago registrado: ${money(action.amount)}`);
         }
         case "CREATE_PENDING": {
-          const client = action.clientName
-            ? store.findClientByName(String(action.clientName))
-            : undefined;
-          store.addPending(String(action.text ?? "Pendiente"), {
-            clientId: client?.id,
-            amount: action.amount ? Number(action.amount) : undefined,
-          });
-          toast.success("Pendiente agregado");
-          break;
+          const client = action.clientName ? store.findClientByName(action.clientName) : undefined;
+          store.addPending(action.text, { clientId: client?.id, amount: action.amount });
+          return done("Pendiente agregado");
+        }
+        case "COMPLETE_PENDING": {
+          const needle = action.text.toLowerCase();
+          const p = store.state.pendings.find(
+            (x) => !x.done && x.text.toLowerCase().includes(needle),
+          );
+          if (!p) {
+            toast.error("No encontré ese pendiente");
+            return setPendingAction(null);
+          }
+          store.togglePending(p.id);
+          return done("Pendiente marcado como listo");
+        }
+        case "UPDATE_SERVICE_PRICE": {
+          const needle = action.serviceName.toLowerCase();
+          const svc = store.state.services.find(
+            (x) => x.name.toLowerCase().includes(needle) || needle.includes(x.name.toLowerCase()),
+          );
+          if (!svc) {
+            toast.error("No encontré ese servicio en tus precios");
+            return setPendingAction(null);
+          }
+          store.updateService(svc.id, { price: action.price });
+          return done(`${svc.name} ahora cuesta ${money(action.price)}`);
         }
         case "TRANSLATE_MESSAGE": {
-          const client = store.findClientByName(String(action.clientName ?? ""));
-          if (client) {
-            store.addMessage({
-              clientId: client.id,
-              es: String(action.es ?? heard),
-              en: String(action.en ?? ""),
-              date: todayISO(),
-            });
-            close();
-            navigate({ to: "/mensaje/$clientId", params: { clientId: client.id } });
-            return;
-          }
-          toast.error("No encontré ese cliente");
-          break;
+          const client = store.findClientByName(action.clientName);
+          if (!client) return notFound(action.clientName);
+          store.addMessage({
+            clientId: client.id,
+            es: action.es || heard,
+            en: action.en,
+            date: todayISO(),
+          });
+          close();
+          navigate({ to: "/mensaje/$clientId", params: { clientId: client.id } });
+          return;
         }
-        default:
-          break;
       }
-      setPendingAction(null);
     },
     [store, close, navigate, heard],
   );
@@ -285,12 +335,14 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       setReply("");
       setPendingAction(null);
       try {
-        const res = await askMarcelo({ data: { text: value, today: todayISO(), snapshot } });
+        const res = await ask({ text: value, today: todayISO(), snapshot });
+        setLimitHit(!res.ok && res.reason === "limit");
         setReply(res.reply);
         speak(res.reply);
         if (res.ok && res.action) {
-          if (res.confirm) setPendingAction(res.action as MarceloAction);
-          else runAction(res.action as MarceloAction);
+          // Every change to the user's data waits for an explicit tap, whatever the model says.
+          if (needsConfirmation(res.action)) setPendingAction(res.action);
+          else runAction(res.action);
         }
       } catch {
         setReply("No pude conectarme. Revisa tu internet e intenta otra vez.");
@@ -368,12 +420,22 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
               <X className="size-5" />
             </button>
             <span className="text-[17px] font-semibold">Marcelo</span>
-            <div className="w-10" />
+            <button
+              onClick={() => {
+                close();
+                navigate({ to: "/ia" });
+              }}
+              className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-semibold text-primary-foreground/80"
+            >
+              {ai.own
+                ? `Tu IA · ${providers[ai.own.provider].name}`
+                : `Incluido · ${ai.percentUsed}%`}
+            </button>
           </div>
 
           <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center">
-            <div className="mb-8 flex size-24 items-center justify-center rounded-[2rem] bg-accent/20 text-[38px] font-bold text-accent ring-1 ring-accent/30">
-              M
+            <div className="mb-8 flex size-24 items-center justify-center rounded-[2rem] bg-card p-3 shadow-[var(--shadow-lift)]">
+              <img src={mark} alt="Marcelo" className="size-full object-contain" />
             </div>
 
             <h2 className="text-[28px] font-bold tracking-tight">
@@ -400,6 +462,17 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
                     Marcelo
                   </p>
                   <p className="text-[17px] leading-relaxed text-primary-foreground">{reply}</p>
+                  {limitHit ? (
+                    <Button
+                      className="mt-5 w-full border-none bg-accent text-accent-foreground"
+                      onClick={() => {
+                        close();
+                        navigate({ to: "/ia" });
+                      }}
+                    >
+                      Conectar mi IA
+                    </Button>
+                  ) : null}
                   {pendingAction ? (
                     <div className="mt-6 flex gap-3">
                       <Button

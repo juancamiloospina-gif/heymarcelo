@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button, Screen } from "@/components/marcelo/kit";
 import { useAssistant } from "@/components/marcelo/assistant";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { askMarcelo } from "@/lib/marcelo.functions";
+import { ask } from "@/lib/ai/ask";
 import { todayISO } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
 
@@ -59,22 +59,16 @@ function Mensaje() {
     if (!es.trim()) return;
     setLoading(true);
     try {
-      const res = await askMarcelo({
-        data: {
-          text: `Dile a ${client.name}: ${es}`,
-          today: todayISO(),
-          snapshot: `Cliente: ${client.name} (${client.service}, ${client.city}).`,
-        },
+      const res = await ask({
+        text: `Dile a ${client.name}: ${es}`,
+        today: todayISO(),
+        snapshot: `Cliente: ${client.name} (${client.service}, ${client.city}).`,
       });
       if (!res.ok) {
         toast.error(res.reply);
         return;
       }
-      if (res.action?.type === "TRANSLATE_MESSAGE" && res.action.en) {
-        setEn(String(res.action.en));
-      } else {
-        setEn(res.reply);
-      }
+      setEn(res.action?.type === "TRANSLATE_MESSAGE" ? res.action.en : res.reply);
     } catch {
       toast.error("No pude preparar el mensaje. Intenta otra vez.");
     } finally {

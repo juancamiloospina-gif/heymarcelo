@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { Badge, Button, Screen } from "@/components/marcelo/kit";
 import { ChannelBadge, ClientAvatar, ServiceIcon, stageLabel } from "@/components/marcelo/visual";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { askMarcelo } from "@/lib/marcelo.functions";
+import { ask } from "@/lib/ai/ask";
 import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
 
@@ -101,21 +101,18 @@ function Conversacion() {
     }
     setSending(true);
     try {
-      const res = await askMarcelo({
-        data: {
-          text: `Dile a ${conv.contactName}: ${value}`,
-          today: todayISO(),
-          snapshot: `Cliente: ${conv.contactName}. Canal: ${conv.channel}.`,
-        },
+      const res = await ask({
+        text: `Dile a ${conv.contactName}: ${value}`,
+        today: todayISO(),
+        snapshot: `Cliente: ${conv.contactName}. Canal: ${conv.channel}.`,
       });
-      const en =
-        res.ok && res.action?.type === "TRANSLATE_MESSAGE" ? String(res.action.en ?? "") : "";
+      const en = res.ok && res.action?.type === "TRANSLATE_MESSAGE" ? res.action.en : "";
       if (en) {
         sendUserMessage(conv.id, en, value);
       } else {
         sendUserMessage(conv.id, value);
         toast.info("Enviado en español", {
-          description: "Marcelo no pudo traducirlo en este momento.",
+          description: res.ok ? "Marcelo no pudo traducirlo en este momento." : res.reply,
         });
       }
       setText("");

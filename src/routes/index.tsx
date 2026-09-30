@@ -25,6 +25,7 @@ import {
   type Tone,
 } from "@/components/marcelo/visual";
 import { cn } from "@/lib/utils";
+import mark from "@/assets/marcelo-mark.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -87,8 +88,8 @@ function Inicio() {
       >
         <span className="absolute -right-12 -top-12 size-36 rounded-full bg-accent/15 blur-2xl" />
         <div className="relative flex flex-col items-center">
-          <span className="mb-3 flex size-12 items-center justify-center rounded-2xl border border-primary-foreground/15 bg-primary-foreground/10 text-accent">
-            <Mic className="size-5" />
+          <span className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-card p-2 shadow-[var(--shadow-card)]">
+            <img src={mark} alt="" className="size-full object-contain" />
           </span>
           <span className="block text-[19px] font-bold">Habla con Marcelo</span>
           <span className="mt-1 block max-w-[260px] text-[13px] leading-relaxed text-primary-foreground/65">
