@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Phone, MessageSquare, CalendarPlus, MapPin } from "lucide-react";
+import { ArrowLeft, Phone, MessageSquare, CalendarPlus, MapPin, Languages } from "lucide-react";
 import { Badge, Button, Card, Field, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { ClientAvatar } from "@/components/marcelo/visual";
@@ -93,6 +93,13 @@ function ClienteDetalle() {
           <CalendarPlus className="size-4" /> Cita
         </Button>
       </div>
+
+      <button
+        onClick={() => navigate({ to: "/traducir", search: { clientId: client.id } })}
+        className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-sky text-[15px] font-semibold text-white shadow-[var(--shadow-card)] active:scale-[0.99]"
+      >
+        <Languages className="size-5" /> Traducir con {client.name.split(" ")[0]}
+      </button>
 
       {scheduling ? (
         <Card className="mt-4 space-y-3">

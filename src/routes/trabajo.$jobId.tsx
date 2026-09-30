@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Phone, Map, MessageSquare, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Phone, Map, MessageSquare, CheckCircle2, Languages } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Card, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
@@ -162,6 +162,13 @@ function TrabajoDetalle() {
           <MessageSquare className="size-4" /> Mensaje
         </Button>
       </div>
+
+      <button
+        onClick={() => navigate({ to: "/traducir", search: client ? { clientId: client.id } : {} })}
+        className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-sky text-[15px] font-semibold text-white shadow-[var(--shadow-card)] active:scale-[0.99]"
+      >
+        <Languages className="size-5" /> Traducir con {client?.name.split(" ")[0] ?? "el cliente"}
+      </button>
 
       {job.status !== "completado" ? (
         <div className="mt-5">

@@ -26,50 +26,20 @@ import { ask } from "@/lib/ai/ask";
 import { needsConfirmation, type MarceloAction } from "@/lib/ai/actions";
 import { useAIStatus, providers } from "@/lib/ai/config";
 import mark from "@/assets/marcelo-mark.png";
+import {
+  dictate,
+  speak,
+  stopSpeaking,
+  unlockSpeech,
+  type SpeechRecognitionLike,
+} from "@/lib/speech";
 
-// Minimal typing for the Web Speech API, which isn't in TypeScript's DOM lib.
-type SpeechResultList = ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
-type SpeechRecognitionLike = {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  onresult: ((e: { results: SpeechResultList }) => void) | null;
-  onerror: (() => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+/** "Traduce", "modo intérprete", "translate"… opens the face-to-face interpreter instead. */
+const WANTS_INTERPRETER = /\b(traduc\w*|traductor|int[eé]rprete|translate|translator)\b/i;
 
 type AssistantCtx = { open: (seed?: string) => void };
 const Ctx = createContext<AssistantCtx>({ open: () => {} });
 export const useAssistant = () => useContext(Ctx);
-
-/** Prefers natural-sounding US/Mexican Spanish voices over the robotic system default. */
-function bestSpanishVoice(voices: SpeechSynthesisVoice[]) {
-  const spanish = voices.filter((v) => v.lang.toLowerCase().startsWith("es"));
-  const score = (v: SpeechSynthesisVoice) =>
-    (/natural|neural|premium|enhanced|google/i.test(v.name) ? 4 : 0) +
-    (/^es-(us|mx)/i.test(v.lang) ? 2 : /^es-419/i.test(v.lang) ? 1 : 0) +
-    (v.localService ? 0 : 1);
-  return spanish.sort((a, b) => score(b) - score(a))[0];
-}
-
-function speak(text: string) {
-  try {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "es-US";
-    u.rate = 1.03;
-    const voice = bestSpanishVoice(synth.getVoices());
-    if (voice) u.voice = voice;
-    synth.speak(u);
-  } catch {
-    /* no speech synthesis */
-  }
-}
 
 function Wave({ active }: { active: boolean }) {
   return (
@@ -117,7 +87,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const close = useCallback(() => {
     try {
       recognitionRef.current?.stop();
-      window.speechSynthesis?.cancel();
+      stopSpeaking();
     } catch {
       /* ignore */
     }
@@ -329,6 +299,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     async (text: string) => {
       const value = text.trim();
       if (!value) return;
+      // "Dile a John que…" stays a message draft; a bare "traduce" opens the interpreter.
+      if (WANTS_INTERPRETER.test(value) && !/\bdile\b/i.test(value)) {
+        close();
+        navigate({ to: "/traducir" });
+        return;
+      }
       setHeard(value);
       setTyped("");
       setThinking(true);
@@ -350,47 +326,32 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         setThinking(false);
       }
     },
-    [snapshot, runAction],
+    [snapshot, runAction, close, navigate],
   );
 
   const startListening = useCallback(() => {
-    const w = window as unknown as {
-      SpeechRecognition?: SpeechRecognitionCtor;
-      webkitSpeechRecognition?: SpeechRecognitionCtor;
-    };
-    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    if (!SR) {
+    stopSpeaking();
+    unlockSpeech();
+    setHeard("");
+    setReply("");
+    const rec = dictate("es", {
+      onText: setHeard,
+      onFinal: (t) => {
+        setListening(false);
+        void send(t);
+      },
+      onError: () => {
+        setListening(false);
+        toast.error("No te escuché bien. Intenta de nuevo.");
+      },
+      onEnd: () => setListening(false),
+    });
+    if (!rec) {
       toast.info("Tu navegador no permite dictado. Escribe lo que necesitas.");
       return;
     }
-    try {
-      window.speechSynthesis?.cancel();
-      const rec = new SR();
-      recognitionRef.current = rec;
-      rec.lang = "es-US";
-      rec.interimResults = true;
-      rec.continuous = false;
-      rec.onresult = (e) => {
-        const results = Array.from(e.results);
-        const transcript = results.map((r) => r[0]?.transcript ?? "").join(" ");
-        setHeard(transcript);
-        if (results[results.length - 1]?.isFinal) {
-          setListening(false);
-          void send(transcript);
-        }
-      };
-      rec.onerror = () => {
-        setListening(false);
-        toast.error("No te escuché bien. Intenta de nuevo.");
-      };
-      rec.onend = () => setListening(false);
-      setHeard("");
-      setReply("");
-      setListening(true);
-      rec.start();
-    } catch {
-      setListening(false);
-    }
+    recognitionRef.current = rec;
+    setListening(true);
   }, [send]);
 
   useEffect(() => {
@@ -450,6 +411,18 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
                     ? ""
                     : "Di lo que necesitas en español. Él se encarga del resto."}
             </p>
+
+            {!reply && !listening && !thinking ? (
+              <button
+                onClick={() => {
+                  close();
+                  navigate({ to: "/traducir" });
+                }}
+                className="mt-6 flex items-center gap-2 rounded-full bg-sky px-5 py-3 text-[15px] font-semibold text-white shadow-[var(--shadow-lift)]"
+              >
+                <Languages className="size-5" /> Traducir con mi cliente
+              </button>
+            ) : null}
 
             <div className="mt-12 w-full max-w-sm">
               <Wave active={listening || thinking} />

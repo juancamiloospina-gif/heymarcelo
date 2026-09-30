@@ -19,6 +19,7 @@ import { Route as IaRouteImport } from './routes/ia'
 import { Route as MasRouteImport } from './routes/mas'
 import { Route as PendientesRouteImport } from './routes/pendientes'
 import { Route as ServiciosRouteImport } from './routes/servicios'
+import { Route as TraducirRouteImport } from './routes/traducir'
 import { Route as BandejaIndexRouteImport } from './routes/bandeja.index'
 import { Route as BandejaConversationIdRouteImport } from './routes/bandeja.$conversationId'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
@@ -76,6 +77,11 @@ const ServiciosRoute = ServiciosRouteImport.update({
   path: '/servicios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TraducirRoute = TraducirRouteImport.update({
+  id: '/traducir',
+  path: '/traducir',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BandejaIndexRoute = BandejaIndexRouteImport.update({
   id: '/bandeja/',
   path: '/bandeja/',
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
+  '/traducir': typeof TraducirRoute
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
+  '/traducir': typeof TraducirRoute
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/mas': typeof MasRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
+  '/traducir': typeof TraducirRoute
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/mas'
     | '/pendientes'
     | '/servicios'
+    | '/traducir'
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/mas'
     | '/pendientes'
     | '/servicios'
+    | '/traducir'
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/mas'
     | '/pendientes'
     | '/servicios'
+    | '/traducir'
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
@@ -230,6 +242,7 @@ export interface RootRouteChildren {
   MasRoute: typeof MasRoute
   PendientesRoute: typeof PendientesRoute
   ServiciosRoute: typeof ServiciosRoute
+  TraducirRoute: typeof TraducirRoute
   BandejaConversationIdRoute: typeof BandejaConversationIdRoute
   ClientesClientIdRoute: typeof ClientesClientIdRoute
   MensajeClientIdRoute: typeof MensajeClientIdRoute
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServiciosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/traducir': {
+      id: '/traducir'
+      path: '/traducir'
+      fullPath: '/traducir'
+      preLoaderRoute: typeof TraducirRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/bandeja/': {
       id: '/bandeja/'
       path: '/bandeja'
@@ -366,6 +386,7 @@ const rootRouteChildren: RootRouteChildren = {
   MasRoute: MasRoute,
   PendientesRoute: PendientesRoute,
   ServiciosRoute: ServiciosRoute,
+  TraducirRoute: TraducirRoute,
   BandejaConversationIdRoute: BandejaConversationIdRoute,
   ClientesClientIdRoute: ClientesClientIdRoute,
   MensajeClientIdRoute: MensajeClientIdRoute,
