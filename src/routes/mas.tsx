@@ -21,6 +21,7 @@ import { Button, Card, Field, PageTitle, Screen, SectionTitle } from "@/componen
 import { todayISO } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
 import { useMarcelo } from "@/lib/marcelo-store";
+import mark from "@/assets/marcelo-mark.png";
 
 export const Route = createFileRoute("/mas")({
   head: () => ({
@@ -241,7 +242,8 @@ function Mas() {
       </Button>
 
       <p className="mt-6 text-center text-[12px] text-muted-foreground">
-        Versión 1.1.0 · Hecho con ♡
+        <img src={mark} alt="" className="mx-auto mb-2 h-6 w-auto opacity-80" />
+        Versión 1.2.0 · Hecho con ♡
       </p>
     </Screen>
   );

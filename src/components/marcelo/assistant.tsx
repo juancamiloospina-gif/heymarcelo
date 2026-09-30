@@ -25,6 +25,7 @@ import {
 import { ask } from "@/lib/ai/ask";
 import { needsConfirmation, type MarceloAction } from "@/lib/ai/actions";
 import { useAIStatus, providers } from "@/lib/ai/config";
+import mark from "@/assets/marcelo-mark.png";
 
 // Minimal typing for the Web Speech API, which isn't in TypeScript's DOM lib.
 type SpeechResultList = ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
@@ -433,8 +434,8 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
           </div>
 
           <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center">
-            <div className="mb-8 flex size-24 items-center justify-center rounded-[2rem] bg-accent/20 text-[38px] font-bold text-accent ring-1 ring-accent/30">
-              M
+            <div className="mb-8 flex size-24 items-center justify-center rounded-[2rem] bg-card p-3 shadow-[var(--shadow-lift)]">
+              <img src={mark} alt="Marcelo" className="size-full object-contain" />
             </div>
 
             <h2 className="text-[28px] font-bold tracking-tight">

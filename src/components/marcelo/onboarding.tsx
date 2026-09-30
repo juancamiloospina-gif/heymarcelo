@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Field } from "./kit";
 import { useMarcelo } from "@/lib/marcelo-store";
+import logo from "@/assets/marcelo-logo.png";
 
 const steps = [
   { key: "name", label: "¿Cómo te llamas?", placeholder: "Carlos" },
@@ -17,13 +18,8 @@ export function Onboarding() {
     return (
       <div className="flex min-h-screen flex-col justify-between bg-background px-6 pb-10 pt-24 text-foreground">
         <div className="text-center">
-          <div className="mx-auto flex size-24 items-center justify-center rounded-[2rem] bg-accent/10 text-accent shadow-[var(--shadow-card)]">
-            <span className="text-[42px] font-bold">M</span>
-          </div>
-          <p className="mt-8 text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">
-            Marcelo
-          </p>
-          <h1 className="mt-3 text-[30px] font-bold leading-tight">Tu trabajo, más simple.</h1>
+          <img src={logo} alt="Marcelo" className="mx-auto h-[88px] w-auto" />
+          <h1 className="mt-10 text-[30px] font-bold leading-tight">Tu trabajo, más simple.</h1>
           <p className="mx-auto mt-3 max-w-[300px] text-[16px] leading-relaxed text-muted-foreground">
             Te ayudo a organizar tu negocio. Háblame en español y yo me encargo del resto.
           </p>
