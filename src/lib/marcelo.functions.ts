@@ -17,107 +17,130 @@ const inputSchema = z.object({
 });
 
 /**
- * Included assistant (Marcelo pays). A fast, inexpensive model first; if the gateway doesn't
- * know it, fall back once to the model the app used before so the assistant never goes dark.
+ * Included AI (Marcelo pays), one model per task. The assistant builds actions, so it gets the
+ * stronger Flash; translation and receipts are simple and high-volume, so they use Flash-Lite.
+ * The backup is always another inexpensive Gemini — never a premium model.
  */
-const MODELS = ["google/gemini-3.8-flash", "openai/gpt-6-astra"] as const;
+const MODELS = {
+  assistant: ["google/gemini-3.8-flash", "google/gemini-3.1-flash-lite"],
+  translate: ["google/gemini-3.1-flash-lite", "google/gemini-3.8-flash"],
+  receipt: ["google/gemini-3.1-flash-lite", "google/gemini-3.8-flash"],
+} as const;
+
+type Task = keyof typeof MODELS;
 
 type Usage = { model: string; inputTokens: number; outputTokens: number };
 
-type GatewayInput =
-  string | ({ type: "input_text"; text: string } | { type: "input_image"; image_url: string })[];
+type UserContent =
+  string | ({ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } })[];
+
+// Gemini models only answer on the OpenAI-compatible chat endpoint (/v1/responses is OpenAI-only).
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const TIMEOUT_MS = 30_000;
+
+type ChatResponse = {
+  choices?: { message?: { content?: string | null } }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+};
 
 async function callGateway(
   apiKey: string,
   model: string,
   system: string,
-  user: GatewayInput,
+  user: UserContent,
   maxTokens: number,
 ) {
-  return fetch("https://ai.gateway.lovable.dev/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": apiKey,
-      "X-Lovable-AIG-SDK": "fetch",
-    },
-    body: JSON.stringify({
-      model,
-      stream: true,
-      store: false,
-      max_output_tokens: maxTokens,
-      reasoning: { effort: "low" },
-      input: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
-}
-
-/** Reads the SSE stream: accumulated text plus the token usage reported at the end. */
-async function readStream(body: ReadableStream<Uint8Array>, model: string) {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let text = "";
-  const usage: Usage = { model, inputTokens: 0, outputTokens: 0 };
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const frames = buffer.split("\n\n");
-    buffer = frames.pop() ?? "";
-    for (const frame of frames) {
-      for (const line of frame.split("\n")) {
-        if (!line.startsWith("data:")) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === "[DONE]") continue;
-        try {
-          const evt = JSON.parse(payload);
-          if (evt.type === "response.output_text.delta" && typeof evt.delta === "string")
-            text += evt.delta;
-          if (evt.type === "response.completed" && evt.response?.usage) {
-            usage.inputTokens = Number(evt.response.usage.input_tokens) || 0;
-            usage.outputTokens = Number(evt.response.usage.output_tokens) || 0;
-          }
-        } catch {
-          /* partial frame */
-        }
-      }
-    }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    return await fetch(GATEWAY_URL, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "Lovable-API-Key": apiKey,
+        "X-Lovable-AIG-SDK": "fetch",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
   }
-  return { text, usage };
 }
 
-/** One gateway round with model fallback; never throws. */
-async function runGateway(system: string, user: GatewayInput, maxTokens: number) {
+/**
+ * Tries the task's models in order. Moves to the backup only when the first one is unavailable
+ * (unknown model, overloaded, server error, timeout) and logs why; credit/rate errors stop here.
+ */
+async function runGateway(task: Task, system: string, user: UserContent, maxTokens: number) {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) {
     return { ok: false as const, status: 401, reply: "Marcelo no está conectado todavía." };
   }
-  for (const [i, model] of MODELS.entries()) {
-    const res = await callGateway(apiKey, model, system, user, maxTokens);
-    if (res.ok && res.body) {
-      const { text, usage } = await readStream(res.body, model);
+  const models = MODELS[task];
+  for (const [i, model] of models.entries()) {
+    const isLast = i === models.length - 1;
+    let res: Response;
+    try {
+      res = await callGateway(apiKey, model, system, user, maxTokens);
+    } catch (e) {
+      console.error(`marcelo gateway ${task}: ${model} did not answer`, String(e));
+      if (!isLast) continue;
+      return {
+        ok: false as const,
+        status: 504,
+        reply: "Marcelo tardó demasiado. Intenta otra vez.",
+      };
+    }
+    if (res.ok) {
+      const data = (await res.json().catch(() => ({}))) as ChatResponse;
+      const text = data.choices?.[0]?.message?.content?.trim() ?? "";
+      const usage: Usage = {
+        model,
+        inputTokens: Number(data.usage?.prompt_tokens) || 0,
+        outputTokens: Number(data.usage?.completion_tokens) || 0,
+      };
       // Gateway didn't report usage: estimate from length (~3 chars per token) so the meter still moves.
-      if (!usage.inputTokens)
+      if (!usage.inputTokens) {
         usage.inputTokens =
           typeof user === "string" ? Math.ceil((system.length + user.length) / 3) : 1800;
+      }
       if (!usage.outputTokens) usage.outputTokens = Math.ceil(text.length / 3) + 200;
+      if (i > 0) console.warn(`marcelo gateway ${task}: answered by backup ${model}`);
       return { ok: true as const, text, usage };
     }
-    const detail = await res.text().catch(() => "");
-    const unknownModel = (res.status === 400 || res.status === 404) && i < MODELS.length - 1;
-    console.error("marcelo gateway error", model, res.status, detail.slice(0, 300));
-    if (unknownModel) continue;
 
-    let reply = "Marcelo no pudo responder en este momento. Intenta de nuevo.";
-    if (res.status === 402)
-      reply = "Se acabaron los créditos de Marcelo. Recárgalos para seguir usándolo.";
-    if (res.status === 429)
-      reply = "Marcelo está recibiendo muchas solicitudes. Espera unos segundos.";
-    return { ok: false as const, status: res.status, reply };
+    const detail = await res.text().catch(() => "");
+    console.error(`marcelo gateway ${task}: ${model} → ${res.status}`, detail.slice(0, 300));
+    if (res.status === 402) {
+      return {
+        ok: false as const,
+        status: 402,
+        reply: "Se acabaron los créditos de Marcelo. Recárgalos para seguir usándolo.",
+      };
+    }
+    if (res.status === 429) {
+      return {
+        ok: false as const,
+        status: 429,
+        reply: "Marcelo está recibiendo muchas solicitudes. Espera unos segundos.",
+      };
+    }
+    const unavailable = res.status === 400 || res.status === 404 || res.status >= 500;
+    if (unavailable && !isLast) continue;
+    return {
+      ok: false as const,
+      status: res.status,
+      reply: "Marcelo no pudo responder en este momento. Intenta de nuevo.",
+    };
   }
   return { ok: false as const, status: 500, reply: "Marcelo no pudo responder en este momento." };
 }
@@ -126,6 +149,7 @@ export const askMarcelo = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(({ data }) =>
     runGateway(
+      "assistant",
       SYSTEM_PROMPT,
       buildUserMessage(data.text, data.today, data.snapshot),
       LIMITS.outputTokens,
@@ -146,11 +170,16 @@ const translateSchema = z.object({
     .max(4),
 });
 
-/** Interpreter mode on the included gateway: tiny prompt, short answer. */
+/** Interpreter mode and client-message translation: tiny prompt, short answer. */
 export const translateMarcelo = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => translateSchema.parse(data))
   .handler(({ data }) =>
-    runGateway(TRANSLATE_PROMPT, buildTranslateMessage(data), TRANSLATE_LIMITS.outputTokens),
+    runGateway(
+      "translate",
+      TRANSLATE_PROMPT,
+      buildTranslateMessage(data),
+      TRANSLATE_LIMITS.outputTokens,
+    ),
   );
 
 const receiptSchema = z.object({
@@ -163,10 +192,11 @@ export const readReceiptMarcelo = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => receiptSchema.parse(data))
   .handler(({ data }) =>
     runGateway(
+      "receipt",
       RECEIPT_PROMPT,
       [
-        { type: "input_text", text: "Lee este recibo." },
-        { type: "input_image", image_url: data.image },
+        { type: "text", text: "Lee este recibo." },
+        { type: "image_url", image_url: { url: data.image } },
       ],
       800,
     ),
