@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   Sparkles,
   Bot,
+  Languages,
   type LucideIcon,
 } from "lucide-react";
 import { Badge, Button, Card, Empty, Screen, SectionTitle } from "@/components/marcelo/kit";
@@ -100,6 +101,22 @@ function Inicio() {
             <Mic className="relative size-6" />
           </span>
         </div>
+      </button>
+
+      <button
+        onClick={() => navigate({ to: "/traducir" })}
+        className="mt-3 flex w-full items-center gap-4 rounded-[1.5rem] border border-sky/25 bg-sky/10 px-5 py-4 text-left transition-transform active:scale-[0.99]"
+      >
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-sky text-white shadow-[var(--shadow-card)]">
+          <Languages className="size-6" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[17px] font-bold">Traducir con tu cliente</span>
+          <span className="block text-[13px] leading-snug text-muted-foreground">
+            Tú hablas español y tu cliente lo escucha en inglés, al momento.
+          </span>
+        </span>
+        <ChevronRight className="size-5 text-muted-foreground" />
       </button>
 
       <div className="mt-7 grid grid-cols-4 gap-2">

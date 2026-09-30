@@ -53,12 +53,12 @@ const anthropicClient = (apiKey: string) =>
 const CLAUDE_WITH_EFFORT = /^claude-(opus-5|opus-4-[678]|sonnet-5|fable-5|sonnet-4-6)/;
 const CLAUDE_WITH_FALLBACKS = /^claude-(opus-5-5|opus-5$|fable-5-1|sonnet-5-5)/;
 
-async function askAnthropic(ai: OwnAI, system: string, user: string) {
+async function askAnthropic(ai: OwnAI, system: string, user: string, opts: AskOptions) {
   const client = anthropicClient(ai.apiKey);
   try {
     const msg = await client.beta.messages.create({
       model: ai.model,
-      max_tokens: LIMITS.outputTokens,
+      max_tokens: opts.maxTokens,
       system,
       messages: [{ role: "user", content: user }],
       // Short chat turns: low effort keeps answers fast and cheap for the user.
@@ -112,7 +112,7 @@ type GeminiResponse = {
   candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
 };
 
-async function askGemini(ai: OwnAI, system: string, user: string) {
+async function askGemini(ai: OwnAI, system: string, user: string, opts: AskOptions) {
   const data = (await http(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(ai.model)}:generateContent`,
     {
@@ -122,8 +122,8 @@ async function askGemini(ai: OwnAI, system: string, user: string) {
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [{ text: user }] }],
         generationConfig: {
-          responseMimeType: "application/json",
-          maxOutputTokens: LIMITS.outputTokens,
+          ...(opts.json ? { responseMimeType: "application/json" } : {}),
+          maxOutputTokens: opts.maxTokens,
         },
       }),
     },
@@ -136,17 +136,24 @@ async function askGemini(ai: OwnAI, system: string, user: string) {
     .trim();
 }
 
-export function askOwnAI(ai: OwnAI, system: string, user: string): Promise<string> {
+export type AskOptions = { json: boolean; maxTokens: number };
+
+export function askOwnAI(
+  ai: OwnAI,
+  system: string,
+  user: string,
+  opts: AskOptions = { json: true, maxTokens: LIMITS.outputTokens },
+): Promise<string> {
   switch (ai.provider) {
     case "anthropic":
-      return askAnthropic(ai, system, user);
+      return askAnthropic(ai, system, user, opts);
     case "openai":
       return askOpenAICompatible(
         "https://api.openai.com/v1/chat/completions",
         ai,
         system,
         user,
-        true,
+        opts.json,
       );
     case "openrouter":
       return askOpenAICompatible(
@@ -157,7 +164,7 @@ export function askOwnAI(ai: OwnAI, system: string, user: string): Promise<strin
         false,
       );
     case "gemini":
-      return askGemini(ai, system, user);
+      return askGemini(ai, system, user, opts);
   }
 }
 

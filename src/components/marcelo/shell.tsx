@@ -16,7 +16,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { open } = useAssistant();
   // The chat screen has its own back button and input bar at the bottom.
-  const hideNav = pathname.startsWith("/mensaje/") || /^\/bandeja\/.+/.test(pathname);
+  const hideNav =
+    pathname.startsWith("/mensaje/") || /^\/bandeja\/.+/.test(pathname) || pathname === "/traducir";
   const { state } = useMarcelo();
   const unread = state.conversations.filter((c) => c.unread || c.stage === "tu_turno").length;
 
