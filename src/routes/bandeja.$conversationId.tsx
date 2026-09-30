@@ -9,13 +9,14 @@ import {
   Languages,
   Send,
   Sparkles,
-  Tag,
+  Camera,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, Button, Screen } from "@/components/marcelo/kit";
 import { ChannelBadge, ClientAvatar, ServiceIcon, stageLabel } from "@/components/marcelo/visual";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { DecisionSheet, ServiceFixSheet } from "@/components/marcelo/attention";
 import { ask } from "@/lib/ai/ask";
 import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,6 @@ function Conversacion() {
     typingIn,
     receiveClientMessage,
     sendUserMessage,
-    offerPrice,
     setConversationStage,
     markConversationRead,
   } = useMarcelo();
@@ -52,8 +52,8 @@ function Conversacion() {
   const [as, setAs] = useState<"user" | "client">("user");
   const [sending, setSending] = useState(false);
   const [showEs, setShowEs] = useState(true);
-  const [pricing, setPricing] = useState(false);
-  const [newPrice, setNewPrice] = useState("");
+  const [deciding, setDeciding] = useState(false);
+  const [fixing, setFixing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const conv = state.conversations.find((c) => c.id === conversationId);
@@ -160,7 +160,7 @@ function Conversacion() {
               <CalendarCheck className="size-5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[14px] font-semibold">Marcelo agendó la cita</span>
+              <span className="block text-[14px] font-semibold">Marcelo agendó el trabajo</span>
               <span className="block truncate text-[12px] text-muted-foreground">
                 {job.service} · {prettyDate(job.date)}, {prettyTime(job.time)} · {money(job.price)}
               </span>
@@ -184,68 +184,36 @@ function Conversacion() {
         ) : conv.stage === "tu_turno" ? (
           <div>
             <div className="flex items-start gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
                 <Hand className="size-5" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-semibold">Marcelo te pasó este chat</p>
-                <p className="text-[12px] text-muted-foreground">
-                  {lastNote ?? "Necesita tu respuesta"}. Él no cambia tus precios sin ti.
+                <p className="text-[16px] font-semibold">{first} espera tu respuesta</p>
+                <p className="text-[14px] text-muted-foreground">
+                  {lastNote ?? "Marcelo no supo qué contestar"}. Marcelo no cambia tus precios sin
+                  ti.
                 </p>
               </div>
             </div>
-            <div className="mt-3 flex gap-2">
-              {service ? (
-                <Button
-                  size="sm"
-                  variant="accent"
-                  className="flex-1"
-                  onClick={() => setPricing((v) => !v)}
-                >
-                  <Tag className="size-4" /> Ofrecer otro precio
-                </Button>
-              ) : null}
-              <Button size="sm" variant="secondary" className="flex-1" onClick={handBack}>
-                <Bot className="size-4" /> Devolver a Marcelo
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button size="sm" variant="accent" onClick={() => setDeciding(true)}>
+                <Send className="size-4" /> Responder
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handBack}>
+                <Bot className="size-4" /> Reactivar Marcelo
               </Button>
             </div>
-            {pricing && service ? (
-              <form
-                className="mt-3 flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const p = Number(newPrice.replace(/[$,\s]/g, ""));
-                  if (!(p > 0)) return;
-                  offerPrice(conv.id, p);
-                  setPricing(false);
-                  setNewPrice("");
-                  toast.success(`Marcelo le ofreció ${money(p)} a ${first}`);
-                }}
-              >
-                <input
-                  autoFocus
-                  inputMode="decimal"
-                  value={newPrice}
-                  onChange={(e) => setNewPrice(e.target.value)}
-                  placeholder={`Precio normal ${money(service.price)}`}
-                  className="h-10 min-w-0 flex-1 rounded-xl border border-input bg-card px-3 text-[15px] outline-none focus:border-accent"
-                />
-                <Button size="sm" type="submit">
-                  Enviar
-                </Button>
-              </form>
-            ) : null}
           </div>
         ) : conv.stage === "manual" ? (
           <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
               <Hand className="size-5" />
             </span>
-            <p className="min-w-0 flex-1 text-[13px] text-muted-foreground">
-              Estás respondiendo tú. Marcelo está en pausa en este chat.
+            <p className="min-w-0 flex-1 text-[15px] text-muted-foreground">
+              Respondes tú. Marcelo está en pausa aquí.
             </p>
-            <Button size="sm" variant="secondary" onClick={handBack}>
-              <Bot className="size-4" /> Devolver
+            <Button size="sm" variant="accent" onClick={handBack}>
+              <Bot className="size-4" /> Reactivar Marcelo
             </Button>
           </div>
         ) : (
@@ -275,13 +243,22 @@ function Conversacion() {
           m.from === "client" ? (
             <div key={m.id} className="flex flex-col items-start">
               <div className="max-w-[85%] rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 shadow-sm">
-                <p className="whitespace-pre-line text-[15px] leading-relaxed">{m.text}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">{hhmm(m.at)}</p>
+                {m.photo ? (
+                  <p className="mb-1 flex items-center gap-1.5 text-[14px] font-semibold text-muted-foreground">
+                    <Camera className="size-4" /> Foto
+                  </p>
+                ) : null}
+                <p className="whitespace-pre-line text-[16px] leading-relaxed">{m.text}</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">{hhmm(m.at)}</p>
               </div>
               {m.note ? (
-                <span className="mt-1.5 flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent">
-                  <Sparkles className="size-3" /> Marcelo entendió: {m.note}
-                </span>
+                <button
+                  onClick={() => setFixing(true)}
+                  className="mt-1.5 flex min-h-10 items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-[13px] font-semibold text-accent"
+                >
+                  <Sparkles className="size-3.5" /> Marcelo entendió: {m.note}
+                  <span className="ml-1 underline">¿No es esto?</span>
+                </button>
               ) : null}
             </div>
           ) : (
@@ -414,6 +391,8 @@ function Conversacion() {
           </p>
         ) : null}
       </div>
+      {deciding ? <DecisionSheet conv={conv} onClose={() => setDeciding(false)} /> : null}
+      {fixing ? <ServiceFixSheet conv={conv} onClose={() => setFixing(false)} /> : null}
     </div>
   );
 }

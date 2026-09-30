@@ -15,6 +15,7 @@ import { MarceloProvider, useMarcelo } from "../lib/marcelo-store";
 import { AssistantProvider } from "../components/marcelo/assistant";
 import { AppShell } from "../components/marcelo/shell";
 import { Onboarding } from "../components/marcelo/onboarding";
+import mark from "../assets/marcelo-mark.png";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
@@ -128,7 +129,12 @@ function Gate() {
   const { state, ready } = useMarcelo();
 
   if (!ready) {
-    return <div className="min-h-screen bg-background" />;
+    // Saved data loads from the phone right after the page opens; show the brand, not a blank page.
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <img src={mark} alt="Marcelo" className="size-16 animate-pulse" />
+      </div>
+    );
   }
 
   if (!state.profile.onboarded) {

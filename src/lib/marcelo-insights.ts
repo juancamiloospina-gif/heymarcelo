@@ -6,16 +6,21 @@ import {
   CalendarClock,
   CalendarPlus,
   Camera,
-  HandCoins,
   MessageCircle,
-  MessageCircleWarning,
   TrendingUp,
   UserRoundCheck,
   type LucideIcon,
 } from "lucide-react";
 import type { Tone } from "@/components/marcelo/visual";
 import { findSlot } from "./marcelo-autopilot";
-import { money, monthISO, prettyTime, todayISO, type MarceloState } from "./marcelo-data";
+import {
+  isActiveJob,
+  money,
+  monthISO,
+  prettyTime,
+  todayISO,
+  type MarceloState,
+} from "./marcelo-data";
 
 export type Insight = {
   id: string;
@@ -37,68 +42,26 @@ export function getInsights(state: MarceloState): Insight[] {
   const name = (id?: string) =>
     state.clients.find((c) => c.id === id)?.name.split(" ")[0] ?? "Un cliente";
 
-  // 1. Chats where Marcelo handed over to the user.
-  const waiting = state.conversations.filter((c) => c.stage === "tu_turno");
-  const firstWaiting = waiting[0];
-  if (firstWaiting) {
-    const note = [...firstWaiting.messages].reverse().find((m) => m.note)?.note;
-    out.push({
-      id: "chat-waiting",
-      icon: MessageCircleWarning,
-      tone: "danger",
-      title:
-        waiting.length > 1
-          ? `${waiting.length} clientes esperan tu respuesta`
-          : `${firstWaiting.contactName.split(" ")[0]} espera tu respuesta`,
-      body: note ? `${note}. Marcelo no cambia precios sin ti.` : "Marcelo no supo qué contestar.",
-      cta: {
-        label: "Responder",
-        to: "/bandeja/$conversationId",
-        params: { conversationId: firstWaiting.id },
-      },
-    });
-  }
-
-  // 2. Money owed for more than two days.
-  const oldDebt = state.pendings
-    .filter((p) => !p.done && typeof p.amount === "number" && p.clientId)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
-  if (oldDebt?.clientId && daysBetween(oldDebt.createdAt, today) >= 2) {
-    out.push({
-      id: "debt",
-      icon: HandCoins,
-      tone: "warning",
-      title: `Cóbrale a ${name(oldDebt.clientId)} ${money(oldDebt.amount ?? 0)}`,
-      body: `Lleva ${daysBetween(oldDebt.createdAt, today)} días. Te escribo un recordatorio amable en inglés.`,
-      cta: {
-        label: "Escribir recordatorio",
-        to: "/mensaje/$clientId",
-        params: { clientId: oldDebt.clientId },
-      },
-    });
-  }
-
   // 3. Jobs coming up that the client hasn't confirmed.
   const unconfirmed = state.jobs
-    .filter(
-      (j) => j.status === "por_confirmar" && j.date >= today && daysBetween(today, j.date) <= 2,
-    )
+    .filter((j) => j.status === "cotizado" && j.date >= today && daysBetween(today, j.date) <= 2)
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
   if (unconfirmed) {
     out.push({
       id: "unconfirmed",
       icon: UserRoundCheck,
       tone: "teal",
-      title: `Confirma con ${name(unconfirmed.clientId)}`,
-      body: `La cita de ${unconfirmed.date === today ? "hoy" : "mañana"} a las ${prettyTime(unconfirmed.time)} sigue sin confirmar.`,
-      cta: { label: "Ver cita", to: "/trabajo/$jobId", params: { jobId: unconfirmed.id } },
+      title: `${name(unconfirmed.clientId)} no ha confirmado`,
+      body: `El trabajo de ${unconfirmed.date === today ? "hoy" : "mañana"} a las ${prettyTime(unconfirmed.time)} sigue cotizado.`,
+      cta: { label: "Ver trabajo", to: "/trabajo/$jobId", params: { jobId: unconfirmed.id } },
     });
   }
 
   // 4. Free time tomorrow that could be filled.
   const tomorrow = todayISO(1);
-  const tomorrowJobs = state.jobs.filter((j) => j.date === tomorrow).length;
-  const worksTomorrow = state.settings.workDays.includes(new Date(`${tomorrow}T12:00:00`).getDay());
+  const tomorrowJobs = state.jobs.filter((j) => j.date === tomorrow && isActiveJob(j)).length;
+  const worksTomorrow =
+    state.settings.hours[new Date(`${tomorrow}T12:00:00`).getDay()]?.on ?? false;
   const freeTomorrow = worksTomorrow ? findSlot(state, 120, { day: tomorrow }) : undefined;
   if (freeTomorrow && tomorrowJobs <= 1) {
     out.push({
@@ -130,7 +93,7 @@ export function getInsights(state: MarceloState): Insight[] {
       icon: CalendarClock,
       tone: "plum",
       title: `Hace ${Math.floor(daysBetween(dormant[1], today) / 7)} semanas que no vas donde ${name(dormant[0])}`,
-      body: "Un mensaje corto ofreciendo una visita suele traer trabajo de vuelta.",
+      body: "Un mensaje corto ofreciendo un trabajo suele traer trabajo de vuelta.",
       cta: { label: "Escribirle", to: "/mensaje/$clientId", params: { clientId: dormant[0] } },
     });
   }
@@ -144,7 +107,7 @@ export function getInsights(state: MarceloState): Insight[] {
       tone: "sky",
       title: `${noReceipt.length} gastos sin foto del recibo`,
       body: `Suman ${money(noReceipt.reduce((a, b) => a + b.amount, 0))}. Con foto es más fácil deducirlos en impuestos.`,
-      cta: { label: "Ver gastos", to: "/gastos" },
+      cta: { label: "Ver gastos", to: "/dinero" },
     });
   }
 
@@ -173,8 +136,11 @@ export function getInsights(state: MarceloState): Insight[] {
       icon: MessageCircle,
       tone: "success",
       title: anyConnected ? "Deja que Marcelo conteste por ti" : "Conecta WhatsApp o SMS",
-      body: "Marcelo responde a tus clientes con tus precios y agenda la cita cuando aceptan.",
-      cta: { label: anyConnected ? "Activar" : "Conectar", to: "/conexiones" },
+      body: "Marcelo responde a tus clientes con tus precios y agenda el trabajo cuando aceptan.",
+      cta: {
+        label: anyConnected ? "Activar" : "Conectar",
+        to: anyConnected ? "/bandeja" : "/conexiones",
+      },
     });
   }
 

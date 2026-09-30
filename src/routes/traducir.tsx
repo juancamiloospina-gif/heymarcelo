@@ -6,6 +6,7 @@ import {
   Loader2,
   MessageSquareText,
   Mic,
+  Repeat,
   Save,
   Send,
   Square,
@@ -20,6 +21,7 @@ import { translate } from "@/lib/ai/ask";
 import { todayISO, uid } from "@/lib/marcelo-data";
 import {
   canDictate,
+  guessLang,
   dictate,
   speak,
   stopSpeaking,
@@ -28,7 +30,6 @@ import {
   type SpeechRecognitionLike,
 } from "@/lib/speech";
 import { cn } from "@/lib/utils";
-import mark from "@/assets/marcelo-mark.png";
 
 export const Route = createFileRoute("/traducir")({
   validateSearch: (search: Record<string, unknown>): { clientId?: string } =>
@@ -50,6 +51,20 @@ type Side = "user" | "client";
 type Turn = { id: string; from: Side; original: string; translated: string; pending: boolean };
 
 const langOf: Record<Side, Lang> = { user: "es", client: "en" };
+
+/** One-tap phrases with a fixed translation: instant and free. */
+const QUICK: [string, string][] = [
+  ["Ya terminé", "I'm all done."],
+  ["¿Dónde dejo el material?", "Where should I leave the materials?"],
+  ["Pago por Zelle o efectivo", "You can pay by Zelle or cash."],
+  ["Llego en 10 minutos", "I'll be there in 10 minutes."],
+  ["¿Puedo usar su llave de agua?", "May I use your water spigot?"],
+  ["¿Puede mover su carro, por favor?", "Could you please move your car?"],
+  ["¿Le gusta cómo quedó?", "Are you happy with how it looks?"],
+  ["Vuelvo la próxima semana", "I'll be back next week."],
+  ["¿Tiene alguna pregunta?", "Do you have any questions?"],
+  ["Gracias por su confianza", "Thank you for trusting us."],
+];
 const other = (s: Side): Side => (s === "user" ? "client" : "user");
 
 const copy = {
@@ -86,6 +101,10 @@ function Traducir() {
   const [draft, setDraft] = useState("");
   const [voice, setVoice] = useState(true);
   const [flip, setFlip] = useState(true);
+  const [continuous, setContinuous] = useState(false);
+  const [checked, setChecked] = useState<string[]>([]);
+  const continuousRef = useRef(false);
+  continuousRef.current = continuous;
   const [saving, setSaving] = useState(false);
   const [saveTo, setSaveTo] = useState(clientId ?? "");
   const recRef = useRef<SpeechRecognitionLike | null>(null);
@@ -103,14 +122,25 @@ function Traducir() {
     [],
   );
 
-  const handleText = async (side: Side, raw: string) => {
+  const handleText = async (tappedSide: Side, raw: string, preset?: string) => {
     const text = raw.trim();
     if (!text) return;
+    // Whoever tapped, the language decides who is talking (the phone may be passed around).
+    const guessed = guessLang(text);
+    const side: Side = guessed ? (guessed === "es" ? "user" : "client") : tappedSide;
     const id = uid();
     const recent = turnsRef.current
       .filter((t) => !t.pending)
       .slice(-4)
       .map((t) => ({ from: t.from, text: t.original }));
+    if (preset) {
+      setTurns((ts) => [
+        ...ts,
+        { id, from: side, original: text, translated: preset, pending: false },
+      ]);
+      afterTranslation(side, preset);
+      return;
+    }
     setTurns((ts) => [...ts, { id, from: side, original: text, translated: "", pending: true }]);
     const res = await translate({
       text,
@@ -129,7 +159,16 @@ function Traducir() {
     setTurns((ts) =>
       ts.map((t) => (t.id === id ? { ...t, translated: res.text, pending: false } : t)),
     );
-    if (voice) speak(res.text, langOf[other(side)]);
+    afterTranslation(side, res.text);
+  };
+
+  /** Speaks the translation; in continuous mode, then listens to the other person. */
+  const afterTranslation = (side: Side, translated: string) => {
+    const next = () => {
+      if (continuousRef.current) toggleMic(other(side));
+    };
+    if (voice) speak(translated, langOf[other(side)], next);
+    else next();
   };
 
   const toggleMic = (side: Side) => {
@@ -242,11 +281,47 @@ function Traducir() {
                 <Volume2 className="size-3.5" /> {isUser ? "Toca para repetir" : "Tap to replay"}
               </p>
             </button>
-          ) : (
+          ) : !mine ? (
             <p className="max-w-[300px] text-[16px] leading-relaxed text-muted-foreground">
               {c.empty}
             </p>
-          )}
+          ) : null}
+          {mine &&
+          !mine.pending &&
+          !isListening &&
+          figures(mine.translated).length &&
+          !checked.includes(mine.id) ? (
+            <div className="mt-3 rounded-2xl border border-warning/40 bg-warning/10 p-3">
+              <p className="text-[14px] font-semibold text-warning-foreground">
+                {isUser ? "¿Correcto?" : "Is this right?"}{" "}
+                {figures(mine.translated).map((f) => (
+                  <mark key={f} className="mx-0.5 rounded bg-warning/40 px-1 text-foreground">
+                    {f}
+                  </mark>
+                ))}
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setChecked((c) => [...c, mine.id])}
+                >
+                  {isUser ? "Sí" : "Yes"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setTurns((ts) => ts.filter((t) => t.id !== mine.id));
+                    setTyping(side);
+                    setDraft(mine.original);
+                  }}
+                >
+                  {isUser ? "Corregir" : "Fix"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
           {mine && !isListening ? (
             <p className="mt-4 line-clamp-2 text-[13px] text-muted-foreground">
               <span className="font-semibold">{c.youSaid}:</span> {mine.original}
@@ -283,6 +358,22 @@ function Traducir() {
           </form>
         ) : (
           <div className="flex flex-col items-center gap-2">
+            {isUser && !isListening ? (
+              <div className="no-scrollbar -mx-5 mb-1 flex w-[calc(100%+2.5rem)] gap-2 overflow-x-auto px-5">
+                {QUICK.map(([es, en]) => (
+                  <button
+                    key={es}
+                    onClick={() => {
+                      unlockSpeech();
+                      void handleText("user", es, en);
+                    }}
+                    className="h-11 shrink-0 rounded-full border border-border bg-card px-4 text-[14px] font-medium"
+                  >
+                    {es}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <button
               onClick={() => toggleMic(side)}
               disabled={busy && !isListening}
@@ -330,7 +421,6 @@ function Traducir() {
           <X className="size-5" />
         </button>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <img src={mark} alt="" className="size-7 rounded-lg bg-card p-0.5" />
           <div className="min-w-0">
             <p className="truncate text-[14px] font-bold leading-tight">Traducir</p>
             <p className="truncate text-[11px] text-primary-foreground/60">
@@ -338,25 +428,35 @@ function Traducir() {
             </p>
           </div>
         </div>
-        <IconToggle
-          label={flip ? "No voltear" : "Voltear para el cliente"}
-          onClick={() => setFlip((v) => !v)}
-          active={flip}
-        >
+        <IconToggle label="Voltear" onClick={() => setFlip((v) => !v)} active={flip}>
           <ArrowUpDown className="size-5" />
         </IconToggle>
-        <IconToggle
-          label={voice ? "Silenciar" : "Leer en voz alta"}
-          onClick={() => setVoice((v) => !v)}
-          active={voice}
-        >
+        <IconToggle label="Voz" onClick={() => setVoice((v) => !v)} active={voice}>
           {voice ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
         </IconToggle>
         <IconToggle
-          label="Guardar conversación"
-          onClick={() => setSaving(true)}
+          label="Continuo"
+          onClick={() => {
+            setContinuous((v) => !v);
+            toast(
+              continuous
+                ? "Modo continuo apagado"
+                : "Modo continuo: el micrófono pasa solo al otro lado",
+            );
+          }}
+          active={continuous}
+        >
+          <Repeat className="size-5" />
+        </IconToggle>
+        <IconToggle
+          label="Guardar"
+          onClick={() =>
+            turns.some((t) => !t.pending)
+              ? setSaving(true)
+              : toast.info("Podrás guardar cuando haya al menos una frase traducida.")
+          }
           active={false}
-          disabled={!turns.some((t) => !t.pending)}
+          dim={!turns.some((t) => !t.pending)}
         >
           <Save className="size-5" />
         </IconToggle>
@@ -431,26 +531,42 @@ function IconToggle({
   label,
   onClick,
   active,
-  disabled,
+  dim,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
   active: boolean;
-  disabled?: boolean;
+  dim?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      className={cn(
-        "flex size-10 items-center justify-center rounded-full transition-colors disabled:opacity-30",
-        active ? "bg-accent text-accent-foreground" : "bg-primary-foreground/10",
-      )}
+      aria-pressed={active}
+      className={cn("flex w-12 flex-col items-center gap-0.5", dim && "opacity-40")}
     >
-      {children}
+      <span
+        className={cn(
+          "flex size-9 items-center justify-center rounded-full transition-colors",
+          active ? "bg-accent text-accent-foreground" : "bg-primary-foreground/10",
+        )}
+      >
+        {children}
+      </span>
+      <span className="text-[10px] font-semibold leading-none text-primary-foreground/80">
+        {label}
+      </span>
     </button>
   );
+}
+
+/** Numbers that must survive translation intact: prices, times, dates, quantities. */
+function figures(text: string) {
+  return [
+    ...new Set(
+      text.match(
+        /\$\s?\d[\d,.]*|\b\d{1,2}(:\d{2})?\s?(am|pm|a\.m\.|p\.m\.)|\b\d{1,2}:\d{2}\b|\b\d+(?:[.,]\d+)?\b/gi,
+      ) ?? [],
+    ),
+  ].slice(0, 4);
 }

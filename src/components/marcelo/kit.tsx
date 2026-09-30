@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import { ArrowLeft, X } from "lucide-react";
 
 export function Screen({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("px-4 pb-28 pt-5", className)}>{children}</div>;
@@ -9,7 +10,7 @@ export function PageTitle({ title, subtitle }: { title: string; subtitle?: strin
   return (
     <div className="mb-6">
       <h1 className="text-[22px] font-bold leading-tight text-foreground">{title}</h1>
-      {subtitle ? <p className="mt-1 text-[14px] text-muted-foreground">{subtitle}</p> : null}
+      {subtitle ? <p className="mt-1 text-[16px] text-muted-foreground">{subtitle}</p> : null}
     </div>
   );
 }
@@ -60,7 +61,7 @@ export function Button({ variant = "primary", size = "md", className, ...props }
       {...props}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-colors disabled:opacity-50",
-        size === "md" ? "h-12 px-5 text-[15px]" : "h-10 px-4 text-[14px]",
+        size === "md" ? "h-12 px-5 text-[16px]" : "h-12 px-4 text-[15px]",
         variant === "primary" && "bg-primary text-primary-foreground hover:bg-primary/90",
         variant === "accent" && "bg-accent text-accent-foreground hover:bg-accent/90",
         variant === "secondary" && "border border-border bg-card text-foreground hover:bg-muted",
@@ -80,11 +81,11 @@ export function Field({
 }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[13px] font-medium text-muted-foreground">{label}</span>
+      <span className="mb-1.5 block text-[14px] font-medium text-muted-foreground">{label}</span>
       <input
         {...props}
         className={cn(
-          "h-12 w-full rounded-2xl border border-input bg-card px-4 text-[15px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-accent focus:ring-2 focus:ring-accent/25",
+          "h-12 w-full rounded-2xl border border-input bg-card px-4 text-[16px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-accent focus:ring-2 focus:ring-accent/25",
           className,
         )}
       />
@@ -117,7 +118,7 @@ export function Badge({
 export function Empty({ title, hint }: { title: string; hint: string }) {
   return (
     <Card className="py-8 text-center">
-      <p className="text-[15px] font-semibold text-foreground">{title}</p>
+      <p className="text-[16px] font-semibold text-foreground">{title}</p>
       <p className="mx-auto mt-2 max-w-[260px] text-[13px] leading-relaxed text-muted-foreground">
         {hint}
       </p>
@@ -154,5 +155,122 @@ export function Row({
       </span>
       {right}
     </Tag>
+  );
+}
+
+/** The one back control used on every screen. */
+export function BackButton({ onClick, label = "Atrás" }: { onClick?: () => void; label?: string }) {
+  return (
+    <button
+      onClick={onClick ?? (() => window.history.back())}
+      className="-ml-2 mb-3 flex h-12 items-center gap-1.5 px-2 text-[16px] font-semibold text-foreground"
+    >
+      <ArrowLeft className="size-5" /> {label}
+    </button>
+  );
+}
+
+/** Bottom sheet for quick decisions (Terminé, Cobré, Responder…). */
+export function Sheet({
+  title,
+  onClose,
+  children,
+  icon,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  icon?: ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-label={title}
+        className="max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-[1.75rem] bg-card p-5 pb-8 shadow-[var(--shadow-lift)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-[18px] font-bold">
+            {icon}
+            {title}
+          </p>
+          <button
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex size-12 items-center justify-center rounded-full hover:bg-muted"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Segmented tabs (Resumen · Por cobrar · Gastos · Contador…). */
+export function Tabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: readonly { key: T; label: string; badge?: number }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="no-scrollbar -mx-4 mb-5 flex gap-2 overflow-x-auto px-4">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          className={cn(
+            "flex h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-semibold transition-colors",
+            value === t.key
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {t.label}
+          {t.badge ? (
+            <span className="rounded-full bg-accent px-1.5 text-[11px] text-accent-foreground">
+              {t.badge}
+            </span>
+          ) : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Choice chips (método de pago, tamaño, categoría). */
+export function Chips<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly { key: T; label: string; icon?: ReactNode }[];
+  value: T | null | undefined;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          onClick={() => onChange(o.key)}
+          aria-pressed={value === o.key}
+          className={cn(
+            "flex h-12 items-center gap-1.5 rounded-full px-4 text-[15px] font-medium transition-colors",
+            value === o.key ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+          )}
+        >
+          {o.icon}
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }

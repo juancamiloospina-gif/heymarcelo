@@ -14,6 +14,9 @@ import {
   Sprout,
   Wrench,
   MoreHorizontal,
+  ShieldCheck,
+  Smartphone,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import type { Channel, ConversationStage, Expense, ServiceKind } from "@/lib/marcelo-data";
@@ -61,6 +64,9 @@ export const expenseVisual: Record<Expense["category"], { icon: LucideIcon; tone
   Materiales: { icon: Package, tone: "warning" },
   Vehículo: { icon: Car, tone: "sky" },
   Publicidad: { icon: Megaphone, tone: "plum" },
+  Seguro: { icon: ShieldCheck, tone: "success" },
+  Teléfono: { icon: Smartphone, tone: "accent" },
+  Ayudantes: { icon: Users, tone: "teal" },
   Otros: { icon: MoreHorizontal, tone: "neutral" },
 };
 

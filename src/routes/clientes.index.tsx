@@ -1,7 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Search, Plus, ChevronRight } from "lucide-react";
-import { Button, Card, Empty, Field, PageTitle, Screen } from "@/components/marcelo/kit";
+import {
+  Button,
+  Card,
+  Empty,
+  Field,
+  PageTitle,
+  Screen,
+  BackButton,
+} from "@/components/marcelo/kit";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { ClientAvatar } from "@/components/marcelo/visual";
 import { money } from "@/lib/marcelo-data";
@@ -42,6 +50,7 @@ function Clientes() {
 
   return (
     <Screen>
+      <BackButton />
       <div className="flex items-start justify-between">
         <PageTitle title="Clientes" subtitle={`${state.clients.length} personas`} />
         <Button size="sm" aria-label="Agregar cliente" onClick={() => setAdding(true)}>

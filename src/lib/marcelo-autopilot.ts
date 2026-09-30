@@ -1,36 +1,56 @@
 /**
- * Marcelo's auto-reply for client conversations (WhatsApp / SMS).
+ * Marcelo's auto-reply for client conversations (WhatsApp / SMS), plus the client messages
+ * tied to a job (confirmation, reminder, on the way, invoice).
  *
- * Deterministic on purpose: it quotes only the user's own prices, offers only free
- * slots inside working hours, and books only after the client explicitly accepts.
- * Anything it can't handle safely (discounts, complaints, odd requests) is handed
- * back to the user as "tu_turno".
+ * Deterministic on purpose: it quotes only the user's own prices, asks for address and size
+ * before quoting, offers only free slots inside working hours, and books only after the client
+ * explicitly accepts. Client text is untrusted input: it is only pattern-matched, never executed
+ * or passed to a model here. Anything it can't handle safely (discounts, complaints, photos,
+ * odd requests) is handed back to the user as "tu_turno".
  */
 import {
+  isActiveJob,
   money,
   prettyDate,
   prettyDateEn,
   prettyTime,
+  priceFor,
+  priceRange,
+  sizeLabel,
   todayISO,
+  zipOf,
   type Conversation,
+  type Job,
   type MarceloState,
   type Service,
   type ServiceKind,
+  type Size,
 } from "./marcelo-data";
+
+type Reply = { text: string; es?: string | undefined };
+type Slot = { date: string; time: string };
 
 export type AutopilotResult = {
   /** Spanish summary of what the client said, shown under their bubble. */
   clientNote?: string | undefined;
-  reply?: { text: string; es?: string | undefined };
+  reply?: Reply | undefined;
   patch: Partial<Conversation>;
-  book?: { service: Service; price: number; date: string; time: string };
-  saveAddress?: string;
-  pending?: { text: string; amount?: number | undefined };
-  event?: "quoted" | "booked" | "handoff" | "declined";
+  /** Create or move the quote job for this conversation. */
+  quote?: { service: Service; price: number; size?: Size | undefined; slot: Slot } | undefined;
+  /** The client accepted the current quote. */
+  confirm?: boolean | undefined;
+  /** The client declined; cancel the quote job. */
+  cancel?: boolean | undefined;
+  saveAddress?: string | undefined;
+  pending?: { text: string } | undefined;
+  event?: "quoted" | "booked" | "handoff" | "declined" | "asked" | undefined;
 };
 
+export const QUOTE_TTL_MS = 48 * 3_600_000;
+export const BRIDGE_AFTER_MS = 15 * 60_000;
+
 const kindKeywords: Record<ServiceKind, string[]> = {
-  pasto: ["mow", "mowing", "lawn", "grass", "pasto", "césped", "cesped", "cortar", "corte"],
+  pasto: ["mow", "mowing", "lawn", "grass", "pasto", "cesped", "cortar", "corte"],
   poda: [
     "trim",
     "trimming",
@@ -45,7 +65,7 @@ const kindKeywords: Record<ServiceKind, string[]> = {
     "poda",
     "podar",
     "arbusto",
-    "árbol",
+    "arbustos",
     "arbol",
   ],
   limpieza: [
@@ -79,10 +99,9 @@ const kindKeywords: Record<ServiceKind, string[]> = {
     "plantar",
     "plantas",
     "flores",
-    "jardín",
   ],
   reparacion: ["fix", "repair", "broken", "leak", "arreglar", "reparar", "roto"],
-  general: ["maintenance", "general", "service", "mantenimiento"],
+  general: ["maintenance", "general", "mantenimiento"],
 };
 
 const has = (text: string, re: RegExp) => re.test(text);
@@ -105,6 +124,13 @@ const RESCHEDULE =
 const ASK_PRICE =
   /\b(how much|price|prices|quote|rates?|cost|cuanto|precio|precios|cotizacion|cobra)\b/;
 const GREETING = /\b(hi|hello|hey|good (morning|afternoon)|hola|buenas|buenos dias)\b/;
+const ADDRESS = /^\s*\d{1,6}\s+[a-z0-9 .'-]{3,}/i;
+
+const sizeWords: [RegExp, Size][] = [
+  [/\b(small|tiny|little|chico|chica|pequen[oa])\b/, "chico"],
+  [/\b(medium|mid|average|regular|mediano|mediana|normal)\b/, "mediano"],
+  [/\b(large|big|huge|grande|enorme)\b/, "grande"],
+];
 
 const weekdayWords: [RegExp, number][] = [
   [/\b(sunday|domingo)\b/, 0],
@@ -120,23 +146,67 @@ export function detectLang(text: string): "en" | "es" {
   return SPANISH.test(norm(text)) ? "es" : "en";
 }
 
-export function matchService(text: string, services: Service[]): Service | undefined {
+// Words that show up in almost any yard request and say nothing about which service it is.
+const GENERIC = new Set(["yard", "garden", "jardin", "service", "servicio", "general", "care"]);
+
+function scoreServices(text: string, services: Service[]) {
   const t = norm(text);
-  let best: { s: Service; score: number } | undefined;
-  for (const s of services) {
-    const words = [
-      ...kindKeywords[s.kind],
-      ...norm(`${s.name} ${s.nameEn}`)
-        .split(/[^a-z]+/)
-        .filter((w) => w.length > 3),
-    ];
-    const score = words.reduce(
-      (acc, w) => acc + (new RegExp(`\\b${norm(w)}\\b`).test(t) ? 1 : 0),
-      0,
-    );
-    if (score > 0 && (!best || score > best.score)) best = { s, score };
-  }
-  return best?.s;
+  return services
+    .map((s) => {
+      const words = new Set(
+        [
+          ...kindKeywords[s.kind],
+          ...norm(`${s.name} ${s.nameEn}`)
+            .split(/[^a-z]+/)
+            .filter((w) => w.length > 3),
+        ]
+          .map(norm)
+          .filter((w) => !GENERIC.has(w)),
+      );
+      // Prefix match so "trimmed" counts for "trim" and "cleaned" for "clean".
+      const hits = [...words].filter((w) =>
+        new RegExp(`\\b${w}${w.length >= 4 ? "\\w*" : "\\b"}`).test(t),
+      );
+      // "hedge" and "hedges" hitting the same word count once.
+      const score = new Set(hits.map((w) => w.slice(0, 5))).size;
+      const kindHit = kindKeywords[s.kind].some(
+        (w) => !GENERIC.has(w) && new RegExp(`\\b${norm(w)}`).test(t),
+      );
+      return { s, score, kindHit };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+}
+
+export function matchService(text: string, services: Service[]): Service | undefined {
+  return scoreServices(text, services)[0]?.s;
+}
+
+/**
+ * Services that fit about equally well, or two services joined with "and / y / también":
+ * more than one means Marcelo should ask instead of guessing.
+ */
+function candidatesFor(text: string, services: Service[]) {
+  const t = norm(text);
+  // The client wrote the service's own name ("poda y limpieza"): no doubt.
+  const byName = services.find((s) => t.includes(norm(s.name)));
+  if (byName) return [byName];
+  const scored = scoreServices(text, services);
+  const top = scored[0];
+  if (!top) return [];
+  const joined = /\b(and|also|plus|y|tambien|ademas)\b/.test(t);
+  return scored
+    .filter(
+      (x, i) =>
+        i === 0 ||
+        (x.score === top.score && x.kindHit) ||
+        (joined && x.kindHit && x.s.kind !== top.s.kind),
+    )
+    .map((x) => x.s);
+}
+
+function sizeFrom(t: string): Size | undefined {
+  return sizeWords.find(([re]) => re.test(t))?.[1];
 }
 
 function preferredDay(t: string): string | undefined {
@@ -183,170 +253,325 @@ const toMin = (hhmm: string) => {
 const toHHMM = (min: number) =>
   `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
-/** First free slot inside working hours, optionally on a given day / hour / after a given slot. */
+/**
+ * First free slot inside that day's working hours. Without a specific day it prefers a day
+ * when the user is already working near the same ZIP code, so the route stays tight.
+ */
 export function findSlot(
   state: MarceloState,
   minutes: number,
   opts: {
     day?: string | undefined;
     hour?: number | undefined;
-    after?: { date: string; time: string } | undefined;
+    after?: Slot | undefined;
     /** Conversation asking; its own pending offer doesn't block it. */
     conversationId?: string | undefined;
+    zip?: string | undefined;
   } = {},
-): { date: string; time: string } | undefined {
-  const { workDays, workStart, workEnd } = state.settings;
-  const durationOf = (service: string) =>
-    state.services.find((s) => s.name === service)?.minutes ?? 90;
-  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+): Slot | undefined {
+  const { hours, blocked, bufferMin } = state.settings;
+  const durationOf = (j: Job) =>
+    state.services.find((s) => s.id === j.serviceId || s.name === j.service)?.minutes ?? 90;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const clientZip = (j: Job) =>
+    zipOf(j.address ?? state.clients.find((c) => c.id === j.clientId)?.address);
 
-  for (let i = 0; i <= 21; i++) {
+  const firstSlotOn = (i: number): Slot | undefined => {
     const date = todayISO(i);
-    if (opts.day && date !== opts.day) continue;
-    if (opts.after && date < opts.after.date) continue;
-    if (!workDays.includes(new Date(`${date}T12:00:00`).getDay())) continue;
-
-    // Booked jobs plus slots already offered to other clients who haven't answered yet.
-    const busy = [
-      ...state.jobs
-        .filter((j) => j.date === date)
-        .map((j) => [toMin(j.time), toMin(j.time) + durationOf(j.service)] as const),
-      ...state.conversations
-        .filter(
-          (c) =>
-            c.id !== opts.conversationId && c.stage === "cotizado" && c.proposal?.date === date,
-        )
-        .map((c) => {
-          const start = toMin(c.proposal!.time);
-          const svc = state.services.find((s) => s.id === c.serviceId);
-          return [start, start + (svc?.minutes ?? 90)] as const;
-        }),
-    ];
-
+    const day = hours[new Date(`${date}T12:00:00`).getDay()];
+    if (!day?.on || blocked.includes(date)) return undefined;
+    if (opts.after && date < opts.after.date) return undefined;
+    const busy = state.jobs
+      .filter((j) => j.date === date && isActiveJob(j) && j.conversationId !== opts.conversationId)
+      .map((j) => [toMin(j.time), toMin(j.time) + durationOf(j)] as const);
     const candidates: number[] = [];
-    for (let start = toMin(workStart); start + minutes <= toMin(workEnd); start += 60)
+    for (let start = toMin(day.start); start + minutes <= toMin(day.end); start += 60)
       candidates.push(start);
-    if (opts.hour !== undefined)
-      candidates.sort((a, b) => Math.abs(a - opts.hour! * 60) - Math.abs(b - opts.hour! * 60));
-
+    if (opts.hour !== undefined) {
+      const h = opts.hour * 60;
+      candidates.sort((a, b) => Math.abs(a - h) - Math.abs(b - h));
+    }
     for (const start of candidates) {
       if (i === 0 && start < nowMin + 120) continue; // never offer something in the next two hours
       if (opts.after && date === opts.after.date && start <= toMin(opts.after.time)) continue;
-      const end = start + minutes + 30; // 30 min to drive between jobs
-      if (busy.some(([b, e]) => start < e + 30 && end > b)) continue;
+      const end = start + minutes;
+      if (busy.some(([b, e]) => start < e + bufferMin && end + bufferMin > b)) continue;
       return { date, time: toHHMM(start) };
     }
+    return undefined;
+  };
+
+  if (opts.day) {
+    for (let i = 0; i <= 21; i++) if (todayISO(i) === opts.day) return firstSlotOn(i);
+    return undefined;
   }
-  return undefined;
+  const slots: Slot[] = [];
+  for (let i = 0; i <= 21 && slots.length < 8; i++) {
+    const s = firstSlotOn(i);
+    if (s) slots.push(s);
+  }
+  if (opts.zip) {
+    // Within the first week, a day already booked near the same ZIP wins.
+    const near = slots.find(
+      (s) =>
+        s.date <= todayISO(7) &&
+        state.jobs.some((j) => j.date === s.date && isActiveJob(j) && clientZip(j) === opts.zip),
+    );
+    if (near) return near;
+  }
+  return slots[0];
 }
 
+const say = (lang: "en" | "es", en: string, es: string): Reply =>
+  lang === "en" ? { text: en, es } : { text: es };
+
 const serviceList = (services: Service[], lang: "en" | "es") =>
-  services.map((s) => `• ${lang === "en" ? s.nameEn : s.name}: ${money(s.price)}`).join("\n");
+  services
+    .map((s) => {
+      const r = priceRange(s);
+      const p = r ? `${money(r[0])}–${money(r[1])}` : money(s.price);
+      return `• ${lang === "en" ? s.nameEn : s.name}: ${p}`;
+    })
+    .join("\n");
+
+const firstName = (c: Conversation) => c.contactName.split(" ")[0] ?? "";
+
+/** Price Marcelo is allowed to quote: the price table, unless the user explicitly set one. */
+export const allowedPrice = (conv: Conversation, service: Service, size?: Size) =>
+  conv.price ?? priceFor(service, size ?? conv.size);
 
 export function quote(
   conv: Conversation,
   service: Service,
-  slot: { date: string; time: string } | undefined,
+  slot: Slot | undefined,
   lang: "en" | "es",
   intro: { en: string; es: string },
-  price = service.price,
+  price: number,
+  size?: Size,
 ): AutopilotResult {
-  const first = conv.contactName.split(" ")[0] ?? "";
-  const override = price === service.price ? undefined : price;
+  const first = firstName(conv);
+  const sizeEn = size && service.sizes ? ` for a ${sizeLabel[size].en} yard` : "";
+  const sizeEs = size && service.sizes ? ` para un jardín ${sizeLabel[size].es.toLowerCase()}` : "";
   if (!slot) {
     return {
-      reply: {
-        text:
-          lang === "en"
-            ? `${intro.en} ${service.nameEn} is ${money(price)}. My schedule is full for the next few weeks — I'll text you as soon as a spot opens.`
-            : `${intro.es} ${service.name} cuesta ${money(price)}. Tengo la agenda llena las próximas semanas; te escribo apenas se abra un espacio.`,
-        es:
-          lang === "en"
-            ? `${intro.es} ${service.name} cuesta ${money(price)}. No tengo espacio pronto; te aviso apenas se abra uno.`
-            : undefined,
+      reply: say(
+        lang,
+        `${intro.en} ${service.nameEn}${sizeEn} is ${money(price)}. My schedule is full for the next few weeks — I'll text you as soon as a spot opens.`,
+        `${intro.es} ${service.name}${sizeEs} cuesta ${money(price)}. Tengo la agenda llena las próximas semanas; te escribo apenas se abra un espacio.`,
+      ),
+      patch: {
+        stage: "tu_turno",
+        serviceId: service.id,
+        size,
+        proposal: undefined,
+        awaiting: undefined,
       },
-      patch: { stage: "tu_turno", serviceId: service.id, price: override, proposal: undefined },
       pending: { text: `Buscar espacio para ${first} (${service.name})` },
       event: "handoff",
     };
   }
-  const en = `${intro.en} ${service.nameEn} is ${money(price)}. I can come ${prettyDateEn(slot.date)} at ${prettyTime(slot.time)}. Does that work for you? Reply YES to book it.`;
-  const es = `${intro.es} ${service.name} cuesta ${money(price)}. Puedo ir ${prettyDate(slot.date).toLowerCase()} a las ${prettyTime(slot.time)}. ¿Te sirve? Responde SÍ para agendar.`;
   return {
-    reply: lang === "en" ? { text: en, es } : { text: es },
-    patch: { stage: "cotizado", serviceId: service.id, price: override, proposal: slot },
+    reply: say(
+      lang,
+      `${intro.en} ${service.nameEn}${sizeEn} is ${money(price)}. I can come ${prettyDateEn(slot.date)} at ${prettyTime(slot.time)}. Does that work for you? Reply YES to book it.`,
+      `${intro.es} ${service.name}${sizeEs} cuesta ${money(price)}. Puedo ir ${prettyDate(slot.date).toLowerCase()} a las ${prettyTime(slot.time)}. ¿Te sirve? Responde SÍ para agendar.`,
+    ),
+    patch: {
+      stage: "cotizado",
+      serviceId: service.id,
+      size,
+      proposal: slot,
+      awaiting: undefined,
+      candidates: undefined,
+    },
+    quote: { service, price, size, slot },
     event: "quoted",
   };
+}
+
+/**
+ * With a service picked, asks for whatever is missing (address, then size) and quotes once
+ * Marcelo has it all.
+ */
+function nextStep(
+  state: MarceloState,
+  conv: Conversation,
+  service: Service,
+  lang: "en" | "es",
+  prefs: { day?: string | undefined; hour?: number | undefined },
+  intro: { en: string; es: string },
+): AutopilotResult {
+  const first = firstName(conv);
+  const client = state.clients.find((c) => c.id === conv.clientId);
+  const address = conv.address ?? (client?.address || undefined);
+  if (!address) {
+    return {
+      reply: say(
+        lang,
+        `${intro.en} I can help with ${service.nameEn.toLowerCase()}. What's the address, including the ZIP code?`,
+        `${intro.es} Te ayudo con ${service.name.toLowerCase()}. ¿Cuál es la dirección, con código postal?`,
+      ),
+      patch: {
+        serviceId: service.id,
+        awaiting: "address",
+        stage: "nuevo",
+        candidates: undefined,
+        prefer: prefs,
+      },
+      event: "asked",
+    };
+  }
+  if (service.sizes && !conv.size && conv.price === undefined) {
+    const r = priceRange(service)!;
+    return {
+      reply: say(
+        lang,
+        `Thanks ${first}! Is the yard small, medium or large? You can also send a photo. Prices run ${money(r[0])}–${money(r[1])}.`,
+        `¡Gracias ${first}! ¿El jardín es chico, mediano o grande? También puedes mandar una foto. El precio va de ${money(r[0])} a ${money(r[1])}.`,
+      ),
+      patch: {
+        serviceId: service.id,
+        address,
+        awaiting: "size",
+        stage: "nuevo",
+        candidates: undefined,
+      },
+      event: "asked",
+    };
+  }
+  const slot = findSlot(state, service.minutes, {
+    ...prefs,
+    conversationId: conv.id,
+    zip: zipOf(address),
+  });
+  const res = quote(conv, service, slot, lang, intro, allowedPrice(conv, service), conv.size);
+  res.patch.address = address;
+  res.patch.prefer = undefined;
+  return res;
 }
 
 export function runAutopilot(
   state: MarceloState,
   conv: Conversation,
   raw: string,
+  opts: { photo?: boolean | undefined } = {},
 ): AutopilotResult {
   const t = norm(raw);
   // The first message decides the language of the conversation.
   const lang =
     conv.messages.filter((m) => m.from === "client").length > 1 ? conv.lang : detectLang(raw);
-  const first = conv.contactName.split(" ")[0] ?? "";
+  const first = firstName(conv);
   const owner = state.profile.name.split(" ")[0] || (lang === "en" ? "the owner" : "el dueño");
   const service = state.services.find((s) => s.id === conv.serviceId);
-  const mentioned = matchService(raw, state.services);
-  const day = preferredDay(t);
+  const candidates = candidatesFor(raw, state.services);
+  const mentioned = candidates[0];
   const exactHour = preferredHour(t);
-  const hour = exactHour ?? vagueHour(t);
+  // What the client asked for earlier ("this Saturday morning") still counts after we ask for the address.
+  const day = preferredDay(t) ?? conv.prefer?.day;
+  const hour = exactHour ?? vagueHour(t) ?? conv.prefer?.hour;
   const hi = { en: `Hi ${first}!`, es: `¡Hola ${first}!` };
+  const thanks = { en: `Thanks ${first}!`, es: `¡Gracias ${first}!` };
 
-  const handoff = (note: string, pendingText: string): AutopilotResult => ({
+  const handoff = (note: string, pendingText: string, custom?: Reply): AutopilotResult => ({
     clientNote: note,
-    reply: {
-      text:
-        lang === "en"
-          ? `Thanks ${first}! Let me check with ${owner} and I'll get back to you shortly.`
-          : `¡Gracias ${first}! Déjame consultarlo con ${owner} y te respondo pronto.`,
-      es:
-        lang === "en"
-          ? `¡Gracias ${first}! Déjame consultarlo con ${owner} y te respondo pronto.`
-          : undefined,
-    },
+    reply:
+      custom ??
+      say(
+        lang,
+        `Thanks ${first}! Let me check with ${owner} and I'll get back to you shortly.`,
+        `¡Gracias ${first}! Déjame consultarlo con ${owner} y te respondo pronto.`,
+      ),
     patch: { stage: "tu_turno", lang },
     pending: { text: pendingText },
     event: "handoff",
   });
 
+  // A photo: Marcelo can't judge size from it, so it gives the range and passes it to the user.
+  if (opts.photo) {
+    const target = service ?? mentioned;
+    const r = target ? priceRange(target) : null;
+    return handoff(
+      "Mandó una foto",
+      `Ver la foto de ${first} y confirmar precio`,
+      target && r
+        ? say(
+            lang,
+            `Thanks for the photo, ${first}! ${target.nameEn} usually runs ${money(r[0])}–${money(r[1])}. ${owner} will confirm the exact price shortly.`,
+            `¡Gracias por la foto, ${first}! ${target.name} suele costar entre ${money(r[0])} y ${money(r[1])}. ${owner} te confirma el precio exacto pronto.`,
+          )
+        : undefined,
+    );
+  }
+
   // Price negotiation always goes to the user: Marcelo never changes a price on its own.
   if (has(t, PRICE_PUSHBACK)) {
     const target = mentioned ?? service;
-    const base = target
-      ? {
-          en: `Thanks ${first}! My regular price for ${target.nameEn.toLowerCase()} is ${money(target.id === service?.id ? (conv.price ?? target.price) : target.price)}. Let me check with ${owner} and I'll get back to you shortly.`,
-          es: `¡Gracias ${first}! Mi precio normal por ${target.name.toLowerCase()} es ${money(target.id === service?.id ? (conv.price ?? target.price) : target.price)}. Déjame consultarlo con ${owner} y te respondo pronto.`,
-        }
-      : null;
     const res = handoff(
       "Pidió descuento",
       `${first} pidió descuento${target ? ` en ${target.name.toLowerCase()}` : ""}`,
     );
-    if (base) res.reply = lang === "en" ? { text: base.en, es: base.es } : { text: base.es };
-    res.patch.serviceId = target?.id;
+    if (target) {
+      const p = allowedPrice(conv, target);
+      res.reply = say(
+        lang,
+        `Thanks ${first}! My regular price for ${target.nameEn.toLowerCase()} is ${money(p)}. Let me check with ${owner} and I'll get back to you shortly.`,
+        `¡Gracias ${first}! Mi precio normal por ${target.name.toLowerCase()} es ${money(p)}. Déjame consultarlo con ${owner} y te respondo pronto.`,
+      );
+      res.patch.serviceId = target.id;
+    }
     return res;
+  }
+
+  // Waiting on something Marcelo asked for.
+  if (conv.awaiting === "service") {
+    const pick =
+      candidates.length === 1
+        ? mentioned
+        : state.services.find((s) => conv.candidates?.includes(s.id) && candidates.includes(s));
+    if (pick) {
+      const res = nextStep(
+        state,
+        { ...conv, candidates: undefined },
+        pick,
+        lang,
+        { day, hour },
+        thanks,
+      );
+      res.clientNote = `Eligió: ${pick.name}`;
+      return res;
+    }
+  }
+  if (conv.awaiting === "address" && service) {
+    if (ADDRESS.test(raw)) {
+      const address = raw.trim().slice(0, 160);
+      const res = nextStep(state, { ...conv, address }, service, lang, { day, hour }, thanks);
+      res.clientNote = "Mandó su dirección";
+      res.patch.address = address;
+      return res;
+    }
+  }
+  if (conv.awaiting === "size" && service) {
+    const size = sizeFrom(t);
+    if (size) {
+      const res = nextStep(state, { ...conv, size }, service, lang, { day, hour }, thanks);
+      res.clientNote = `Tamaño: ${sizeLabel[size].es}`;
+      res.patch.size = size;
+      return res;
+    }
   }
 
   if (conv.stage === "cotizado" && service && conv.proposal) {
     if (has(t, DECLINE)) {
       return {
         clientNote: "No aceptó",
-        reply: {
-          text:
-            lang === "en"
-              ? `No problem, ${first}. Text me anytime if you need anything!`
-              : `No hay problema, ${first}. Escríbeme cuando necesites algo.`,
-          es:
-            lang === "en"
-              ? `No hay problema, ${first}. Escríbeme cuando necesites algo.`
-              : undefined,
-        },
+        reply: say(
+          lang,
+          `No problem, ${first}. Text me anytime if you need anything!`,
+          `No hay problema, ${first}. Escríbeme cuando necesites algo.`,
+        ),
         patch: { stage: "rechazado", proposal: undefined },
+        cancel: true,
         event: "declined",
       };
     }
@@ -373,37 +598,38 @@ export function runAutopilot(
         slot,
         lang,
         { en: "Sure!", es: "¡Claro!" },
-        conv.price ?? service.price,
+        allowedPrice(conv, service),
+        conv.size,
       );
       res.clientNote = "Quiere otro horario";
       return res;
     }
     if (has(t, ACCEPT)) {
-      const price = conv.price ?? service.price;
+      const price = allowedPrice(conv, service);
       const client = state.clients.find((c) => c.id === conv.clientId);
-      const needsAddress = !client?.address;
+      const needsAddress = !conv.address && !client?.address;
       const when = `${prettyDateEn(conv.proposal.date)} at ${prettyTime(conv.proposal.time)}`;
       const cuando = `${prettyDate(conv.proposal.date).toLowerCase()} a las ${prettyTime(conv.proposal.time)}`;
-      const en = `You're booked! ${service.nameEn} for ${money(price)}, ${when}.${needsAddress ? " What's the address?" : " See you then!"}`;
-      const es = `¡Listo, quedó agendado! ${service.name} por ${money(price)}, ${cuando}.${needsAddress ? " ¿Cuál es la dirección?" : " ¡Nos vemos!"}`;
       return {
         clientNote: `Aceptó ${money(price)}`,
-        reply: lang === "en" ? { text: en, es } : { text: es },
+        reply: say(
+          lang,
+          `You're booked! ${service.nameEn} for ${money(price)}, ${when}.${needsAddress ? " What's the address?" : " See you then!"}`,
+          `¡Listo, quedó agendado! ${service.name} por ${money(price)}, ${cuando}.${needsAddress ? " ¿Cuál es la dirección?" : " ¡Nos vemos!"}`,
+        ),
         patch: { stage: "agendado" },
-        book: { service, price, date: conv.proposal.date, time: conv.proposal.time },
+        confirm: true,
         event: "booked",
       };
     }
     if (mentioned && mentioned.id !== service.id) {
-      const res = quote(
-        conv,
+      const res = nextStep(
+        state,
+        { ...conv, size: undefined, price: undefined },
         mentioned,
-        findSlot(state, mentioned.minutes, { day, hour, conversationId: conv.id }),
         lang,
-        {
-          en: "Sure!",
-          es: "¡Claro!",
-        },
+        { day, hour },
+        { en: "Sure!", es: "¡Claro!" },
       );
       res.clientNote = `Pide: ${mentioned.name}`;
       return res;
@@ -413,51 +639,93 @@ export function runAutopilot(
 
   if (conv.stage === "agendado") {
     const client = state.clients.find((c) => c.id === conv.clientId);
-    if (client && !client.address && /^\s*\d+\s+\S+/.test(raw)) {
+    if (client && !client.address && ADDRESS.test(raw)) {
       return {
         clientNote: "Mandó su dirección",
-        saveAddress: raw.trim(),
-        reply: {
-          text:
-            lang === "en" ? `Got it, thank you! See you then.` : `¡Perfecto, gracias! Nos vemos.`,
-          es: lang === "en" ? "¡Perfecto, gracias! Nos vemos." : undefined,
-        },
+        saveAddress: raw.trim().slice(0, 160),
+        reply: say(lang, `Got it, thank you! See you then.`, `¡Perfecto, gracias! Nos vemos.`),
         patch: {},
       };
     }
-    if (has(t, DECLINE)) return handoff("Quiere cancelar", `${first} quiere cancelar la cita`);
+    if (has(t, DECLINE)) return handoff("Quiere cancelar", `${first} quiere cancelar el trabajo`);
     if (/\b(thanks|thank you|gracias|great|perfect|perfecto|ok)\b/.test(t) && t.length < 40) {
       return { clientNote: "Dio las gracias", patch: {} };
     }
     if (!mentioned) return handoff("Pregunta algo más", `Responder a ${first}`);
   }
 
-  // New request (or a new one after a previous booking / decline).
+  // New request (or a new one after a previous job / decline).
+  if (candidates.length > 1) {
+    const [a, b] = candidates;
+    return {
+      clientNote: `Dudoso: ${a!.name} o ${b!.name}`,
+      reply: say(
+        lang,
+        `${hi.en} Just to be sure: do you need ${a!.nameEn.toLowerCase()} or ${b!.nameEn.toLowerCase()}?`,
+        `${hi.es} Para estar seguro: ¿necesitas ${a!.name.toLowerCase()} o ${b!.name.toLowerCase()}?`,
+      ),
+      patch: { awaiting: "service", candidates: candidates.map((c) => c.id), stage: "nuevo", lang },
+      event: "asked",
+    };
+  }
   if (mentioned) {
-    const res = quote(
-      conv,
+    const size = sizeFrom(t);
+    const address = ADDRESS.test(raw)
+      ? raw.match(/\d{1,6}\s+[^,.!?]+(,\s*\d{5})?/)?.[0]
+      : undefined;
+    const res = nextStep(
+      state,
+      { ...conv, size: size ?? conv.size, address: address ?? conv.address },
       mentioned,
-      findSlot(state, mentioned.minutes, { day, hour, conversationId: conv.id }),
       lang,
+      { day, hour },
       hi,
     );
     res.clientNote = `Pide: ${mentioned.name}`;
     res.patch.lang = lang;
+    if (size) res.patch.size = size;
+    if (address) res.patch.address = address;
     return res;
   }
   if (has(t, ASK_PRICE) || has(t, GREETING) || conv.stage === "nuevo") {
-    const en = `Hi ${first}! Thanks for reaching out. These are my services:\n${serviceList(state.services, "en")}\nWhich one do you need?`;
-    const es = `¡Hola ${first}! Gracias por escribir. Estos son mis servicios:\n${serviceList(state.services, "es")}\n¿Cuál necesitas?`;
     return {
       clientNote: has(t, ASK_PRICE) ? "Pregunta precios" : "Saludo",
-      reply: lang === "en" ? { text: en, es } : { text: es },
+      reply: say(
+        lang,
+        `Hi ${first}! Thanks for reaching out. These are my services:\n${serviceList(state.services, "en")}\nWhich one do you need?`,
+        `¡Hola ${first}! Gracias por escribir. Estos son mis servicios:\n${serviceList(state.services, "es")}\n¿Cuál necesitas?`,
+      ),
       patch: { stage: "nuevo", lang },
     };
   }
   return handoff("No entendí el pedido", `Responder a ${first}`);
 }
 
-/** The user sets a custom price for this client; Marcelo re-quotes with the next free slot. */
+/* ——— One-tap decisions for "Te necesita" ——— */
+
+/** Keep the list price and re-offer a slot. */
+export function holdPrice(state: MarceloState, conv: Conversation, service: Service) {
+  const first = firstName(conv);
+  const slot = findSlot(state, service.minutes, {
+    conversationId: conv.id,
+    zip: zipOf(conv.address),
+  });
+  const price = priceFor(service, conv.size);
+  return quote(
+    { ...conv, price: undefined },
+    service,
+    slot,
+    conv.lang,
+    {
+      en: `Thanks for waiting, ${first}! My best price is firm:`,
+      es: `¡Gracias por esperar, ${first}! Mi mejor precio es fijo:`,
+    },
+    price,
+    conv.size,
+  );
+}
+
+/** The user chose a custom price (discount): Marcelo re-quotes with it. */
 export function offerPrice(
   state: MarceloState,
   conv: Conversation,
@@ -467,14 +735,126 @@ export function offerPrice(
   const slot =
     conv.proposal && conv.proposal.date > todayISO()
       ? conv.proposal
-      : findSlot(state, service.minutes, { conversationId: conv.id });
-  const first = conv.contactName.split(" ")[0] ?? "";
-  return quote(
+      : findSlot(state, service.minutes, { conversationId: conv.id, zip: zipOf(conv.address) });
+  const first = firstName(conv);
+  const res = quote(
     conv,
     service,
     slot,
     conv.lang,
     { en: `Good news, ${first}!`, es: `¡Buenas noticias, ${first}!` },
     price,
+    conv.size,
   );
+  res.patch.price = price;
+  return res;
+}
+
+export const discountPrice = (price: number, pct: number) =>
+  Math.max(5, Math.round((price * (1 - pct)) / 5) * 5);
+
+export function declineConv(conv: Conversation): AutopilotResult {
+  const first = firstName(conv);
+  return {
+    reply: say(
+      conv.lang,
+      `Thanks for thinking of us, ${first}. Unfortunately we can't take this one. Wishing you the best!`,
+      `Gracias por pensar en nosotros, ${first}. Esta vez no podemos tomar el trabajo. ¡Que te vaya muy bien!`,
+    ),
+    patch: { stage: "rechazado", proposal: undefined },
+    cancel: true,
+    event: "declined",
+  };
+}
+
+/** "Te respondo hoy mismo": sent 15 minutes after a handoff the user hasn't answered. */
+export function bridgeMessage(conv: Conversation): Reply {
+  const first = firstName(conv);
+  return say(
+    conv.lang,
+    `Hi ${first}, I haven't forgotten you — I'll get back to you today.`,
+    `Hola ${first}, no me olvidé de ti: te respondo hoy mismo.`,
+  );
+}
+
+/** The offered time passed or 48 h went by: one friendly follow-up with a fresh slot. */
+export function followup(state: MarceloState, conv: Conversation, service: Service) {
+  const first = firstName(conv);
+  const slot = findSlot(state, service.minutes, {
+    conversationId: conv.id,
+    zip: zipOf(conv.address),
+  });
+  return quote(
+    conv,
+    service,
+    slot,
+    conv.lang,
+    {
+      en: `Hi ${first}, the time I offered has passed, but I'd still love to help.`,
+      es: `Hola ${first}, el horario que te ofrecí ya pasó, pero con gusto te ayudo.`,
+    },
+    allowedPrice(conv, service),
+    conv.size,
+  );
+}
+
+/** The user tapped "¿No es esto?" and picked the right service. */
+export function requote(state: MarceloState, conv: Conversation, service: Service) {
+  return nextStep(
+    state,
+    { ...conv, size: undefined, price: undefined },
+    service,
+    conv.lang,
+    {},
+    {
+      en: "Sorry for the mix-up!",
+      es: "¡Perdona la confusión!",
+    },
+  );
+}
+
+/* ——— Messages tied to a job ——— */
+
+export function jobMessage(
+  kind: "confirm" | "reminder" | "onTheWay" | "invoice",
+  job: Job,
+  lang: "en" | "es",
+  extra: {
+    clientName: string;
+    service?: Service | undefined;
+    eta?: number | undefined;
+    instructions?: string;
+  },
+): Reply {
+  const first = extra.clientName.split(" ")[0] ?? "";
+  const svcEn = extra.service?.nameEn ?? job.service;
+  const svcEs = job.service;
+  const when = `${prettyDateEn(job.date)} at ${prettyTime(job.time)}`;
+  const cuando = `${prettyDate(job.date).toLowerCase()} a las ${prettyTime(job.time)}`;
+  switch (kind) {
+    case "confirm":
+      return say(
+        lang,
+        `Hi ${first}! You're confirmed: ${svcEn} ${when}, ${money(job.price)}. Reply here if anything changes.`,
+        `¡Hola ${first}! Quedó confirmado: ${svcEs} ${cuando}, ${money(job.price)}. Escríbeme si algo cambia.`,
+      );
+    case "reminder":
+      return say(
+        lang,
+        `Hi ${first}, friendly reminder: I'll be there ${when} for ${svcEn.toLowerCase()}. See you!`,
+        `Hola ${first}, te recuerdo que voy ${cuando} para ${svcEs.toLowerCase()}. ¡Nos vemos!`,
+      );
+    case "onTheWay":
+      return say(
+        lang,
+        `Hi ${first}, I'm on my way${extra.eta ? ` — about ${extra.eta} minutes` : ""}.`,
+        `Hola ${first}, voy en camino${extra.eta ? `, llego en unos ${extra.eta} minutos` : ""}.`,
+      );
+    case "invoice":
+      return say(
+        lang,
+        `Hi ${first}, thanks for your business! Invoice for ${svcEn.toLowerCase()} on ${prettyDateEn(job.date)}: ${money(job.price)}.${extra.instructions ? ` You can pay by ${extra.instructions}.` : ""}`,
+        `Hola ${first}, ¡gracias por tu confianza! Factura por ${svcEs.toLowerCase()} del ${prettyDate(job.date).toLowerCase()}: ${money(job.price)}.${extra.instructions ? ` Puedes pagar por ${extra.instructions}.` : ""}`,
+      );
+  }
 }

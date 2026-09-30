@@ -1,205 +1,222 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Phone, Map, MessageSquare, CheckCircle2, Languages } from "lucide-react";
+import { BellRing, Check, FileText, Languages, Navigation, Timer, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Card, Screen, SectionTitle } from "@/components/marcelo/kit";
+import { BackButton, Button, Card, Screen, SectionTitle } from "@/components/marcelo/kit";
+import { JobCard } from "@/components/marcelo/jobs";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { ServiceIcon } from "@/components/marcelo/visual";
-import { money, prettyDate, prettyTime, todayISO } from "@/lib/marcelo-data";
+import { money, prettyDate, statusLabel, type JobStatus } from "@/lib/marcelo-data";
+import { shareInvoice } from "@/lib/reports";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/trabajo/$jobId")({
   head: () => ({
     meta: [
-      { title: "Detalle del trabajo — Marcelo" },
-      {
-        name: "description",
-        content: "Hora, dirección, precio y cobro del trabajo, sin pasos de más.",
-      },
-      { property: "og:title", content: "Detalle del trabajo — Marcelo" },
-      { property: "og:description", content: "Hora, dirección, precio y cobro del trabajo." },
+      { title: "Trabajo — Marcelo" },
+      { name: "description", content: "Hora, dirección, precio y cobro del trabajo." },
     ],
   }),
   component: TrabajoDetalle,
 });
 
-const methods = [
-  { key: "efectivo", label: "Efectivo" },
-  { key: "zelle", label: "Zelle / Venmo" },
-  { key: "cheque", label: "Cheque" },
-  { key: "debe", label: "Me quedó debiendo" },
-] as const;
+const flow: JobStatus[] = ["cotizado", "confirmado", "en_camino", "hecho", "cobrado"];
 
 function TrabajoDetalle() {
   const { jobId } = useParams({ from: "/trabajo/$jobId" });
-  const { state, clientById, updateJob, addPayment, addPending } = useMarcelo();
+  const { state, clientById, updateJob, queueJobMessage } = useMarcelo();
   const navigate = useNavigate();
-  const [charging, setCharging] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   const job = state.jobs.find((j) => j.id === jobId);
   const client = clientById(job?.clientId);
-
   if (!job) {
     return (
       <Screen>
-        <p className="text-[15px] text-muted-foreground">No encontré ese trabajo.</p>
+        <BackButton />
+        <p className="text-[16px] text-muted-foreground">No encontré ese trabajo.</p>
       </Screen>
     );
   }
 
-  const complete = (method: (typeof methods)[number]["key"]) => {
-    updateJob(job.id, { status: "completado" });
-    if (method === "debe") {
-      addPending(`${client?.name ?? "El cliente"} me debe ${money(job.price)}`, {
-        clientId: job.clientId,
-        amount: job.price,
-      });
-      toast.success("Anotado como pendiente de cobro");
-    } else {
-      addPayment({
-        clientId: job.clientId,
-        jobId: job.id,
-        amount: job.price,
-        method,
-        date: todayISO(),
-      });
-      toast.success(`Cobro registrado: ${money(job.price)}`);
-    }
-    setCharging(false);
-  };
+  const step = flow.indexOf(job.status);
+  const hoursLeft = job.expiresAt
+    ? Math.max(0, Math.round((new Date(job.expiresAt).getTime() - Date.now()) / 3_600_000))
+    : null;
+  const miles = state.miles.filter((m) => m.jobId === job.id).reduce((a, b) => a + b.miles, 0);
+  const first = client?.name.split(" ")[0] ?? "el cliente";
+  const hasPhone = Boolean(client?.phone);
+
+  const messages = [
+    {
+      kind: "confirm" as const,
+      label: "Confirmación",
+      done: job.sent?.confirm,
+      show: job.status !== "cotizado",
+    },
+    {
+      kind: "reminder" as const,
+      label: "Recordatorio 24 h antes",
+      done: job.sent?.reminder,
+      show: job.status === "confirmado",
+    },
+    {
+      kind: "onTheWay" as const,
+      label: "Voy en camino",
+      done: job.sent?.onTheWay,
+      show: job.status === "confirmado" || job.status === "en_camino",
+    },
+  ];
 
   return (
     <Screen>
-      <button
-        onClick={() => navigate({ to: "/agenda" })}
-        className="mb-5 flex items-center gap-1.5 text-[14px] font-semibold text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Agenda
-      </button>
+      <BackButton onClick={() => navigate({ to: "/agenda" })} label="Agenda" />
+      <JobCard job={job} showDate />
 
-      <div className="flex items-center gap-3">
-        <ServiceIcon kind={state.services.find((s) => s.name === job.service)?.kind} size="lg" />
-        <div className="min-w-0">
-          <h1 className="truncate text-[24px] font-semibold leading-tight">
-            {client?.name ?? "Cliente"}
-          </h1>
-          <p className="mt-0.5 truncate text-[15px] text-muted-foreground">{job.service}</p>
+      {job.status !== "cancelado" && job.status !== "vencido" ? (
+        <div
+          className="mt-4 flex items-center gap-1"
+          aria-label={`Estado: ${statusLabel[job.status]}`}
+        >
+          {flow.map((s, i) => (
+            <div key={s} className="flex flex-1 flex-col items-center gap-1">
+              <span
+                className={cn("h-1.5 w-full rounded-full", i <= step ? "bg-accent" : "bg-muted")}
+              />
+              <span
+                className={cn(
+                  "text-[11px] font-semibold",
+                  i === step ? "text-accent" : "text-muted-foreground",
+                )}
+              >
+                {statusLabel[s]}
+              </span>
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <Card className="mt-4 text-[15px] text-muted-foreground">
+          Este trabajo está {statusLabel[job.status].toLowerCase()}.
+        </Card>
+      )}
 
-      <Card className="mt-5 space-y-4 border-l-4 border-l-accent">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Cuándo
-            </p>
-            <p className="mt-0.5 text-[16px] font-semibold">
-              {prettyDate(job.date)} · {prettyTime(job.time)}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Precio
-            </p>
-            <p className="mt-0.5 text-[16px] font-semibold">{money(job.price)}</p>
-          </div>
-        </div>
-        {client ? (
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Dónde
-            </p>
-            <p className="mt-0.5 text-[15px]">
-              {client.address || "Sin dirección todavía"}
-              <br />
-              {client.city}
-            </p>
+      {job.status === "cotizado" && hoursLeft !== null ? (
+        <Card className="mt-4 flex items-center gap-3 border-warning/30 bg-warning/10">
+          <Timer className="size-5 text-warning-foreground" />
+          <p className="text-[15px] text-warning-foreground">
+            La cotización vence en {hoursLeft} h. Marcelo le escribirá una vez si no contesta.
+          </p>
+        </Card>
+      ) : null}
+
+      <SectionTitle>Mensajes a {first}</SectionTitle>
+      <Card className="divide-y divide-border p-0">
+        {messages
+          .filter((m) => m.show)
+          .map((m) => (
+            <div key={m.kind} className="flex min-h-14 items-center gap-3 px-4 py-2">
+              <BellRing className="size-5 text-muted-foreground" />
+              <span className="flex-1 text-[16px]">{m.label}</span>
+              {m.done ? (
+                <span className="flex items-center gap-1 text-[14px] font-semibold text-success">
+                  <Check className="size-4" /> Listo
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!hasPhone}
+                  onClick={() => queueJobMessage(m.kind, job.id, "ask")}
+                >
+                  Preparar
+                </Button>
+              )}
+            </div>
+          ))}
+        {job.status === "hecho" || job.status === "cobrado" ? (
+          <div className="flex min-h-14 items-center gap-3 px-4 py-2">
+            <FileText className="size-5 text-muted-foreground" />
+            <span className="flex-1 text-[16px]">Factura en inglés</span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                const shared = await shareInvoice(state, job);
+                if (hasPhone) queueJobMessage("invoice", job.id, "ask");
+                toast.success(shared ? "Factura lista para compartir" : "Factura descargada");
+              }}
+            >
+              Enviar
+            </Button>
           </div>
         ) : null}
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Estado
-          </p>
-          <div className="mt-1.5">
-            {job.status === "completado" ? (
-              <Badge tone="success">Completado</Badge>
-            ) : job.status === "confirmado" ? (
-              <Badge tone="neutral">Confirmado</Badge>
-            ) : (
-              <Badge tone="warning">Por confirmar</Badge>
-            )}
-          </div>
-        </div>
       </Card>
+      {!hasPhone ? (
+        <p className="mt-2 text-[14px] text-muted-foreground">
+          Agrega el teléfono del cliente para enviarle mensajes.
+        </p>
+      ) : null}
 
-      <SectionTitle>Acciones</SectionTitle>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="mt-4 grid gap-2">
         <Button
-          variant="secondary"
-          size="sm"
-          onClick={() =>
-            window.open(
-              `https://maps.google.com/?q=${encodeURIComponent(`${client?.address ?? ""} ${client?.city ?? ""}`)}`,
-              "_blank",
-            )
-          }
+          className="bg-sky text-white hover:bg-sky/90"
+          onClick={() => navigate({ to: "/traducir", search: { clientId: job.clientId } })}
         >
-          <Map className="size-4" /> Mapa
+          <Languages className="size-5" /> Traducir con {first}
         </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => (window.location.href = `tel:${client?.phone ?? ""}`)}
-        >
-          <Phone className="size-4" /> Llamar
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() =>
-            client && navigate({ to: "/mensaje/$clientId", params: { clientId: client.id } })
-          }
-        >
-          <MessageSquare className="size-4" /> Mensaje
-        </Button>
+        {miles > 0 ? (
+          <p className="flex items-center justify-center gap-1.5 text-[14px] text-muted-foreground">
+            <Navigation className="size-4" /> {miles} millas registradas
+          </p>
+        ) : null}
       </div>
 
-      <button
-        onClick={() => navigate({ to: "/traducir", search: client ? { clientId: client.id } : {} })}
-        className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-sky text-[15px] font-semibold text-white shadow-[var(--shadow-card)] active:scale-[0.99]"
-      >
-        <Languages className="size-5" /> Traducir con {client?.name.split(" ")[0] ?? "el cliente"}
-      </button>
+      <SectionTitle>Detalles</SectionTitle>
+      <Card className="space-y-2 text-[16px]">
+        <p>
+          <span className="text-muted-foreground">Día: </span>
+          {prettyDate(job.date)}
+        </p>
+        <p>
+          <span className="text-muted-foreground">Precio: </span>
+          {money(job.price)}
+        </p>
+      </Card>
 
-      {job.status !== "completado" ? (
-        <div className="mt-5">
-          {charging ? (
-            <Card className="space-y-3">
-              <p className="text-[15px] font-semibold">
-                {client?.name} · {money(job.price)}
-              </p>
-              <p className="text-[13px] text-muted-foreground">¿Cómo pagó el cliente?</p>
-              <div className="grid grid-cols-2 gap-2">
-                {methods.map((m) => (
-                  <Button key={m.key} variant="secondary" size="sm" onClick={() => complete(m.key)}>
-                    {m.label}
-                  </Button>
-                ))}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full"
-                onClick={() => setCharging(false)}
-              >
-                Cancelar
+      {job.status === "cotizado" || job.status === "confirmado" ? (
+        confirmCancel ? (
+          <Card className="mt-4 space-y-3 border-destructive/30">
+            <p className="text-[16px] font-semibold">¿Cancelar este trabajo?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="secondary" onClick={() => setConfirmCancel(false)}>
+                No
               </Button>
-            </Card>
-          ) : (
-            <Button variant="accent" className="w-full" onClick={() => setCharging(true)}>
-              <CheckCircle2 className="size-4" /> Completar y cobrar
-            </Button>
-          )}
-        </div>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const before = job.status;
+                  updateJob(job.id, { status: "cancelado" });
+                  toast("Trabajo cancelado", {
+                    action: {
+                      label: "Deshacer",
+                      onClick: () => updateJob(job.id, { status: before }),
+                    },
+                  });
+                  setConfirmCancel(false);
+                }}
+              >
+                Sí, cancelar
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Button
+            variant="ghost"
+            className="mt-4 w-full text-destructive"
+            onClick={() => setConfirmCancel(true)}
+          >
+            <XCircle className="size-5" /> Cancelar trabajo
+          </Button>
+        )
       ) : null}
     </Screen>
   );

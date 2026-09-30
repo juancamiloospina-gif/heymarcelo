@@ -10,9 +10,11 @@ import {
   PageTitle,
   Screen,
   SectionTitle,
+  BackButton,
 } from "@/components/marcelo/kit";
 import { channelVisual } from "@/components/marcelo/visual";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { DEMO_MODE } from "@/lib/flags";
 import type { Channel } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
 
@@ -56,22 +58,18 @@ function Conexiones() {
 
   return (
     <Screen>
-      <button
-        onClick={() => window.history.back()}
-        aria-label="Atrás"
-        className="mb-2 text-muted-foreground"
-      >
-        <ArrowLeft className="size-6" />
-      </button>
+      <BackButton />
       <PageTitle title="Conexiones" subtitle="Dónde te escriben tus clientes." />
 
-      <Card className="mb-5 flex items-start gap-3 border-warning/30 bg-warning/10">
-        <FlaskConical className="mt-0.5 size-5 shrink-0 text-warning-foreground" />
-        <p className="text-[13px] leading-relaxed text-warning-foreground">
-          <b>Modo demo.</b> Estas conexiones todavía no envían ni reciben mensajes reales. Sirven
-          para probar cómo Marcelo contesta y agenda. Usa “Simular mensaje” en Mensajes.
-        </p>
-      </Card>
+      {DEMO_MODE ? (
+        <Card className="mb-5 flex items-start gap-3 border-warning/30 bg-warning/10">
+          <FlaskConical className="mt-0.5 size-5 shrink-0 text-warning-foreground" />
+          <p className="text-[13px] leading-relaxed text-warning-foreground">
+            <b>Modo demo.</b> Estas conexiones todavía no envían ni reciben mensajes reales. Sirven
+            para probar cómo Marcelo contesta y agenda. Usa “Simular mensaje” en Mensajes.
+          </p>
+        </Card>
+      ) : null}
 
       <div className="space-y-3">
         {(["whatsapp", "sms"] as const).map((ch) => (
@@ -96,7 +94,7 @@ function Conexiones() {
       <Card className="space-y-3 text-[14px] leading-relaxed text-muted-foreground">
         <Step n={1}>Un cliente te escribe pidiendo un servicio.</Step>
         <Step n={2}>Marcelo le contesta en su idioma con tu precio y el primer espacio libre.</Step>
-        <Step n={3}>Si acepta, la cita queda en tu agenda y el cliente en tu lista.</Step>
+        <Step n={3}>Si acepta, el trabajo queda en tu agenda y el cliente en tu lista.</Step>
         <Step n={4}>Si pide descuento o algo raro, Marcelo te pasa el chat.</Step>
       </Card>
 
@@ -149,7 +147,7 @@ function ChannelCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-[16px] font-bold">{copy[channel].title}</p>
-            <Badge tone="warning">Demo</Badge>
+            {DEMO_MODE ? <Badge tone="warning">Demo</Badge> : null}
           </div>
           <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">
             {connected ? (

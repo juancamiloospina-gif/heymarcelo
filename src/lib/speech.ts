@@ -79,20 +79,40 @@ function bestVoice(lang: Lang) {
   return voices.sort((a, b) => score(b) - score(a))[0];
 }
 
-export function speak(text: string, lang: Lang = "es") {
+export function speak(text: string, lang: Lang = "es", onEnd?: () => void) {
   try {
     const synth = window.speechSynthesis;
-    if (!synth || !text) return;
+    if (!synth || !text) return onEnd?.();
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
+    if (onEnd) {
+      u.onend = onEnd;
+      u.onerror = onEnd;
+    }
     u.lang = locale[lang];
     u.rate = 1.03;
     const voice = bestVoice(lang);
     if (voice) u.voice = voice;
     synth.speak(u);
   } catch {
-    /* no speech synthesis */
+    onEnd?.();
   }
+}
+
+/** Spanish or English, from common words and accents. Null when it can't tell. */
+export function guessLang(text: string): Lang | null {
+  const t = ` ${text.toLowerCase()} `;
+  const es =
+    (t.match(/[áéíóúñ¿¡]/g)?.length ?? 0) * 2 +
+    (t.match(
+      /\s(el|la|los|las|que|de|y|en|por|para|mi|tu|su|es|está|como|cuánto|hola|gracias|necesito|quiero|puede|usted|aquí|ya)\s/g,
+    )?.length ?? 0);
+  const en =
+    t.match(
+      /\s(the|and|you|is|are|my|your|to|of|can|how|what|please|thanks|here|need|want|it|i|i'm|do)\s/g,
+    )?.length ?? 0;
+  if (es === en) return null;
+  return es > en ? "es" : "en";
 }
 
 export function stopSpeaking() {

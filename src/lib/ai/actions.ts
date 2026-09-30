@@ -65,7 +65,17 @@ export const actionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("CREATE_EXPENSE"),
     category: z
-      .enum(["Gasolina", "Herramientas", "Materiales", "Vehículo", "Publicidad", "Otros"])
+      .enum([
+        "Gasolina",
+        "Herramientas",
+        "Materiales",
+        "Vehículo",
+        "Publicidad",
+        "Seguro",
+        "Teléfono",
+        "Ayudantes",
+        "Otros",
+      ])
       .catch("Otros"),
     amount: money,
     note: optText(160),
@@ -74,7 +84,7 @@ export const actionSchema = z.discriminatedUnion("type", [
     type: z.literal("RECORD_PAYMENT"),
     clientName: text(80).min(1),
     amount: money,
-    method: z.enum(["efectivo", "zelle", "cheque"]).catch("efectivo"),
+    method: z.enum(["efectivo", "zelle", "cashapp", "cheque", "tarjeta"]).catch("efectivo"),
   }),
   z.object({
     type: z.literal("CREATE_PENDING"),
