@@ -46,15 +46,16 @@ export const providers: Record<
 /** Monthly ceiling for what Marcelo pays per user: assistant, translation and receipts together. */
 export const INCLUDED_LIMIT_USD = 4;
 
-/** Typical cost of one assistant turn on the included model, until real usage says otherwise. */
-const TYPICAL_TURN_USD = 0.005;
+/** Typical cost of one assistant turn on 3.8 Flash (~0.0015 credits), until real usage says otherwise. */
+const TYPICAL_TURN_USD = 0.002;
 
 /**
- * USD per million tokens for the gateway models Marcelo uses. Estimates from public provider
- * prices (Sep 2026); check them against Lovable's AI usage dashboard. Unknown models are billed
- * at the most expensive rate so the ceiling is never exceeded by mistake.
+ * USD per million tokens for the gateway models Marcelo uses (1 Lovable credit = $1), as listed
+ * in Lovable's catalog in Sep 2026. Gemini 3.8 Flash doubles on Jan 1, 2027 ($1.50 / $7.50).
+ * Unknown models are billed at the most expensive rate so the ceiling is never exceeded by mistake.
  */
 export const GATEWAY_PRICES: Record<string, { input: number; output: number }> = {
+  "google/gemini-3.1-flash-lite": { input: 0.25, output: 1.5 },
   "google/gemini-3.8-flash": { input: 0.75, output: 3.75 },
   "openai/gpt-6-astra": { input: 10, output: 50 },
 };
