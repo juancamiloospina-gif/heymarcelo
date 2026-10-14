@@ -100,8 +100,7 @@ export async function translate(input: {
     return {
       ok: false,
       reason: "limit",
-      reply:
-        "Se acabó el asistente incluido de este mes. Conecta tu IA en Más → Tu IA para seguir traduciendo.",
+      reply: `Se acabaron las conversaciones de este mes. Vuelven el 1 de ${nextMonthName()}. Puedes ampliarlas en Configuración.`,
     };
   }
   const res = await translateMarcelo({ data });
