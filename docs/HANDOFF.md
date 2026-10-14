@@ -90,7 +90,9 @@ src/
                      PaymentSheet (Cobré), JobDraftCard / NewJobSheet
     attention.tsx    useAttention/AttentionList, OutboxSheet, DecisionSheet, ServiceFixSheet
     reminders.tsx    Swipeable (deslizar), ReminderRow
-    quote-link.tsx   enlace wa.me + QR "Pide tu cotización"
+    quote-link.tsx   enlace wa.me + QR "Pide tu cotización" + volante PDF (Configuración → Consigue clientes)
+  (lib) public-profile.ts  PublicProfile + shareUrl(): lo que ve el cliente y a dónde apunta el QR
+  (lib) flyer.ts           volante PDF en inglés, solo desde PublicProfile
     kit.tsx          Screen, PageTitle, Card, Button, Field, Badge, Empty, BackButton, Sheet, Tabs, Chips
     visual.tsx       tonos, iconos por servicio/categoría/canal, ClientAvatar, stageLabel
     onboarding.tsx   bienvenida con 3 iconos de confianza + nombre/oficio/ciudad
@@ -280,6 +282,12 @@ messages: InboxMessage[], unread, updatedAt
 5. Texto automático a **llamadas perdidas**.
 6. **Notas de voz de WhatsApp**: transcribir y traducir.
 7. **Cobro de la suscripción** de $10/mes (Stripe u otro).
+
+**Perfil público con página propia** (propuesta de Pepa Crespo, 14/10/2026): hoy hay solo la versión sin backend (QR a WhatsApp + volante PDF). Cuando haya cuentas y base de datos:
+- guardar `PublicProfile` (`src/lib/public-profile.ts`) en el servidor con un `slug` permanente y servirlo en `/p/<slug>`;
+- definir `VITE_PUBLIC_PROFILE_URL` (dominio definitivo, **antes** de imprimir QR): `shareUrl()` pasa a devolver la página con `?src=qr|flyer|link` y el QR y el volante cambian solos;
+- formulario "Request a quote" público → cotización en la app; traducir el perfil una vez al guardar, no en cada visita.
+No hecho a propósito: tarjeta NFC, pase de Wallet, galería de fotos, licencia.
 
 **Sin backend**
 8. **Usuarios nuevos empiezan con datos de demo** (`demoState()`: John Smith, etc.). Antes de producción conviene un estado vacío con un "ver demo" opcional.

@@ -122,6 +122,10 @@ export type Profile = {
   trade: string;
   city: string;
   onboarded: boolean;
+  /** Where the user works ("Pasadena, Altadena, 91101-91107"). Printed on the flyer, in English. */
+  serviceArea?: string;
+  /** Print the phone number on the flyer. Off by default: many users work from home. */
+  showPhoneOnFlyer?: boolean;
 };
 
 export type ServiceKind =

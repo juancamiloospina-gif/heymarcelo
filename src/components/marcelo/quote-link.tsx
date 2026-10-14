@@ -1,21 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { Copy, Download, QrCode } from "lucide-react";
+import { Copy, Download, FileText, QrCode } from "lucide-react";
 import { toast } from "sonner";
-import { Button, Card } from "./kit";
+import { Button, Card, Field } from "./kit";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { digits } from "@/lib/marcelo-data";
+import { flyerPdf } from "@/lib/flyer";
+import { buildPublicProfile, shareUrl } from "@/lib/public-profile";
 
 /**
- * "Pide tu cotización": a WhatsApp link (and QR for the truck or flyers) that opens a chat
- * with the user's business number and a ready message. Works without any server.
+ * "Consigue clientes": a QR and link for the truck or flyers, plus a printable flyer with the
+ * services and area. Works without any server. What the QR opens comes from `shareUrl()`, so
+ * it will point to the public profile page once there is a backend.
  */
 export function QuoteLinkCard() {
-  const { state } = useMarcelo();
-  const number = digits(state.connections.whatsapp.number ?? "");
-  const text = `Hi ${state.profile.name.split(" ")[0] || ""}! I'd like a quote for ${state.profile.trade ? state.profile.trade.toLowerCase() : "yard work"}.`;
-  const link = number ? `https://wa.me/1${number}?text=${encodeURIComponent(text)}` : "";
+  const { state, setProfile } = useMarcelo();
+  const profile = useMemo(() => buildPublicProfile(state), [state]);
+  const link = shareUrl(profile, "qr");
   const [qr, setQr] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!link) return;
@@ -29,10 +31,22 @@ export function QuoteLinkCard() {
   if (!link) {
     return (
       <Card className="text-[15px] text-muted-foreground">
-        Conecta tu WhatsApp Business para crear tu enlace y QR de cotización.
+        Conecta tu WhatsApp Business para crear tu enlace, tu QR y tu volante.
       </Card>
     );
   }
+
+  const makeFlyer = async () => {
+    setBusy(true);
+    try {
+      const doc = await flyerPdf(profile);
+      doc.save("marcelo-volante.pdf");
+    } catch {
+      toast.error("No pude crear el volante");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Card className="space-y-3">
@@ -75,6 +89,32 @@ export function QuoteLinkCard() {
           }}
         >
           <Download className="size-4" /> Bajar QR
+        </Button>
+      </div>
+
+      <div className="space-y-3 border-t pt-3">
+        <p className="text-[16px] font-semibold">Tu volante para imprimir</p>
+        <p className="text-[14px] text-muted-foreground">
+          Sale en inglés, con tu QR, tus servicios y tu zona. Lo puedes pegar en la camioneta o
+          dejarlo en las puertas.
+        </p>
+        <Field
+          label="¿Dónde trabajas? (ciudades o códigos postales)"
+          placeholder="Pasadena, Altadena, 91101-91107"
+          value={state.profile.serviceArea ?? ""}
+          onChange={(e) => setProfile({ serviceArea: e.target.value })}
+        />
+        <label className="flex min-h-12 items-center gap-3 text-[15px]">
+          <input
+            type="checkbox"
+            className="size-5 accent-accent"
+            checked={state.profile.showPhoneOnFlyer ?? false}
+            onChange={(e) => setProfile({ showPhoneOnFlyer: e.target.checked })}
+          />
+          Poner mi teléfono en el volante
+        </label>
+        <Button className="w-full" disabled={busy} onClick={() => void makeFlyer()}>
+          <FileText className="size-4" /> {busy ? "Creando…" : "Bajar volante en PDF"}
         </Button>
       </div>
     </Card>
