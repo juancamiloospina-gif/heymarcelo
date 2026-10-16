@@ -5,9 +5,9 @@
 export const DEMO_MODE = import.meta.env["VITE_DEMO_MODE"] !== "false";
 
 /**
- * Base URL of the public profile pages (e.g. "https://marcelo.app"). While it is empty there is
- * no page: QR codes and links open a WhatsApp chat. Once the backend serves `/p/<slug>`, set
- * VITE_PUBLIC_PROFILE_URL and `shareUrl()` starts returning the page instead.
+ * Base URL of the public profile pages (e.g. "https://marcelo.app"). While it is empty the app
+ * uses the address it runs on (see `publicBase()`). Set VITE_PUBLIC_PROFILE_URL once there is a
+ * final domain.
  * Never point a printed QR at a temporary domain: the URL must not change after printing.
  */
 export const PUBLIC_PROFILE_BASE_URL =

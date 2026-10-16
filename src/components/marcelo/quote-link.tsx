@@ -30,8 +30,13 @@ export function QuoteLinkCard() {
 
   if (!link) {
     return (
-      <Card className="text-[15px] text-muted-foreground">
-        Conecta tu WhatsApp Business para crear tu enlace, tu QR y tu volante.
+      <Card className="space-y-1 text-[15px] text-muted-foreground">
+        <p className="font-semibold text-foreground">Tu QR y tu volante</p>
+        <p>
+          {state.profile.publicSlug
+            ? "Abre la app publicada para ver tu QR."
+            : "Primero publica tu página pública, arriba. Tu QR y tu volante salen de ella."}
+        </p>
       </Card>
     );
   }
@@ -54,7 +59,8 @@ export function QuoteLinkCard() {
         <QrCode className="size-5 text-accent" /> Tu enlace “Pide tu cotización”
       </p>
       <p className="text-[14px] text-muted-foreground">
-        Ponlo en tu camioneta o volantes. Al escanearlo, el cliente te escribe por WhatsApp.
+        Ponlo en tu camioneta o volantes. Al escanearlo, el cliente ve tu página y te pide
+        cotización.
       </p>
       {qr ? (
         <img

@@ -247,9 +247,9 @@ function Configuracion() {
       </Card>
 
       <SectionTitle>Consigue clientes</SectionTitle>
-      <QuoteLinkCard />
+      <PublicPageCard />
       <div className="mt-3">
-        <PublicPageCard />
+        <QuoteLinkCard />
       </div>
 
       <SectionTitle>Pantalla</SectionTitle>

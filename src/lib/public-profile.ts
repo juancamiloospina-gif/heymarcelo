@@ -77,14 +77,24 @@ export function buildPublicProfile(state: MarceloState): PublicProfile {
   };
 }
 
-/** The one place that decides what a QR or link opens. Empty string = nothing to share yet. */
-export function shareUrl(p: PublicProfile, src: ShareSource): string {
-  if (PUBLIC_PROFILE_BASE_URL && p.slug) {
-    return `${PUBLIC_PROFILE_BASE_URL.replace(/\/$/, "")}/p/${p.slug}?src=${src}`;
-  }
-  if (!p.phone) return "";
-  const text = `Hi ${p.firstName}! I'd like a quote${p.tradeEn ? ` for ${p.tradeEn.toLowerCase()}` : ""}.`;
-  return `https://wa.me/1${p.phone}?text=${encodeURIComponent(text)}`;
+/**
+ * Where the public pages live. The configured domain wins; otherwise the address the app is
+ * running on (the published site). Never localhost: a QR printed there would be useless.
+ */
+export function publicBase(): string {
+  if (PUBLIC_PROFILE_BASE_URL) return PUBLIC_PROFILE_BASE_URL.replace(/\/$/, "");
+  if (typeof window === "undefined") return "";
+  const { hostname, origin } = window.location;
+  return /^(localhost|127\.|\[::1\])/.test(hostname) ? "" : origin;
+}
+
+/**
+ * The one place that decides what a QR or link opens: the user's public page (`/p/<slug>`).
+ * Empty string = there is nothing to share yet, because the page is not published (or the app
+ * is not running on a public address). No page, no QR.
+ */
+export function shareUrl(p: PublicProfile, src: ShareSource, base = publicBase()): string {
+  return base && p.slug ? `${base}/p/${p.slug}?src=${src}` : "";
 }
 
 /** "6265550100" → "(626) 555-0100". Anything else is returned as it is. */
