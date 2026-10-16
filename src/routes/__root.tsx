@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -15,6 +16,7 @@ import { MarceloProvider, useMarcelo } from "../lib/marcelo-store";
 import { AssistantProvider } from "../components/marcelo/assistant";
 import { AppShell } from "../components/marcelo/shell";
 import { Onboarding } from "../components/marcelo/onboarding";
+import { CloudSync } from "../components/marcelo/cloud-sync";
 import mark from "../assets/marcelo-mark.png";
 import { Toaster } from "../components/ui/sonner";
 
@@ -127,6 +129,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function Gate() {
   const { state, ready } = useMarcelo();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+
+  // Public pages (/p/<slug>) are for the worker's clients: no onboarding, no app shell.
+  if (path.startsWith("/p/")) return <Outlet />;
 
   if (!ready) {
     // Saved data loads from the phone right after the page opens; show the brand, not a blank page.
@@ -143,6 +149,7 @@ function Gate() {
 
   return (
     <AppShell>
+      <CloudSync />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </AppShell>

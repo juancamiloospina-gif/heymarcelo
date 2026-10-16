@@ -28,6 +28,7 @@ import {
 } from "@/components/marcelo/kit";
 import { ClientAvatar } from "@/components/marcelo/visual";
 import { QuoteLinkCard } from "@/components/marcelo/quote-link";
+import { PublicPageCard } from "@/components/marcelo/public-page";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { useAIStatus, providers } from "@/lib/ai/config";
 import { todayISO, type AutoMessageKind } from "@/lib/marcelo-data";
@@ -247,6 +248,9 @@ function Configuracion() {
 
       <SectionTitle>Consigue clientes</SectionTitle>
       <QuoteLinkCard />
+      <div className="mt-3">
+        <PublicPageCard />
+      </div>
 
       <SectionTitle>Pantalla</SectionTitle>
       <Card className="p-0">

@@ -65,6 +65,7 @@ export function buildPublicProfile(state: MarceloState): PublicProfile {
   const { profile } = state;
   const services = [...new Set(state.services.map((s) => s.nameEn.trim()).filter(Boolean))];
   return {
+    ...(profile.publicSlug ? { slug: profile.publicSlug } : {}),
     businessName: profile.name.trim(),
     firstName: profile.name.trim().split(" ")[0] ?? "",
     tradeEn: tradeInEnglish(profile.trade),
