@@ -95,37 +95,43 @@ export async function submitQuoteRequest(slug: string, q: QuoteInput): Promise<v
   if (error) throw new Error(error.message);
 }
 
+/** The row that goes to the server for a page (everything but the owner). */
+export function profileRow(p: PublicProfile, slug: string, active = true) {
+  return {
+    slug,
+    active,
+    business_name: p.businessName,
+    first_name: p.firstName,
+    trade_en: p.tradeEn,
+    city: p.city,
+    service_area: p.serviceArea,
+    services: p.services,
+    phone: p.phone,
+    show_phone: p.showPhone,
+    photo_url: p.photoUrl,
+    tagline: p.tagline,
+    bio: p.bio,
+    traits: p.traits,
+    show_prices: p.showPrices,
+    service_items: p.serviceItems.map((i) => ({
+      name: i.name,
+      kind: i.kind,
+      ...(i.fromPrice ? { from_price: i.fromPrice } : {}),
+    })),
+  };
+}
+
+/** Identifies what is published: when it changes, the page is out of date. */
+export const publishKey = (p: PublicProfile, slug: string) => JSON.stringify(profileRow(p, slug));
+
 /** Create or update the owner's page. Throws "slug_taken" when the slug belongs to someone else. */
 export async function publishProfile(p: PublicProfile, slug: string, active = true): Promise<void> {
   const c = need();
   const { data: auth } = await c.auth.getUser();
   if (!auth.user) throw new Error("not_signed_in");
-  const { error } = await c.from("profiles").upsert(
-    {
-      owner_id: auth.user.id,
-      slug,
-      active,
-      business_name: p.businessName,
-      first_name: p.firstName,
-      trade_en: p.tradeEn,
-      city: p.city,
-      service_area: p.serviceArea,
-      services: p.services,
-      phone: p.phone,
-      show_phone: p.showPhone,
-      photo_url: p.photoUrl,
-      tagline: p.tagline,
-      bio: p.bio,
-      traits: p.traits,
-      show_prices: p.showPrices,
-      service_items: p.serviceItems.map((i) => ({
-        name: i.name,
-        kind: i.kind,
-        ...(i.fromPrice ? { from_price: i.fromPrice } : {}),
-      })),
-    },
-    { onConflict: "owner_id" },
-  );
+  const { error } = await c
+    .from("profiles")
+    .upsert({ owner_id: auth.user.id, ...profileRow(p, slug, active) }, { onConflict: "owner_id" });
   if (error) throw new Error(error.code === "23505" ? "slug_taken" : error.message);
 }
 

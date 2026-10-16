@@ -7,6 +7,7 @@ import {
   cloudEnabled,
   deleteAccount,
   isValidSlug,
+  publishKey,
   publishProfile,
   sendCode,
   signOut,
@@ -140,7 +141,7 @@ export function PublicPageCard() {
         onClick={() =>
           void run(async () => {
             await publishProfile(profile, slug);
-            setProfile({ publicSlug: slug });
+            setProfile({ publicSlug: slug, publishedKey: publishKey(profile, slug) });
             toast.success(published ? "Página actualizada" : "Página publicada");
           }, "No pude publicar. Intenta de nuevo.")
         }

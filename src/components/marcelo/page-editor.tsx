@@ -1,10 +1,17 @@
 import { useMemo, useRef, useState } from "react";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, CheckCircle2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Field } from "./kit";
 import { TRAIT_KEYS, type TraitKey } from "@/lib/marcelo-data";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { cloudEnabled, removeProfilePhoto, uploadProfilePhoto, useCloudSession } from "@/lib/cloud";
+import {
+  cloudEnabled,
+  publishKey,
+  publishProfile,
+  removeProfilePhoto,
+  uploadProfilePhoto,
+  useCloudSession,
+} from "@/lib/cloud";
 import { compressImage } from "@/lib/image";
 import { T } from "@/lib/public-i18n";
 import { buildPublicProfile } from "@/lib/public-profile";
@@ -23,6 +30,24 @@ export function PageEditor() {
   const { profile } = state;
   const traits = profile.traits ?? [];
   const signedIn = Boolean(session);
+  const pub = useMemo(() => buildPublicProfile(state), [state]);
+  const slug = profile.publicSlug;
+  // Edits live on the phone until they are published: tell the user when the page is behind.
+  const dirty = Boolean(slug) && profile.publishedKey !== publishKey(pub, slug ?? "");
+
+  const publishChanges = async () => {
+    if (!slug) return;
+    setBusy(true);
+    try {
+      await publishProfile(pub, slug);
+      setProfile({ publishedKey: publishKey(pub, slug) });
+      toast.success("Cambios publicados");
+    } catch {
+      toast.error("No pude publicar. Revisa tu conexión e intenta de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const toggleTrait = (k: TraitKey) => {
     if (traits.includes(k)) return setProfile({ traits: traits.filter((t) => t !== k) });
@@ -167,6 +192,35 @@ export function PageEditor() {
         Tus servicios y precios salen de la pantalla Servicios y precios. Si cambias algo allá,
         vuelve a publicar.
       </p>
+
+      {!slug ? (
+        <p className="rounded-2xl bg-muted px-4 py-3 text-[15px] text-muted-foreground">
+          Cuando termines, entra con tu correo y publica tu página (más abajo).
+        </p>
+      ) : dirty ? (
+        <div className="space-y-2 rounded-2xl border border-accent/40 bg-accent/10 p-3">
+          <p className="text-[15px] font-semibold">Tienes cambios sin publicar</p>
+          <p className="text-[14px] text-muted-foreground">
+            Tus clientes todavía ven la versión anterior de tu página.
+          </p>
+          <Button
+            className="w-full"
+            disabled={busy || !signedIn}
+            onClick={() => void publishChanges()}
+          >
+            {busy ? "Publicando…" : "Publicar cambios"}
+          </Button>
+          {!signedIn ? (
+            <p className="text-[13px] text-muted-foreground">
+              Primero entra con tu correo (más abajo).
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <p className="flex items-center gap-2 text-[15px] font-medium text-muted-foreground">
+          <CheckCircle2 className="size-5 text-accent" /> Tu página está al día
+        </p>
+      )}
     </Card>
   );
 }
