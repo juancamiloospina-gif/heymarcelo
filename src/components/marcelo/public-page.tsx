@@ -13,7 +13,7 @@ import {
   useCloudSession,
   verifyCode,
 } from "@/lib/cloud";
-import { publishNotice, publishPage } from "@/lib/publish";
+import { publishErrorText, publishNotice, publishPage } from "@/lib/publish";
 
 /**
  * "Tu página pública": sign in with an email code, pick an address and publish. The page
@@ -137,11 +137,15 @@ export function PublicPageCard() {
         disabled={busy || !valid || !state.profile.name.trim()}
         onClick={() =>
           void run(async () => {
-            const { patch, status } = await publishPage(state, slug);
-            setProfile(patch);
-            const n = publishNotice(status, !published);
-            if (n.ok) toast.success(n.text);
-            else toast.warning(n.text);
+            try {
+              const { patch, status } = await publishPage(state, slug);
+              setProfile(patch);
+              const n = publishNotice(status, !published);
+              if (n.ok) toast.success(n.text);
+              else toast.warning(n.text);
+            } catch (e) {
+              toast.error(publishErrorText(e));
+            }
           }, "No pude publicar. Intenta de nuevo.")
         }
       >

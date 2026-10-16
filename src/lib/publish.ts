@@ -45,3 +45,17 @@ export function publishNotice(
   }
   return { ok: true, text: first ? "Página publicada" : "Cambios publicados" };
 }
+
+/** Turns a publishing error into something the user can act on (and we can diagnose). */
+export function publishErrorText(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e);
+  console.error("publish failed:", e);
+  if (m === "not_signed_in" || /jwt|auth/i.test(m)) {
+    return "Tu sesión venció. Entra de nuevo con tu correo y vuelve a publicar.";
+  }
+  if (m === "slug_taken") return "Esa dirección ya está en uso. Prueba otra.";
+  if (/failed to fetch|network|load failed/i.test(m)) {
+    return "No hay conexión. Revisa tu internet e intenta de nuevo.";
+  }
+  return `No pude publicar (${m.slice(0, 90)}). Si se repite, avísanos con este mensaje.`;
+}
