@@ -138,6 +138,8 @@ export type Profile = {
   traits?: TraitKey[] | undefined;
   /** Show "from $X" under each service on the public page. Default: yes. */
   showPrices?: boolean | undefined;
+  /** What was last sent to the public page. If it differs from now, there are unpublished changes. */
+  publishedKey?: string | undefined;
 };
 
 export const TRAIT_KEYS = ["reliable", "punctual", "quality", "friendly", "tidy"] as const;
