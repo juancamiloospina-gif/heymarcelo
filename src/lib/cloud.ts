@@ -110,7 +110,9 @@ export function profileRow(p: PublicProfile, slug: string, active = true) {
     show_phone: p.showPhone,
     photo_url: p.photoUrl,
     tagline: p.tagline,
+    tagline_en: p.taglineEn,
     bio: p.bio,
+    bio_en: p.bioEn,
     traits: p.traits,
     show_prices: p.showPrices,
     service_items: p.serviceItems.map((i) => ({

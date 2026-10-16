@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink, Globe, LogOut, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Field } from "./kit";
@@ -7,15 +7,13 @@ import {
   cloudEnabled,
   deleteAccount,
   isValidSlug,
-  publishKey,
-  publishProfile,
   sendCode,
   signOut,
   slugify,
   useCloudSession,
   verifyCode,
 } from "@/lib/cloud";
-import { buildPublicProfile } from "@/lib/public-profile";
+import { publishNotice, publishPage } from "@/lib/publish";
 
 /**
  * "Tu página pública": sign in with an email code, pick an address and publish. The page
@@ -30,7 +28,6 @@ export function PublicPageCard() {
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [slug, setSlug] = useState(state.profile.publicSlug ?? "");
-  const profile = useMemo(() => buildPublicProfile(state), [state]);
 
   useEffect(() => {
     if (!slug && !state.profile.publicSlug) setSlug(slugify(state.profile.name));
@@ -140,9 +137,11 @@ export function PublicPageCard() {
         disabled={busy || !valid || !state.profile.name.trim()}
         onClick={() =>
           void run(async () => {
-            await publishProfile(profile, slug);
-            setProfile({ publicSlug: slug, publishedKey: publishKey(profile, slug) });
-            toast.success(published ? "Página actualizada" : "Página publicada");
+            const { patch, status } = await publishPage(state, slug);
+            setProfile(patch);
+            const n = publishNotice(status, !published);
+            if (n.ok) toast.success(n.text);
+            else toast.warning(n.text);
           }, "No pude publicar. Intenta de nuevo.")
         }
       >
