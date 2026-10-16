@@ -285,7 +285,7 @@ messages: InboxMessage[], unread, updatedAt
 
 **Perfil público con página propia** (propuesta de Pepa Crespo, 14/10/2026): hoy hay solo la versión sin backend (QR a WhatsApp + volante PDF). Cuando haya cuentas y base de datos:
 - guardar `PublicProfile` (`src/lib/public-profile.ts`) en el servidor con un `slug` permanente y servirlo en `/p/<slug>`;
-- definir `VITE_PUBLIC_PROFILE_URL` (dominio definitivo, **antes** de imprimir QR): `shareUrl()` pasa a devolver la página con `?src=qr|flyer|link` y el QR y el volante cambian solos;
+- **QR y volante ya apuntan a la página** (`/p/<slug>?src=qr|flyer`) cuando el usuario publicó, usando la dirección donde corre la app (`publicBase()` en `public-profile.ts`; nunca localhost). Antes de publicar abren WhatsApp. **Pendiente:** al tener dominio propio, definir `VITE_PUBLIC_PROFILE_URL`; los QR ya impresos con la dirección vieja dejarían de servir, así que fijar el dominio antes de imprimir en serio;
 - formulario "Request a quote" público → cotización en la app; traducir el perfil una vez al guardar, no en cada visita.
 No hecho a propósito: tarjeta NFC, pase de Wallet, galería de fotos, licencia.
 

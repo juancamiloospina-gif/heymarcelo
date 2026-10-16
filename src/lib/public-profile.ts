@@ -77,14 +77,31 @@ export function buildPublicProfile(state: MarceloState): PublicProfile {
   };
 }
 
-/** The one place that decides what a QR or link opens. Empty string = nothing to share yet. */
-export function shareUrl(p: PublicProfile, src: ShareSource): string {
-  if (PUBLIC_PROFILE_BASE_URL && p.slug) {
-    return `${PUBLIC_PROFILE_BASE_URL.replace(/\/$/, "")}/p/${p.slug}?src=${src}`;
-  }
+/**
+ * Where the public pages live. The configured domain wins; otherwise the address the app is
+ * running on (the published site). Never localhost: a QR printed there would be useless.
+ */
+export function publicBase(): string {
+  if (PUBLIC_PROFILE_BASE_URL) return PUBLIC_PROFILE_BASE_URL.replace(/\/$/, "");
+  if (typeof window === "undefined") return "";
+  const { hostname, origin } = window.location;
+  return /^(localhost|127\.|\[::1\])/.test(hostname) ? "" : origin;
+}
+
+/**
+ * The one place that decides what a QR or link opens. With a published page it is the page
+ * (`/p/<slug>`); before that, a WhatsApp chat. Empty string = nothing to share yet.
+ */
+export function shareUrl(p: PublicProfile, src: ShareSource, base = publicBase()): string {
+  if (base && p.slug) return `${base}/p/${p.slug}?src=${src}`;
   if (!p.phone) return "";
   const text = `Hi ${p.firstName}! I'd like a quote${p.tradeEn ? ` for ${p.tradeEn.toLowerCase()}` : ""}.`;
   return `https://wa.me/1${p.phone}?text=${encodeURIComponent(text)}`;
+}
+
+/** True when `shareUrl` returns the public page and not the WhatsApp fallback. */
+export function opensPage(p: PublicProfile, base = publicBase()): boolean {
+  return Boolean(base && p.slug);
 }
 
 /** "6265550100" → "(626) 555-0100". Anything else is returned as it is. */

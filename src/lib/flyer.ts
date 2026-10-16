@@ -28,7 +28,7 @@ export async function flyerPdf(p: PublicProfile): Promise<jsPDF> {
   doc.setFont("helvetica", "bold").setFontSize(24).setTextColor(43, 45, 53);
   doc.text("Need a free quote?", cx, 190, { align: "center" });
   doc.setFont("helvetica", "normal").setFontSize(14).setTextColor(100, 100, 100);
-  doc.text("Scan with your phone camera and send me a message.", cx, 212, { align: "center" });
+  doc.text("Scan with your phone camera to request a quote.", cx, 212, { align: "center" });
 
   doc.addImage(qr, "PNG", cx - 126, 236, 252, 252);
 

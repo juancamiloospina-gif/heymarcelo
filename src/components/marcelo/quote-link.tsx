@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button, Card, Field } from "./kit";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { flyerPdf } from "@/lib/flyer";
-import { buildPublicProfile, shareUrl } from "@/lib/public-profile";
+import { buildPublicProfile, opensPage, shareUrl } from "@/lib/public-profile";
 
 /**
  * "Consigue clientes": a QR and link for the truck or flyers, plus a printable flyer with the
@@ -16,6 +16,7 @@ export function QuoteLinkCard() {
   const { state, setProfile } = useMarcelo();
   const profile = useMemo(() => buildPublicProfile(state), [state]);
   const link = shareUrl(profile, "qr");
+  const page = opensPage(profile);
   const [qr, setQr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -31,7 +32,7 @@ export function QuoteLinkCard() {
   if (!link) {
     return (
       <Card className="text-[15px] text-muted-foreground">
-        Conecta tu WhatsApp Business para crear tu enlace, tu QR y tu volante.
+        Publica tu página o conecta tu WhatsApp Business para crear tu enlace, tu QR y tu volante.
       </Card>
     );
   }
@@ -54,7 +55,9 @@ export function QuoteLinkCard() {
         <QrCode className="size-5 text-accent" /> Tu enlace “Pide tu cotización”
       </p>
       <p className="text-[14px] text-muted-foreground">
-        Ponlo en tu camioneta o volantes. Al escanearlo, el cliente te escribe por WhatsApp.
+        {page
+          ? "Ponlo en tu camioneta o volantes. Al escanearlo, el cliente ve tu página y te pide cotización."
+          : "Ponlo en tu camioneta o volantes. Al escanearlo, el cliente te escribe por WhatsApp. Publica tu página para que vea tus servicios y pida cotización."}
       </p>
       {qr ? (
         <img
