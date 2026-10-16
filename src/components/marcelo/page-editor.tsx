@@ -1,14 +1,17 @@
 import { useMemo, useRef, useState } from "react";
-import { Camera, CheckCircle2, Trash2 } from "lucide-react";
+import { Camera, CheckCircle2, ImagePlus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Field } from "./kit";
 import { TRAIT_KEYS, type TraitKey } from "@/lib/marcelo-data";
 import { useMarcelo } from "@/lib/marcelo-store";
 import {
   cloudEnabled,
+  MAX_WORK_PHOTOS,
   publishKey,
   removeProfilePhoto,
+  removeWorkPhoto,
   uploadProfilePhoto,
+  uploadWorkPhoto,
   useCloudSession,
 } from "@/lib/cloud";
 import { compressImage } from "@/lib/image";
@@ -27,6 +30,7 @@ export function PageEditor() {
   const session = useCloudSession();
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const workRef = useRef<HTMLInputElement>(null);
   const { profile } = state;
   const traits = profile.traits ?? [];
   const signedIn = Boolean(session);
@@ -46,6 +50,42 @@ export function PageEditor() {
       else toast.warning(n.text);
     } catch (e) {
       toast.error(publishErrorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const gallery = profile.gallery ?? [];
+
+  const addWorkPhotos = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setBusy(true);
+    let current = [...gallery];
+    try {
+      for (const f of Array.from(files)) {
+        if (current.length >= MAX_WORK_PHOTOS) {
+          toast.message(`Máximo ${MAX_WORK_PHOTOS} fotos`);
+          break;
+        }
+        const url = await uploadWorkPhoto(await compressImage(f));
+        current = [...current, url];
+        setProfile({ gallery: current });
+      }
+    } catch {
+      toast.error("No pude subir una foto. Intenta con otra.");
+    } finally {
+      setBusy(false);
+      if (workRef.current) workRef.current.value = "";
+    }
+  };
+
+  const removeWork = async (url: string) => {
+    setBusy(true);
+    try {
+      await removeWorkPhoto(url);
+      setProfile({ gallery: gallery.filter((u) => u !== url) });
+    } catch {
+      toast.error("No pude quitar la foto. Intenta de nuevo.");
     } finally {
       setBusy(false);
     }
@@ -189,6 +229,50 @@ export function PageEditor() {
             );
           })}
         </div>
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-[14px] font-medium text-muted-foreground">
+          Fotos de tu trabajo (hasta {MAX_WORK_PHOTOS})
+        </p>
+        {gallery.length ? (
+          <div className="mb-2 grid grid-cols-3 gap-2">
+            {gallery.map((u, i) => (
+              <div key={u} className="relative aspect-square overflow-hidden rounded-xl border">
+                <img src={u} alt={`Foto ${i + 1}`} className="size-full object-cover" />
+                <button
+                  type="button"
+                  aria-label={`Quitar foto ${i + 1}`}
+                  disabled={busy}
+                  onClick={() => void removeWork(u)}
+                  className="absolute right-1 top-1 flex size-10 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-50"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <input
+          ref={workRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => void addWorkPhotos(e.target.files)}
+        />
+        <Button
+          variant="secondary"
+          disabled={busy || !cloudEnabled || !signedIn || gallery.length >= MAX_WORK_PHOTOS}
+          onClick={() => workRef.current?.click()}
+        >
+          <ImagePlus className="size-4" /> {busy ? "Subiendo…" : "Agregar fotos"}
+        </Button>
+        <p className="mt-1.5 text-[13px] text-muted-foreground">
+          {signedIn
+            ? "Trabajos que hayas hecho: antes y después, jardines, pintura… Se ven en tu página."
+            : "Para subir fotos, primero entra con tu correo (más abajo)."}
+        </p>
       </div>
 
       <label className="flex min-h-12 items-center gap-3 text-[15px]">

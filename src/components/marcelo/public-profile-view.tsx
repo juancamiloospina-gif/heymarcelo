@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Clock,
@@ -15,6 +15,7 @@ import {
   Star,
   TreeDeciduous,
   Wrench,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import mark from "@/assets/marcelo-mark.png";
@@ -46,6 +47,7 @@ const TRAIT_ICONS: Record<string, LucideIcon> = {
 
 const NAVY = "#0b3a6b";
 const SHOWN = 4;
+const PHOTOS_SHOWN = 3;
 
 export function PublicProfileView({
   profile: p,
@@ -62,6 +64,19 @@ export function PublicProfileView({
 }) {
   const t = T[lang];
   const [all, setAll] = useState(false);
+  const [morePhotos, setMorePhotos] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
+  // A photo that no longer exists (deleted, not republished yet) is simply not shown.
+  const [broken, setBroken] = useState<string[]>([]);
+  const photos = p.gallery.filter((u) => !broken.includes(u));
+  const shownPhotos = morePhotos ? photos : photos.slice(0, PHOTOS_SHOWN);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   const shown = all ? p.services : p.services.slice(0, SHOWN);
   const initial = p.businessName.trim().charAt(0).toUpperCase() || "M";
 
@@ -240,6 +255,44 @@ export function PublicProfileView({
           </section>
         ) : null}
 
+        {photos.length ? (
+          <section>
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-[24px] font-bold" style={{ color: NAVY }}>
+                {t.ourWork}
+              </h2>
+              {photos.length > PHOTOS_SHOWN ? (
+                <button
+                  type="button"
+                  onClick={() => setMorePhotos(!morePhotos)}
+                  className="min-h-12 text-[15px] font-semibold"
+                  style={{ color: NAVY }}
+                >
+                  {morePhotos ? t.seeLessPhotos : `${t.seeMore} ›`}
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {shownPhotos.map((u, i) => (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => setOpen(u)}
+                  className="aspect-square overflow-hidden rounded-xl bg-[#eef1f5]"
+                >
+                  <img
+                    src={u}
+                    alt={`${t.ourWork} ${i + 1}`}
+                    loading="lazy"
+                    onError={() => setBroken((b) => [...b, u])}
+                    className="size-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <a
           href="#quote"
           className="flex h-14 items-center justify-between rounded-full px-6 text-[17px] font-semibold text-white"
@@ -254,6 +307,30 @@ export function PublicProfileView({
         <p className="pt-2 text-center text-[15px] text-[#4b5b70]">{t.footer}</p>
         <p className="text-center text-[13px] text-[#7a8798]">{t.powered}</p>
       </main>
+
+      {open ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setOpen(null)}
+        >
+          <button
+            type="button"
+            aria-label={t.closePhoto}
+            onClick={() => setOpen(null)}
+            className="absolute right-3 top-3 flex size-12 items-center justify-center rounded-full bg-white/15 text-white"
+          >
+            <X className="size-6" />
+          </button>
+          <img
+            src={open}
+            alt=""
+            className="max-h-[85vh] max-w-full rounded-xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
