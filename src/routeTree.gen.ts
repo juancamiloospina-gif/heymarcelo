@@ -18,6 +18,7 @@ import { Route as DocumentosRouteImport } from './routes/documentos'
 import { Route as GastosRouteImport } from './routes/gastos'
 import { Route as IaRouteImport } from './routes/ia'
 import { Route as MasRouteImport } from './routes/mas'
+import { Route as MiPaginaRouteImport } from './routes/mi-pagina'
 import { Route as PendientesRouteImport } from './routes/pendientes'
 import { Route as ServiciosRouteImport } from './routes/servicios'
 import { Route as TraducirRouteImport } from './routes/traducir'
@@ -72,6 +73,11 @@ const IaRoute = IaRouteImport.update({
 const MasRoute = MasRouteImport.update({
   id: '/mas',
   path: '/mas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MiPaginaRoute = MiPaginaRouteImport.update({
+  id: '/mi-pagina',
+  path: '/mi-pagina',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PendientesRoute = PendientesRouteImport.update({
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/gastos': typeof GastosRoute
   '/ia': typeof IaRoute
   '/mas': typeof MasRoute
+  '/mi-pagina': typeof MiPaginaRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
   '/traducir': typeof TraducirRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/gastos': typeof GastosRoute
   '/ia': typeof IaRoute
   '/mas': typeof MasRoute
+  '/mi-pagina': typeof MiPaginaRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
   '/traducir': typeof TraducirRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/gastos': typeof GastosRoute
   '/ia': typeof IaRoute
   '/mas': typeof MasRoute
+  '/mi-pagina': typeof MiPaginaRoute
   '/pendientes': typeof PendientesRoute
   '/servicios': typeof ServiciosRoute
   '/traducir': typeof TraducirRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/gastos'
     | '/ia'
     | '/mas'
+    | '/mi-pagina'
     | '/pendientes'
     | '/servicios'
     | '/traducir'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/gastos'
     | '/ia'
     | '/mas'
+    | '/mi-pagina'
     | '/pendientes'
     | '/servicios'
     | '/traducir'
@@ -243,6 +254,7 @@ export interface FileRouteTypes {
     | '/gastos'
     | '/ia'
     | '/mas'
+    | '/mi-pagina'
     | '/pendientes'
     | '/servicios'
     | '/traducir'
@@ -265,6 +277,7 @@ export interface RootRouteChildren {
   GastosRoute: typeof GastosRoute
   IaRoute: typeof IaRoute
   MasRoute: typeof MasRoute
+  MiPaginaRoute: typeof MiPaginaRoute
   PendientesRoute: typeof PendientesRoute
   ServiciosRoute: typeof ServiciosRoute
   TraducirRoute: typeof TraducirRoute
@@ -340,6 +353,13 @@ declare module '@tanstack/react-router' {
       path: '/mas'
       fullPath: '/mas'
       preLoaderRoute: typeof MasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mi-pagina': {
+      id: '/mi-pagina'
+      path: '/mi-pagina'
+      fullPath: '/mi-pagina'
+      preLoaderRoute: typeof MiPaginaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pendientes': {
@@ -425,6 +445,7 @@ const rootRouteChildren: RootRouteChildren = {
   GastosRoute: GastosRoute,
   IaRoute: IaRoute,
   MasRoute: MasRoute,
+  MiPaginaRoute: MiPaginaRoute,
   PendientesRoute: PendientesRoute,
   ServiciosRoute: ServiciosRoute,
   TraducirRoute: TraducirRoute,

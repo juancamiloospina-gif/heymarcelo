@@ -45,6 +45,8 @@ export const isValidSlug = (s: string) =>
   /^[a-z0-9]+(-[a-z0-9]+)*$/.test(s) && s.length >= 3 && s.length <= 40;
 
 /** Public page as the server returns it. Phone is empty unless the owner chose to show it. */
+export type CloudServiceItem = { name: string; kind: string; from_price?: number };
+
 export type CloudProfile = {
   slug: string;
   business_name: string;
@@ -55,6 +57,14 @@ export type CloudProfile = {
   services: string[];
   phone: string;
   show_phone: boolean;
+  photo_url: string;
+  tagline: string;
+  tagline_en: string;
+  bio: string;
+  bio_en: string;
+  traits: string[];
+  show_prices: boolean;
+  service_items: CloudServiceItem[];
 };
 
 export async function fetchPublicProfile(slug: string): Promise<CloudProfile | null> {
@@ -103,10 +113,44 @@ export async function publishProfile(p: PublicProfile, slug: string, active = tr
       services: p.services,
       phone: p.phone,
       show_phone: p.showPhone,
+      photo_url: p.photoUrl,
+      tagline: p.tagline,
+      bio: p.bio,
+      traits: p.traits,
+      show_prices: p.showPrices,
+      service_items: p.serviceItems.map((i) => ({
+        name: i.name,
+        kind: i.kind,
+        ...(i.fromPrice ? { from_price: i.fromPrice } : {}),
+      })),
     },
     { onConflict: "owner_id" },
   );
   if (error) throw new Error(error.code === "23505" ? "slug_taken" : error.message);
+}
+
+const PHOTO_BUCKET = "profile-photos";
+
+/** Uploads the (already compressed) profile photo to the user's own folder; returns its URL. */
+export async function uploadProfilePhoto(photo: Blob): Promise<string> {
+  const c = need();
+  const { data: auth } = await c.auth.getUser();
+  if (!auth.user) throw new Error("not_signed_in");
+  const path = `${auth.user.id}/profile.jpg`;
+  const { error } = await c.storage
+    .from(PHOTO_BUCKET)
+    .upload(path, photo, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
+  if (error) throw new Error(error.message);
+  // The path never changes, so the version in the URL makes browsers fetch the new photo.
+  return `${c.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl}?v=${Date.now()}`;
+}
+
+export async function removeProfilePhoto(): Promise<void> {
+  const c = need();
+  const { data: auth } = await c.auth.getUser();
+  if (!auth.user) throw new Error("not_signed_in");
+  const { error } = await c.storage.from(PHOTO_BUCKET).remove([`${auth.user.id}/profile.jpg`]);
+  if (error) throw new Error(error.message);
 }
 
 export type CloudRequest = {
@@ -166,6 +210,14 @@ export const signOut = async () => {
  */
 export async function deleteAccount(): Promise<void> {
   const c = need();
+  // Photos live in Storage, outside the database cascade: remove them first (best effort).
+  const { data: auth } = await c.auth.getUser();
+  if (auth.user) {
+    const { data: files } = await c.storage.from(PHOTO_BUCKET).list(auth.user.id);
+    if (files?.length) {
+      await c.storage.from(PHOTO_BUCKET).remove(files.map((f) => `${auth.user.id}/${f.name}`));
+    }
+  }
   const { error } = await c.rpc("delete_my_account");
   if (error) throw new Error(error.message);
   // The user no longer exists on the server: only clear the session stored on this device.

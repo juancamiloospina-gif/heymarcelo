@@ -288,6 +288,12 @@ messages: InboxMessage[], unread, updatedAt
 - **QR y volante ya apuntan a la página** (`/p/<slug>?src=qr|flyer`) cuando el usuario publicó, usando la dirección donde corre la app (`publicBase()` en `public-profile.ts`; nunca localhost). Sin página publicada **no hay QR ni volante** (la tarjeta pide publicar primero); no hay respaldo a WhatsApp. **Pendiente:** al tener dominio propio, definir `VITE_PUBLIC_PROFILE_URL`; los QR ya impresos con la dirección vieja dejarían de servir, así que fijar el dominio antes de imprimir en serio;
 - formulario "Request a quote" público → cotización en la app; traducir el perfil una vez al guardar, no en cada visita.
 **Borrar cuenta** (requisito de Apple): hecho. Configuración → Tu página pública → "Borrar mi cuenta" llama a `delete_my_account()` (migración `20261016010000`), que borra el usuario y, en cascada, página, slugs y solicitudes. Los datos del teléfono no se tocan; el slug queda libre.
+**Página "humana" (etapa 1 hecha, 2 y 3 pendientes).** Diseño de la página pública en `components/marcelo/public-profile-view.tsx` (hero con foto, frase manuscrita, servicios con ícono y "Desde $", "Sobre mí" con 3 rasgos, contacto solo si el usuario muestra su teléfono, formulario de cotización en `quote-form.tsx`). Se edita en `/mi-pagina` (`page-editor.tsx`): foto (Storage `profile-photos`, comprimida en el teléfono), frase, bio, rasgos y precios. Textos del cliente en `lib/public-i18n.ts` (inglés + ES). Migración `20261017000000`.
+- **Etapa 2 pendiente:** galería "Nuestro trabajo" (hasta 6 fotos, mismo bucket).
+- **Etapa 3 pendiente:** traducir bio y frase al publicar (columnas `bio_en`, `tagline_en` ya existen y la página las usa si no están vacías). Hasta entonces el cliente ve el texto como lo escribió el usuario.
+- **Sin reseñas a propósito:** no mostrar testimonios que no se puedan comprobar; hacerlo con un enlace de reseña al cliente tras el trabajo.
+- El azul marino es solo de las páginas públicas; la app interna sigue el sistema de `AGENTS.md`.
+- El oficio se ve en inglés en las dos lenguas (solo existe `trade_en`).
 No hecho a propósito: tarjeta NFC, pase de Wallet, galería de fotos, licencia.
 
 **Sin backend**

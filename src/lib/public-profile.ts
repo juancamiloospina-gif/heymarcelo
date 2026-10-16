@@ -7,7 +7,7 @@
  * `shareUrl` returns the page URL. QR, flyer and any future screen only use these two things.
  */
 import { PUBLIC_PROFILE_BASE_URL } from "./flags";
-import { digits, type MarceloState } from "./marcelo-data";
+import { digits, type MarceloState, type ServiceKind, type TraitKey } from "./marcelo-data";
 
 export type PublicProfile = {
   /** Permanent id in the page URL. Assigned by the server; empty until there is a backend. */
@@ -23,7 +23,16 @@ export type PublicProfile = {
   /** US number, digits only ("6265550100"). Empty when WhatsApp is not connected. */
   phone: string;
   showPhone: boolean;
+  photoUrl: string;
+  tagline: string;
+  bio: string;
+  traits: TraitKey[];
+  showPrices: boolean;
+  /** Services with their icon kind and lowest price, as the page lists them. */
+  serviceItems: ServiceItem[];
 };
+
+export type ServiceItem = { name: string; kind: ServiceKind; fromPrice?: number | undefined };
 
 /** Where the visit came from, so it can be measured once there is a page (`?src=`). */
 export type ShareSource = "qr" | "flyer" | "link";
@@ -61,6 +70,25 @@ export function tradeInEnglish(trade: string): string {
   return TRADES_EN[key] ?? "";
 }
 
+/** Lowest price of a service: the smallest size price when priced by size, else the flat price. */
+function serviceItems(state: MarceloState): ServiceItem[] {
+  const seen = new Set<string>();
+  const items: ServiceItem[] = [];
+  for (const sv of state.services) {
+    const name = sv.nameEn.trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    const prices = sv.sizes ? Object.values(sv.sizes) : [sv.price];
+    const from = Math.min(...prices);
+    items.push({
+      name,
+      kind: sv.kind,
+      fromPrice: Number.isFinite(from) && from > 0 ? from : undefined,
+    });
+  }
+  return items.slice(0, 12);
+}
+
 export function buildPublicProfile(state: MarceloState): PublicProfile {
   const { profile } = state;
   const services = [...new Set(state.services.map((s) => s.nameEn.trim()).filter(Boolean))];
@@ -74,6 +102,12 @@ export function buildPublicProfile(state: MarceloState): PublicProfile {
     services: services.slice(0, MAX_SERVICES),
     phone: digits(state.connections.whatsapp.number ?? ""),
     showPhone: profile.showPhoneOnFlyer ?? false,
+    photoUrl: profile.photoUrl ?? "",
+    tagline: (profile.tagline ?? "").trim(),
+    bio: (profile.bio ?? "").trim(),
+    traits: profile.traits ?? [],
+    showPrices: profile.showPrices ?? true,
+    serviceItems: serviceItems(state),
   };
 }
 

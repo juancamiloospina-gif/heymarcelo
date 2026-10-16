@@ -6,6 +6,7 @@ import {
   Bot,
   ChevronRight,
   Download,
+  Globe,
   Plug,
   RotateCcw,
   ShieldCheck,
@@ -28,7 +29,6 @@ import {
 } from "@/components/marcelo/kit";
 import { ClientAvatar } from "@/components/marcelo/visual";
 import { QuoteLinkCard } from "@/components/marcelo/quote-link";
-import { PublicPageCard } from "@/components/marcelo/public-page";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { useAIStatus, providers } from "@/lib/ai/config";
 import { todayISO, type AutoMessageKind } from "@/lib/marcelo-data";
@@ -247,7 +247,16 @@ function Configuracion() {
       </Card>
 
       <SectionTitle>Consigue clientes</SectionTitle>
-      <PublicPageCard />
+      <Card onClick={() => navigate({ to: "/mi-pagina" })} className="flex items-center gap-3">
+        <Globe className="size-5 shrink-0 text-accent" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-semibold">Mi página</span>
+          <span className="block text-[14px] text-muted-foreground">
+            Tu foto, tu historia y tus servicios, para tus clientes.
+          </span>
+        </span>
+        <ChevronRight className="size-5 text-muted-foreground" />
+      </Card>
       <div className="mt-3">
         <QuoteLinkCard />
       </div>
