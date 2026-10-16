@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, Globe, LogOut } from "lucide-react";
+import { ExternalLink, Globe, LogOut, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Field } from "./kit";
 import { useMarcelo } from "@/lib/marcelo-store";
 import {
   cloudEnabled,
+  deleteAccount,
   isValidSlug,
   publishProfile,
   sendCode,
@@ -26,6 +27,7 @@ export function PublicPageCard() {
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [slug, setSlug] = useState(state.profile.publicSlug ?? "");
   const profile = useMemo(() => buildPublicProfile(state), [state]);
 
@@ -158,6 +160,39 @@ export function PublicPageCard() {
       <Button variant="ghost" className="w-full" onClick={() => void signOut()}>
         <LogOut className="size-4" /> Cerrar sesión
       </Button>
+      {!confirmDelete ? (
+        <Button variant="ghost" className="w-full" onClick={() => setConfirmDelete(true)}>
+          <Trash2 className="size-4" /> Borrar mi cuenta
+        </Button>
+      ) : (
+        <div className="space-y-2 rounded-2xl border border-destructive/30 p-3">
+          <p className="text-[15px] font-semibold text-destructive">¿Borrar tu cuenta?</p>
+          <p className="text-[14px] text-muted-foreground">
+            Se borra tu página pública y las solicitudes que te llegaron. Los QR y volantes que ya
+            imprimiste dejan de funcionar. Tus clientes, trabajos y cobros guardados en este
+            teléfono no se tocan.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" disabled={busy} onClick={() => setConfirmDelete(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  await deleteAccount();
+                  setProfile({ publicSlug: undefined });
+                  setConfirmDelete(false);
+                  toast.success("Cuenta borrada");
+                }, "No pude borrar la cuenta. Intenta de nuevo.")
+              }
+            >
+              Sí, borrar
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
