@@ -26,6 +26,7 @@ import { Route as BandejaConversationIdRouteImport } from './routes/bandeja.$con
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
 import { Route as MensajeClientIdRouteImport } from './routes/mensaje.$clientId'
+import { Route as PSlugRouteImport } from './routes/p.$slug'
 import { Route as TrabajoJobIdRouteImport } from './routes/trabajo.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -113,6 +114,11 @@ const MensajeClientIdRoute = MensajeClientIdRouteImport.update({
   path: '/mensaje/$clientId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PSlugRoute = PSlugRouteImport.update({
+  id: '/p/$slug',
+  path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrabajoJobIdRoute = TrabajoJobIdRouteImport.update({
   id: '/trabajo/$jobId',
   path: '/trabajo/$jobId',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
+  '/p/$slug': typeof PSlugRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/bandeja/': typeof BandejaIndexRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
+  '/p/$slug': typeof PSlugRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/bandeja': typeof BandejaIndexRoute
   '/clientes': typeof ClientesIndexRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
+  '/p/$slug': typeof PSlugRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/bandeja/': typeof BandejaIndexRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
+    | '/p/$slug'
     | '/trabajo/$jobId'
     | '/bandeja/'
     | '/clientes/'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
+    | '/p/$slug'
     | '/trabajo/$jobId'
     | '/bandeja'
     | '/clientes'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
+    | '/p/$slug'
     | '/trabajo/$jobId'
     | '/bandeja/'
     | '/clientes/'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   BandejaConversationIdRoute: typeof BandejaConversationIdRoute
   ClientesClientIdRoute: typeof ClientesClientIdRoute
   MensajeClientIdRoute: typeof MensajeClientIdRoute
+  PSlugRoute: typeof PSlugRoute
   TrabajoJobIdRoute: typeof TrabajoJobIdRoute
   BandejaIndexRoute: typeof BandejaIndexRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
@@ -385,6 +398,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MensajeClientIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$slug': {
+      id: '/p/$slug'
+      path: '/p/$slug'
+      fullPath: '/p/$slug'
+      preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trabajo/$jobId': {
       id: '/trabajo/$jobId'
       path: '/trabajo/$jobId'
@@ -411,6 +431,7 @@ const rootRouteChildren: RootRouteChildren = {
   BandejaConversationIdRoute: BandejaConversationIdRoute,
   ClientesClientIdRoute: ClientesClientIdRoute,
   MensajeClientIdRoute: MensajeClientIdRoute,
+  PSlugRoute: PSlugRoute,
   TrabajoJobIdRoute: TrabajoJobIdRoute,
   BandejaIndexRoute: BandejaIndexRoute,
   ClientesIndexRoute: ClientesIndexRoute,
