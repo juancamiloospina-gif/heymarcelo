@@ -128,7 +128,20 @@ export type Profile = {
   showPhoneOnFlyer?: boolean;
   /** Slug of the published public page (`/p/<slug>`). Assigned on publish; never reused. */
   publicSlug?: string | undefined;
+  /** Public URL of the profile photo in Storage (set when the user uploads one). */
+  photoUrl?: string | undefined;
+  /** Short handwritten-style line on the page ("Tu jardín, mi compromiso"). */
+  tagline?: string | undefined;
+  /** "Sobre mí", in the user's own words (Spanish). */
+  bio?: string | undefined;
+  /** Up to 3 traits the user picks about themselves. */
+  traits?: TraitKey[] | undefined;
+  /** Show "from $X" under each service on the public page. Default: yes. */
+  showPrices?: boolean | undefined;
 };
+
+export const TRAIT_KEYS = ["reliable", "punctual", "quality", "friendly", "tidy"] as const;
+export type TraitKey = (typeof TRAIT_KEYS)[number];
 
 export type ServiceKind =
   "pasto" | "poda" | "limpieza" | "riego" | "plantas" | "reparacion" | "general";
