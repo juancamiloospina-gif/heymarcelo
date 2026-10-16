@@ -287,6 +287,7 @@ messages: InboxMessage[], unread, updatedAt
 - guardar `PublicProfile` (`src/lib/public-profile.ts`) en el servidor con un `slug` permanente y servirlo en `/p/<slug>`;
 - **QR y volante ya apuntan a la página** (`/p/<slug>?src=qr|flyer`) cuando el usuario publicó, usando la dirección donde corre la app (`publicBase()` en `public-profile.ts`; nunca localhost). Sin página publicada **no hay QR ni volante** (la tarjeta pide publicar primero); no hay respaldo a WhatsApp. **Pendiente:** al tener dominio propio, definir `VITE_PUBLIC_PROFILE_URL`; los QR ya impresos con la dirección vieja dejarían de servir, así que fijar el dominio antes de imprimir en serio;
 - formulario "Request a quote" público → cotización en la app; traducir el perfil una vez al guardar, no en cada visita.
+**Borrar cuenta** (requisito de Apple): hecho. Configuración → Tu página pública → "Borrar mi cuenta" llama a `delete_my_account()` (migración `20261016010000`), que borra el usuario y, en cascada, página, slugs y solicitudes. Los datos del teléfono no se tocan; el slug queda libre.
 No hecho a propósito: tarjeta NFC, pase de Wallet, galería de fotos, licencia.
 
 **Sin backend**

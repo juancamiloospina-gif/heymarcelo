@@ -127,7 +127,7 @@ export type Profile = {
   /** Print the phone number on the flyer. Off by default: many users work from home. */
   showPhoneOnFlyer?: boolean;
   /** Slug of the published public page (`/p/<slug>`). Assigned on publish; never reused. */
-  publicSlug?: string;
+  publicSlug?: string | undefined;
 };
 
 export type ServiceKind =

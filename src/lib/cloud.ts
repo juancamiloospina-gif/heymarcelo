@@ -160,6 +160,18 @@ export const signOut = async () => {
   await need().auth.signOut();
 };
 
+/**
+ * Deletes the signed-in user's cloud account: the public page, its address and the quote
+ * requests it received. Data on the phone is not touched. Required by the App Store.
+ */
+export async function deleteAccount(): Promise<void> {
+  const c = need();
+  const { error } = await c.rpc("delete_my_account");
+  if (error) throw new Error(error.message);
+  // The user no longer exists on the server: only clear the session stored on this device.
+  await c.auth.signOut({ scope: "local" });
+}
+
 /** Current Supabase session (undefined while loading, null when signed out). */
 export function useCloudSession(): Session | null | undefined {
   const [session, setSession] = useState<Session | null | undefined>(undefined);

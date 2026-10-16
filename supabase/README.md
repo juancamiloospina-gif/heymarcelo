@@ -6,7 +6,7 @@ Base de datos propia del proyecto. Hoy solo guarda lo que ve el cliente: el perf
 ## Conectar
 
 1. Crear un proyecto en https://supabase.com (región cercana a EE. UU.).
-2. SQL Editor → pegar y ejecutar `migrations/20261016000000_perfil_publico.sql`.
+2. SQL Editor → ejecutar en orden `migrations/20261016000000_perfil_publico.sql` y `migrations/20261016010000_borrar_cuenta.sql`.
 3. Authentication → Providers → Email: activado (código por email). Desactivar "Confirm email" si se quiere entrar solo con el código.
 4. Project Settings → API: copiar **Project URL** y la clave **anon (public)**.
 5. En Lovable (o `.env.local`) definir:
