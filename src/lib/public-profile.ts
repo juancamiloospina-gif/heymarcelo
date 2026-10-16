@@ -25,7 +25,10 @@ export type PublicProfile = {
   showPhone: boolean;
   photoUrl: string;
   tagline: string;
+  /** English versions made on publish; empty when missing or out of date. */
+  taglineEn: string;
   bio: string;
+  bioEn: string;
   traits: TraitKey[];
   showPrices: boolean;
   /** Services with their icon kind and lowest price, as the page lists them. */
@@ -91,6 +94,8 @@ function serviceItems(state: MarceloState): ServiceItem[] {
 
 export function buildPublicProfile(state: MarceloState): PublicProfile {
   const { profile } = state;
+  const tagline = (profile.tagline ?? "").trim();
+  const bio = (profile.bio ?? "").trim();
   const services = [...new Set(state.services.map((s) => s.nameEn.trim()).filter(Boolean))];
   return {
     ...(profile.publicSlug ? { slug: profile.publicSlug } : {}),
@@ -103,8 +108,10 @@ export function buildPublicProfile(state: MarceloState): PublicProfile {
     phone: digits(state.connections.whatsapp.number ?? ""),
     showPhone: profile.showPhoneOnFlyer ?? false,
     photoUrl: profile.photoUrl ?? "",
-    tagline: (profile.tagline ?? "").trim(),
-    bio: (profile.bio ?? "").trim(),
+    tagline,
+    taglineEn: profile.translatedTagline === tagline ? (profile.taglineEn ?? "") : "",
+    bio,
+    bioEn: profile.translatedBio === bio ? (profile.bioEn ?? "") : "",
     traits: profile.traits ?? [],
     showPrices: profile.showPrices ?? true,
     serviceItems: serviceItems(state),

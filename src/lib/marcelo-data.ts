@@ -140,6 +140,12 @@ export type Profile = {
   showPrices?: boolean | undefined;
   /** What was last sent to the public page. If it differs from now, there are unpublished changes. */
   publishedKey?: string | undefined;
+  /** English version of `bio`, made when publishing. Valid only while `translatedBio` equals `bio`. */
+  bioEn?: string | undefined;
+  taglineEn?: string | undefined;
+  /** The exact Spanish text that was translated (to know when the translation is stale). */
+  translatedBio?: string | undefined;
+  translatedTagline?: string | undefined;
 };
 
 export const TRAIT_KEYS = ["reliable", "punctual", "quality", "friendly", "tidy"] as const;

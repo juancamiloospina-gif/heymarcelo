@@ -7,7 +7,6 @@ import { useMarcelo } from "@/lib/marcelo-store";
 import {
   cloudEnabled,
   publishKey,
-  publishProfile,
   removeProfilePhoto,
   uploadProfilePhoto,
   useCloudSession,
@@ -15,6 +14,7 @@ import {
 import { compressImage } from "@/lib/image";
 import { T } from "@/lib/public-i18n";
 import { buildPublicProfile } from "@/lib/public-profile";
+import { publishNotice, publishPage } from "@/lib/publish";
 import { viewFromPublic } from "@/lib/public-view";
 import { PublicProfileView } from "./public-profile-view";
 
@@ -39,9 +39,11 @@ export function PageEditor() {
     if (!slug) return;
     setBusy(true);
     try {
-      await publishProfile(pub, slug);
-      setProfile({ publishedKey: publishKey(pub, slug) });
-      toast.success("Cambios publicados");
+      const { patch, status } = await publishPage(state, slug);
+      setProfile(patch);
+      const n = publishNotice(status, false);
+      if (n.ok) toast.success(n.text);
+      else toast.warning(n.text);
     } catch {
       toast.error("No pude publicar. Revisa tu conexión e intenta de nuevo.");
     } finally {
@@ -152,6 +154,16 @@ export function PageEditor() {
           Escribe como si hablaras con un cliente. {(profile.bio ?? "").length}/{BIO_MAX}
         </span>
       </label>
+      {pub.bioEn ? (
+        <div className="rounded-2xl bg-muted px-4 py-3">
+          <p className="text-[13px] font-medium text-muted-foreground">
+            Así lo leen tus clientes, en inglés
+          </p>
+          <p className="mt-1 whitespace-pre-line text-[15px]">{pub.bioEn}</p>
+        </div>
+      ) : (profile.bio ?? "").trim() ? (
+        <p className="text-[13px] text-muted-foreground">Se traduce al inglés cuando publicas.</p>
+      ) : null}
 
       <div>
         <p className="mb-1.5 text-[14px] font-medium text-muted-foreground">

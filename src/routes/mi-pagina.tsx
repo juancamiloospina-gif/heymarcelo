@@ -33,7 +33,7 @@ function MiPagina() {
           <PublicPageCard />
           <SectionTitle>Así se ve</SectionTitle>
           <p className="mb-3 text-[14px] text-muted-foreground">
-            Tus clientes la ven en inglés. Por ahora tu frase y tu historia salen como las escribes.
+            Tus clientes la ven en inglés. Tu frase y tu historia se traducen solas cuando publicas.
           </p>
           <PagePreview />
         </>

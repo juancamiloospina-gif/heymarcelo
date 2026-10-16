@@ -43,8 +43,8 @@ export function viewFromPublic(p: PublicProfile): ViewProfile {
     city: p.city,
     serviceArea: p.serviceArea,
     photoUrl: p.photoUrl,
-    tagline: p.tagline,
-    bio: p.bio,
+    tagline: p.taglineEn || p.tagline,
+    bio: p.bioEn || p.bio,
     traits: p.traits,
     services: p.serviceItems.map((i) => ({
       name: i.name,
