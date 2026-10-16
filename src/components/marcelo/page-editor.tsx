@@ -14,7 +14,7 @@ import {
 import { compressImage } from "@/lib/image";
 import { T } from "@/lib/public-i18n";
 import { buildPublicProfile } from "@/lib/public-profile";
-import { publishNotice, publishPage } from "@/lib/publish";
+import { publishErrorText, publishNotice, publishPage } from "@/lib/publish";
 import { viewFromPublic } from "@/lib/public-view";
 import { PublicProfileView } from "./public-profile-view";
 
@@ -44,8 +44,8 @@ export function PageEditor() {
       const n = publishNotice(status, false);
       if (n.ok) toast.success(n.text);
       else toast.warning(n.text);
-    } catch {
-      toast.error("No pude publicar. Revisa tu conexión e intenta de nuevo.");
+    } catch (e) {
+      toast.error(publishErrorText(e));
     } finally {
       setBusy(false);
     }

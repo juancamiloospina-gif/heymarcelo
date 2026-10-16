@@ -34,7 +34,14 @@ export async function translateForPage(
   ): Promise<string> => {
     if (!source) return "";
     if (done === source && current) return current; // already translated, nothing changed
-    const res = await run({ text: source, to: "en", trade: profile.trade, recent: [] });
+    let res: Awaited<ReturnType<TranslateFn>>;
+    try {
+      res = await run({ text: source, to: "en", trade: profile.trade, recent: [] });
+    } catch {
+      // A translation problem must never stop the page from being published.
+      if (status === "ok") status = "failed";
+      return "";
+    }
     if (!res.ok) {
       status = res.reason === "limit" ? "limit" : status === "limit" ? "limit" : "failed";
       return "";
