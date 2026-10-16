@@ -14,6 +14,7 @@ export type ViewProfile = {
   traits: string[];
   services: { name: string; kind: string; fromPrice?: number | undefined }[];
   phone: string;
+  gallery: string[];
 };
 
 /** Picks the English text of tagline/bio when it exists (translated on publish); else the original. */
@@ -32,6 +33,7 @@ export function viewFromCloud(c: CloudProfile, lang: Lang): ViewProfile {
     traits: c.traits,
     services: items,
     phone: c.show_phone ? c.phone : "",
+    gallery: c.gallery ?? [],
   };
 }
 
@@ -52,5 +54,6 @@ export function viewFromPublic(p: PublicProfile): ViewProfile {
       fromPrice: p.showPrices ? i.fromPrice : undefined,
     })),
     phone: p.showPhone ? p.phone : "",
+    gallery: p.gallery,
   };
 }

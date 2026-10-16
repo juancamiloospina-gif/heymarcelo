@@ -31,6 +31,7 @@ export type PublicProfile = {
   bioEn: string;
   traits: TraitKey[];
   showPrices: boolean;
+  gallery: string[];
   /** Services with their icon kind and lowest price, as the page lists them. */
   serviceItems: ServiceItem[];
 };
@@ -114,6 +115,7 @@ export function buildPublicProfile(state: MarceloState): PublicProfile {
     bioEn: profile.translatedBio === bio ? (profile.bioEn ?? "") : "",
     traits: profile.traits ?? [],
     showPrices: profile.showPrices ?? true,
+    gallery: profile.gallery ?? [],
     serviceItems: serviceItems(state),
   };
 }

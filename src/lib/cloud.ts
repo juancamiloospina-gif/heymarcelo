@@ -65,6 +65,7 @@ export type CloudProfile = {
   traits: string[];
   show_prices: boolean;
   service_items: CloudServiceItem[];
+  gallery: string[];
 };
 
 export async function fetchPublicProfile(slug: string): Promise<CloudProfile | null> {
@@ -115,6 +116,7 @@ export function profileRow(p: PublicProfile, slug: string, active = true) {
     bio_en: p.bioEn,
     traits: p.traits,
     show_prices: p.showPrices,
+    gallery: p.gallery,
     service_items: p.serviceItems.map((i) => ({
       name: i.name,
       kind: i.kind,
@@ -158,6 +160,39 @@ export async function removeProfilePhoto(): Promise<void> {
   const { data: auth } = await c.auth.getUser();
   if (!auth.user) throw new Error("not_signed_in");
   const { error } = await c.storage.from(PHOTO_BUCKET).remove([`${auth.user.id}/profile.jpg`]);
+  if (error) throw new Error(error.message);
+}
+
+/** Storage path of one of our photos, from its public URL (`…/profile-photos/<uid>/<file>?v=…`). */
+export function photoPathFromUrl(url: string): string | null {
+  const m = /\/profile-photos\/([^?#]+)/.exec(url);
+  return m?.[1] ? decodeURIComponent(m[1]) : null;
+}
+
+export const MAX_WORK_PHOTOS = 6;
+
+/** Uploads a (compressed) photo of the user's work; returns its public URL. */
+export async function uploadWorkPhoto(photo: Blob): Promise<string> {
+  const c = need();
+  const { data: auth } = await c.auth.getUser();
+  if (!auth.user) throw new Error("not_signed_in");
+  // A new name each time: browsers never show an older photo by mistake.
+  const path = `${auth.user.id}/work-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
+  const { error } = await c.storage
+    .from(PHOTO_BUCKET)
+    .upload(path, photo, { contentType: "image/jpeg", cacheControl: "3600" });
+  if (error) throw new Error(error.message);
+  return c.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+/** Deletes a work photo from Storage. Only the user's own folder is allowed by the rules. */
+export async function removeWorkPhoto(url: string): Promise<void> {
+  const c = need();
+  const { data: auth } = await c.auth.getUser();
+  if (!auth.user) throw new Error("not_signed_in");
+  const path = photoPathFromUrl(url);
+  if (!path || !path.startsWith(`${auth.user.id}/`)) return;
+  const { error } = await c.storage.from(PHOTO_BUCKET).remove([path]);
   if (error) throw new Error(error.message);
 }
 
