@@ -89,19 +89,12 @@ export function publicBase(): string {
 }
 
 /**
- * The one place that decides what a QR or link opens. With a published page it is the page
- * (`/p/<slug>`); before that, a WhatsApp chat. Empty string = nothing to share yet.
+ * The one place that decides what a QR or link opens: the user's public page (`/p/<slug>`).
+ * Empty string = there is nothing to share yet, because the page is not published (or the app
+ * is not running on a public address). No page, no QR.
  */
 export function shareUrl(p: PublicProfile, src: ShareSource, base = publicBase()): string {
-  if (base && p.slug) return `${base}/p/${p.slug}?src=${src}`;
-  if (!p.phone) return "";
-  const text = `Hi ${p.firstName}! I'd like a quote${p.tradeEn ? ` for ${p.tradeEn.toLowerCase()}` : ""}.`;
-  return `https://wa.me/1${p.phone}?text=${encodeURIComponent(text)}`;
-}
-
-/** True when `shareUrl` returns the public page and not the WhatsApp fallback. */
-export function opensPage(p: PublicProfile, base = publicBase()): boolean {
-  return Boolean(base && p.slug);
+  return base && p.slug ? `${base}/p/${p.slug}?src=${src}` : "";
 }
 
 /** "6265550100" → "(626) 555-0100". Anything else is returned as it is. */
