@@ -253,6 +253,13 @@ export const verifyCode = async (email: string, token: string) => {
 };
 
 export const signOut = async () => {
+  // This phone stops getting the account's alerts (best effort) before the session goes away.
+  try {
+    const { disablePush } = await import("./push");
+    await disablePush();
+  } catch {
+    // Not supported here: nothing to stop.
+  }
   await need().auth.signOut();
 };
 
