@@ -152,6 +152,9 @@ export type Profile = {
   areaCenterZip?: string | undefined;
   areaRadiusMi?: number | undefined;
   areaZips?: string[] | undefined;
+  /** Map data for the area: where the center is and one point per ZIP covered. */
+  areaCenter?: [number, number] | undefined;
+  areaPoints?: [string, number, number][] | undefined;
 };
 
 export const TRAIT_KEYS = ["reliable", "punctual", "quality", "friendly", "tidy"] as const;

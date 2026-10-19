@@ -78,6 +78,51 @@ export function areaSummary(centerZip: string, radiusMi: number, lang: "en" | "e
     : `A ${radiusMi} millas del ZIP ${centerZip}`;
 }
 
+export type AreaPoint = [zip: string, lat: number, lon: number];
+export type AreaGeo = { center?: [number, number]; points?: AreaPoint[] };
+
+/** The ZIP codes of `zips` that exist in the table, with their position. */
+export function pointsFor(table: ZipTable, zips: readonly string[]): AreaPoint[] {
+  const out: AreaPoint[] = [];
+  for (const z of zips) {
+    const p = table.get(z);
+    if (p) out.push([z, p[0], p[1]]);
+  }
+  return out;
+}
+
+/** What the page stores for the map; a safe, small object. */
+export function buildAreaGeo(
+  center: readonly [number, number] | undefined,
+  points: readonly AreaPoint[] | undefined,
+): AreaGeo {
+  const geo: AreaGeo = {};
+  if (center) geo.center = [center[0], center[1]];
+  if (points?.length) geo.points = points.map(([z, a, b]) => [z, a, b]);
+  return geo;
+}
+
+/** Reads map data from the server defensively: anything odd is dropped, never trusted. */
+export function readAreaGeo(raw: unknown): {
+  center: [number, number] | null;
+  points: AreaPoint[];
+} {
+  const g = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const num = (n: unknown) => typeof n === "number" && Number.isFinite(n);
+  const c = g["center"];
+  const center =
+    Array.isArray(c) && num(c[0]) && num(c[1]) ? ([c[0], c[1]] as [number, number]) : null;
+  const points: AreaPoint[] = [];
+  if (Array.isArray(g["points"])) {
+    for (const p of g["points"].slice(0, MAX_ZIPS)) {
+      if (Array.isArray(p) && typeof p[0] === "string" && isZip(p[0]) && num(p[1]) && num(p[2])) {
+        points.push([p[0], p[1], p[2]]);
+      }
+    }
+  }
+  return { center, points };
+}
+
 export type Coverage = "yes" | "no" | "unknown";
 
 /** Does the worker cover this ZIP? "unknown" until the client typed a full ZIP or if no area is set. */

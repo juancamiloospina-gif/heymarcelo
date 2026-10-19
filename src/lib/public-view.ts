@@ -2,6 +2,7 @@
 import type { CloudProfile } from "./cloud";
 import type { Lang } from "./public-i18n";
 import type { PublicProfile } from "./public-profile";
+import { readAreaGeo, type AreaPoint } from "./service-area";
 
 export type ViewProfile = {
   businessName: string;
@@ -18,6 +19,7 @@ export type ViewProfile = {
   areaCenterZip: string;
   areaRadiusMi: number;
   areaZips: string[];
+  areaGeo: { center: [number, number] | null; points: AreaPoint[] };
 };
 
 /** Picks the English text of tagline/bio when it exists (translated on publish); else the original. */
@@ -40,6 +42,7 @@ export function viewFromCloud(c: CloudProfile, lang: Lang): ViewProfile {
     areaCenterZip: c.area_center_zip ?? "",
     areaRadiusMi: c.area_radius_mi ?? 0,
     areaZips: c.service_zips ?? [],
+    areaGeo: readAreaGeo(c.area_geo),
   };
 }
 
@@ -64,5 +67,6 @@ export function viewFromPublic(p: PublicProfile): ViewProfile {
     areaCenterZip: p.areaCenterZip,
     areaRadiusMi: p.areaRadiusMi,
     areaZips: p.areaZips,
+    areaGeo: readAreaGeo(p.areaGeo),
   };
 }
