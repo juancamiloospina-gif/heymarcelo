@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BackButton, PageTitle, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { PageEditor, PagePreview } from "@/components/marcelo/page-editor";
 import { PublicPageCard } from "@/components/marcelo/public-page";
+import { PushCard } from "@/components/marcelo/push-card";
 import { cloudEnabled } from "@/lib/cloud";
 
 export const Route = createFileRoute("/mi-pagina")({
@@ -31,6 +32,9 @@ function MiPagina() {
           <PageEditor />
           <SectionTitle>Cuenta y publicación</SectionTitle>
           <PublicPageCard />
+          <div className="mt-3">
+            <PushCard />
+          </div>
           <SectionTitle>Así se ve</SectionTitle>
           <p className="mb-3 text-[14px] text-muted-foreground">
             Tus clientes la ven en inglés. Tu frase y tu historia se traducen solas cuando publicas.

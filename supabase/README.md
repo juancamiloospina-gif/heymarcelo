@@ -6,7 +6,7 @@ Base de datos propia del proyecto. Hoy solo guarda lo que ve el cliente: el perf
 ## Conectar
 
 1. Crear un proyecto en https://supabase.com (región cercana a EE. UU.).
-2. SQL Editor → ejecutar en orden `migrations/20261016000000_perfil_publico.sql` `migrations/20261016010000_borrar_cuenta.sql` `migrations/20261017000000_pagina_humana.sql` `migrations/20261018000000_republicar_propia_pagina.sql` `migrations/20261019000000_galeria.sql` `migrations/20261020000000_zona_de_trabajo.sql` y `migrations/20261021000000_mapa_de_zona.sql`.
+2. SQL Editor → ejecutar en orden `migrations/20261016000000_perfil_publico.sql` `migrations/20261016010000_borrar_cuenta.sql` `migrations/20261017000000_pagina_humana.sql` `migrations/20261018000000_republicar_propia_pagina.sql` `migrations/20261019000000_galeria.sql` `migrations/20261020000000_zona_de_trabajo.sql` `migrations/20261021000000_mapa_de_zona.sql`, `migrations/20261022000000_avisos.sql` y `migrations/20261022010000_avisos_trigger.sql`.
 3. Authentication → Providers → Email: activado (código por email). Desactivar "Confirm email" si se quiere entrar solo con el código.
 4. Project Settings → API: copiar **Project URL** y la clave **anon (public)**.
 5. En Lovable (o `.env.local`) definir:
@@ -22,3 +22,11 @@ Base de datos propia del proyecto. Hoy solo guarda lo que ve el cliente: el perf
 - Un slug usado nunca se reasigna a otra persona; el viejo redirige al nuevo.
 - Borrar la cuenta (`auth.users`) borra perfil, historial y solicitudes (requisito de Apple).
 - Cambios de esquema: migraciones nuevas en esta carpeta, nunca editar la ya aplicada.
+
+## Función de avisos (Edge Function)
+
+`functions/notify-quote/index.ts` manda los avisos al teléfono. Se despliega desde el panel:
+Edge Functions → Deploy a new function → Via Editor → pegar el código, nombre `notify-quote`.
+Dejar activa la verificación de acceso ("Verify JWT"). No necesita secretos: usa las variables que
+Supabase ya le da y crea sola sus llaves de avisos. Hay que aplicar antes la migración
+`20261022000000` (tablas) y después `20261022010000` (trigger).
