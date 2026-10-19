@@ -69,6 +69,7 @@ export type CloudProfile = {
   area_center_zip: string;
   area_radius_mi: number;
   service_zips: string[];
+  area_geo: unknown;
 };
 
 export async function fetchPublicProfile(slug: string): Promise<CloudProfile | null> {
@@ -123,6 +124,7 @@ export function profileRow(p: PublicProfile, slug: string, active = true) {
     area_center_zip: p.areaCenterZip,
     area_radius_mi: p.areaRadiusMi,
     service_zips: p.areaZips,
+    area_geo: p.areaGeo,
     service_items: p.serviceItems.map((i) => ({
       name: i.name,
       kind: i.kind,

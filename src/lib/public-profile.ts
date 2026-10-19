@@ -8,6 +8,7 @@
  */
 import { PUBLIC_PROFILE_BASE_URL } from "./flags";
 import { digits, type MarceloState, type ServiceKind, type TraitKey } from "./marcelo-data";
+import { buildAreaGeo, type AreaGeo } from "./service-area";
 
 export type PublicProfile = {
   /** Permanent id in the page URL. Assigned by the server; empty until there is a backend. */
@@ -36,6 +37,7 @@ export type PublicProfile = {
   areaRadiusMi: number;
   /** ZIP codes the worker covers. Empty = no area defined. */
   areaZips: string[];
+  areaGeo: AreaGeo;
   /** Services with their icon kind and lowest price, as the page lists them. */
   serviceItems: ServiceItem[];
 };
@@ -123,6 +125,7 @@ export function buildPublicProfile(state: MarceloState): PublicProfile {
     areaCenterZip: profile.areaCenterZip ?? "",
     areaRadiusMi: profile.areaRadiusMi ?? 0,
     areaZips: profile.areaZips ?? [],
+    areaGeo: buildAreaGeo(profile.areaCenter, profile.areaPoints),
     serviceItems: serviceItems(state),
   };
 }

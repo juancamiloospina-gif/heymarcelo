@@ -23,6 +23,7 @@ import type { ViewProfile } from "@/lib/public-view";
 import { T, type Lang } from "@/lib/public-i18n";
 import { formatPhone } from "@/lib/public-profile";
 import { areaSummary, covers, isZip } from "@/lib/service-area";
+import { AreaMap } from "./area-map";
 
 /**
  * The page a client sees: photo, name, services, "about me", contact and a quote form (passed in
@@ -367,6 +368,14 @@ function AreaSection({ p, lang }: { p: ViewProfile; lang: Lang }) {
             </button>
           ) : null}
         </>
+      ) : null}
+      {p.areaGeo.center || p.areaGeo.points.length ? (
+        <AreaMap
+          center={p.areaGeo.center}
+          points={p.areaGeo.points}
+          radiusMi={p.areaRadiusMi}
+          lang={lang}
+        />
       ) : null}
       {p.serviceArea ? <p className="mt-2 text-[#4b5b70]">{p.serviceArea}</p> : null}
 
