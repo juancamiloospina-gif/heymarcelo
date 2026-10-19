@@ -146,6 +146,8 @@ export type Profile = {
   /** The exact Spanish text that was translated (to know when the translation is stale). */
   translatedBio?: string | undefined;
   translatedTagline?: string | undefined;
+  /** Photos of the user's work (public URLs in Storage), at most 6. */
+  gallery?: string[] | undefined;
 };
 
 export const TRAIT_KEYS = ["reliable", "punctual", "quality", "friendly", "tidy"] as const;
