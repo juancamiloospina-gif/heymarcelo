@@ -32,6 +32,10 @@ export type PublicProfile = {
   traits: TraitKey[];
   showPrices: boolean;
   gallery: string[];
+  areaCenterZip: string;
+  areaRadiusMi: number;
+  /** ZIP codes the worker covers. Empty = no area defined. */
+  areaZips: string[];
   /** Services with their icon kind and lowest price, as the page lists them. */
   serviceItems: ServiceItem[];
 };
@@ -116,6 +120,9 @@ export function buildPublicProfile(state: MarceloState): PublicProfile {
     traits: profile.traits ?? [],
     showPrices: profile.showPrices ?? true,
     gallery: profile.gallery ?? [],
+    areaCenterZip: profile.areaCenterZip ?? "",
+    areaRadiusMi: profile.areaRadiusMi ?? 0,
+    areaZips: profile.areaZips ?? [],
     serviceItems: serviceItems(state),
   };
 }

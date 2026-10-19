@@ -15,6 +15,9 @@ export type ViewProfile = {
   services: { name: string; kind: string; fromPrice?: number | undefined }[];
   phone: string;
   gallery: string[];
+  areaCenterZip: string;
+  areaRadiusMi: number;
+  areaZips: string[];
 };
 
 /** Picks the English text of tagline/bio when it exists (translated on publish); else the original. */
@@ -34,6 +37,9 @@ export function viewFromCloud(c: CloudProfile, lang: Lang): ViewProfile {
     services: items,
     phone: c.show_phone ? c.phone : "",
     gallery: c.gallery ?? [],
+    areaCenterZip: c.area_center_zip ?? "",
+    areaRadiusMi: c.area_radius_mi ?? 0,
+    areaZips: c.service_zips ?? [],
   };
 }
 
@@ -55,5 +61,8 @@ export function viewFromPublic(p: PublicProfile): ViewProfile {
     })),
     phone: p.showPhone ? p.phone : "",
     gallery: p.gallery,
+    areaCenterZip: p.areaCenterZip,
+    areaRadiusMi: p.areaRadiusMi,
+    areaZips: p.areaZips,
   };
 }

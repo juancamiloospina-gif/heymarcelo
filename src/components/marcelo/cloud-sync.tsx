@@ -11,6 +11,7 @@ function requestText(r: CloudRequest): string {
     r.service ? `I need a quote for: ${r.service}.` : "I'd like a quote.",
     r.description,
     r.zip ? `ZIP: ${r.zip}.` : "",
+    r.outside_area ? "(Outside your service area.)" : "",
   ];
   return parts.filter(Boolean).join(" ").trim();
 }
@@ -44,7 +45,11 @@ export function CloudSync() {
             phone: r.phone,
             text: requestText(r),
           });
-          toast.success(`Nueva solicitud de ${r.name}`);
+          toast.success(
+            r.outside_area
+              ? `Nueva solicitud de ${r.name} (fuera de tu zona)`
+              : `Nueva solicitud de ${r.name}`,
+          );
         }
         await markImported(fresh.map((r) => r.id));
       } catch {

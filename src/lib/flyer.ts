@@ -5,6 +5,7 @@
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import { formatPhone, shareUrl, type PublicProfile } from "./public-profile";
+import { areaSummary } from "./service-area";
 
 const safe = (s: string) => s.replace(/[−–—]/g, "-");
 
@@ -41,14 +42,15 @@ export async function flyerPdf(p: PublicProfile): Promise<jsPDF> {
     doc.text(safe(p.services.join("  ·  ")), cx, y, { align: "center", maxWidth: 480 });
     y += 40;
   }
-  if (p.serviceArea) {
+  const area = [areaSummary(p.areaCenterZip, p.areaRadiusMi), p.serviceArea].filter(Boolean);
+  if (area.length) {
     doc
       .setFont("helvetica", "bold")
       .setFontSize(15)
       .text("Service area", cx, y, { align: "center" });
     doc.setFont("helvetica", "normal").setFontSize(14);
     y += 24;
-    doc.text(safe(p.serviceArea), cx, y, { align: "center", maxWidth: 480 });
+    doc.text(safe(area.join(". ")), cx, y, { align: "center", maxWidth: 480 });
     y += 40;
   }
   if (p.showPhone && p.phone) {

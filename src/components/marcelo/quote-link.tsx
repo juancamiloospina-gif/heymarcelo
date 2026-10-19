@@ -104,12 +104,6 @@ export function QuoteLinkCard() {
           Sale en inglés, con tu QR, tus servicios y tu zona. Lo puedes pegar en la camioneta o
           dejarlo en las puertas.
         </p>
-        <Field
-          label="¿Dónde trabajas? (ciudades o códigos postales)"
-          placeholder="Pasadena, Altadena, 91101-91107"
-          value={state.profile.serviceArea ?? ""}
-          onChange={(e) => setProfile({ serviceArea: e.target.value })}
-        />
         <label className="flex min-h-12 items-center gap-3 text-[15px]">
           <input
             type="checkbox"

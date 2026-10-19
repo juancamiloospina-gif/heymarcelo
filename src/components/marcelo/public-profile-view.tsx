@@ -22,6 +22,7 @@ import mark from "@/assets/marcelo-mark.png";
 import type { ViewProfile } from "@/lib/public-view";
 import { T, type Lang } from "@/lib/public-i18n";
 import { formatPhone } from "@/lib/public-profile";
+import { areaSummary, covers, isZip } from "@/lib/service-area";
 
 /**
  * The page a client sees: photo, name, services, "about me", contact and a quote form (passed in
@@ -245,15 +246,7 @@ export function PublicProfileView({
           </section>
         ) : null}
 
-        {p.serviceArea ? (
-          <section className="flex items-start gap-2 rounded-2xl bg-[#eef1f5] px-4 py-3 text-[16px]">
-            <MapPin className="mt-0.5 size-5 shrink-0" style={{ color: NAVY }} />
-            <p>
-              <span className="font-semibold">{t.area}: </span>
-              {p.serviceArea}
-            </p>
-          </section>
-        ) : null}
+        <AreaSection p={p} lang={lang} />
 
         {photos.length ? (
           <section>
@@ -332,5 +325,75 @@ export function PublicProfileView({
         </div>
       ) : null}
     </div>
+  );
+}
+
+const ZIPS_SHOWN = 10;
+
+/** Where the worker works: the perimeter (center + radius), the ZIP codes, a note and a ZIP check. */
+function AreaSection({ p, lang }: { p: ViewProfile; lang: Lang }) {
+  const t = T[lang];
+  const [all, setAll] = useState(false);
+  const [zip, setZip] = useState("");
+  if (!p.areaZips.length && !p.serviceArea) return null;
+  const shown = all ? p.areaZips : p.areaZips.slice(0, ZIPS_SHOWN);
+  const hidden = p.areaZips.length - ZIPS_SHOWN;
+  const result = covers(p.areaZips, zip);
+  const summary = areaSummary(p.areaCenterZip, p.areaRadiusMi, lang);
+
+  return (
+    <section className="rounded-2xl bg-[#eef1f5] px-4 py-3 text-[16px]">
+      <h2 className="flex items-center gap-2 font-semibold">
+        <MapPin className="size-5 shrink-0" style={{ color: NAVY }} /> {t.area}
+      </h2>
+      {summary ? <p className="mt-1">{summary}</p> : null}
+      {p.areaZips.length ? (
+        <>
+          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label={t.area}>
+            {shown.map((z) => (
+              <li key={z} className="rounded-full bg-white px-2.5 py-1 text-[14px]">
+                {z}
+              </li>
+            ))}
+          </ul>
+          {hidden > 0 ? (
+            <button
+              type="button"
+              onClick={() => setAll(!all)}
+              className="mt-1 min-h-12 text-[15px] font-semibold"
+              style={{ color: NAVY }}
+            >
+              {all ? t.fewerZips : `+${hidden} ${t.moreZips}`}
+            </button>
+          ) : null}
+        </>
+      ) : null}
+      {p.serviceArea ? <p className="mt-2 text-[#4b5b70]">{p.serviceArea}</p> : null}
+
+      {p.areaZips.length ? (
+        <div className="mt-3 border-t border-[#d9e2ee] pt-3">
+          <label className="block">
+            <span className="text-[15px] font-semibold">{t.coverTitle}</span>
+            <input
+              inputMode="numeric"
+              autoComplete="postal-code"
+              maxLength={5}
+              placeholder={t.coverPlaceholder}
+              value={zip}
+              onChange={(e) => setZip(e.target.value.replace(/\D/g, ""))}
+              className="mt-1.5 h-12 w-full rounded-2xl border border-input bg-white px-4 text-[16px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
+            />
+          </label>
+          {isZip(zip) ? (
+            <p
+              role="status"
+              className={`mt-2 text-[15px] font-medium ${result === "yes" ? "text-[#1f7a3d]" : "text-[#9a5b00]"}`}
+            >
+              {result === "yes" ? `✓ ${t.coverYes} ${zip}.` : `${zip} ${t.coverNo}`}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   );
 }

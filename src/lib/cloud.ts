@@ -66,6 +66,9 @@ export type CloudProfile = {
   show_prices: boolean;
   service_items: CloudServiceItem[];
   gallery: string[];
+  area_center_zip: string;
+  area_radius_mi: number;
+  service_zips: string[];
 };
 
 export async function fetchPublicProfile(slug: string): Promise<CloudProfile | null> {
@@ -117,6 +120,9 @@ export function profileRow(p: PublicProfile, slug: string, active = true) {
     traits: p.traits,
     show_prices: p.showPrices,
     gallery: p.gallery,
+    area_center_zip: p.areaCenterZip,
+    area_radius_mi: p.areaRadiusMi,
+    service_zips: p.areaZips,
     service_items: p.serviceItems.map((i) => ({
       name: i.name,
       kind: i.kind,
@@ -204,12 +210,13 @@ export type CloudRequest = {
   service: string;
   description: string;
   created_at: string;
+  outside_area: boolean;
 };
 
 export async function pullNewRequests(): Promise<CloudRequest[]> {
   const { data, error } = await need()
     .from("quote_requests")
-    .select("id,name,phone,zip,service,description,created_at")
+    .select("id,name,phone,zip,service,description,created_at,outside_area")
     .eq("status", "new")
     .order("created_at", { ascending: true })
     .limit(50);
