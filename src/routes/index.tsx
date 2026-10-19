@@ -13,7 +13,7 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
-import logo from "@/assets/marcelo-logo.png";
+import character from "@/assets/marcelo-character.png";
 import { Card, Empty, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { AttentionList } from "@/components/marcelo/attention";
 import { JobCard, NewJobSheet, PaymentSheet } from "@/components/marcelo/jobs";
@@ -61,7 +61,10 @@ function Inicio() {
   return (
     <Screen className="px-5 pt-5">
       <div className="mb-5 flex items-center justify-between gap-3">
-        <img src={logo} alt="Marcelo" className="h-9 w-auto" />
+        <div className="flex items-center gap-2">
+          <img src={character} alt="" aria-hidden className="size-10 object-contain" />
+          <span className="text-[24px] font-extrabold tracking-tight text-foreground">Marcelo</span>
+        </div>
         <button
           onClick={() => navigate({ to: "/configuracion" })}
           aria-label="Perfil y configuración"
@@ -198,6 +201,14 @@ function Inicio() {
                     <span className="truncate">{tip.cta.label}</span>
                     <ChevronRight className="size-4 shrink-0" />
                   </span>
+                  {i === 0 ? (
+                    <img
+                      src={character}
+                      alt=""
+                      aria-hidden
+                      className="-mb-3.5 -mr-1 mt-1 size-[84px] self-end object-contain"
+                    />
+                  ) : null}
                 </button>
               );
             })}
