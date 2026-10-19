@@ -49,26 +49,39 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-muted">
       <div
-        className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-background shadow-[var(--shadow-lift)]"
+        className="relative mx-auto flex min-h-screen w-full max-w-md flex-col overflow-x-clip bg-background shadow-[var(--shadow-lift)]"
         style={state.settings.largeText ? { zoom: 1.15 } : undefined}
       >
-        <main className="flex-1">{children}</main>
+        {/* Soft corner glows behind the content: pale blue top-left, pale orange top-right. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-72 overflow-hidden"
+        >
+          <div className="absolute -left-16 -top-20 size-56 rounded-full bg-sky/12 blur-3xl" />
+          <div className="absolute -right-16 -top-16 size-52 rounded-full bg-accent/12 blur-3xl" />
+        </div>
+        <main className="relative flex-1">{children}</main>
 
-        <nav className={cn("sticky bottom-0 z-30 bg-transparent px-4 pb-4", hideNav && "hidden")}>
-          <div className="grid grid-cols-5 items-center rounded-[1.75rem] border border-border bg-card/95 px-2 py-2 shadow-[var(--shadow-lift)] backdrop-blur-xl">
+        <nav
+          className={cn(
+            "sticky bottom-0 z-30 bg-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+            hideNav && "hidden",
+          )}
+        >
+          <div className="grid grid-cols-[1fr_1fr_auto_1fr_1fr] items-center rounded-full border border-border/60 bg-card/95 px-3 py-2 shadow-[var(--shadow-lift)] backdrop-blur-xl">
             {items.slice(0, 2).map((i) => (
               <NavItem key={i.to} {...i} active={isActive(pathname, i.to)} />
             ))}
-            <div className="flex justify-center">
+            <div className="flex justify-center px-2">
               <button
                 onPointerDown={down}
                 onPointerUp={up}
                 onPointerLeave={() => press.current && window.clearTimeout(press.current.timer)}
                 onContextMenu={(e) => e.preventDefault()}
                 aria-label="Hablar con Marcelo (mantén pulsado para traducir)"
-                className="flex size-14 select-none items-center justify-center rounded-2xl bg-accent text-accent-foreground shadow-[var(--shadow-card)] transition-transform active:scale-95"
+                className="-my-3 flex size-16 select-none items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-lift)] ring-[3px] ring-accent ring-offset-[3px] ring-offset-card transition-transform active:scale-95"
               >
-                <Mic className="size-6" />
+                <Mic className="size-7" />
               </button>
             </div>
             {items.slice(2).map((i) => (
@@ -109,8 +122,8 @@ function NavItem({
     <Link
       to={to}
       className={cn(
-        "flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[12px] font-semibold transition-colors",
-        active ? "text-accent" : "text-muted-foreground",
+        "relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg text-[12px] font-semibold transition-colors",
+        active ? "text-sky" : "text-muted-foreground",
       )}
     >
       <span className="relative">
@@ -122,6 +135,9 @@ function NavItem({
         ) : null}
       </span>
       {label}
+      {active ? (
+        <span aria-hidden className="absolute -bottom-0.5 h-[3px] w-5 rounded-full bg-accent" />
+      ) : null}
     </Link>
   );
 }
