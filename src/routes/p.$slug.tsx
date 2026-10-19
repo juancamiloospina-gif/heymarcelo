@@ -72,6 +72,7 @@ function PublicPage() {
           slug={slug}
           businessName={view.businessName}
           services={view.services.map((s) => s.name)}
+          coveredZips={view.areaZips}
           lang={lang}
         />
       </PublicProfileView>

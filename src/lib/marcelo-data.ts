@@ -148,6 +148,10 @@ export type Profile = {
   translatedTagline?: string | undefined;
   /** Photos of the user's work (public URLs in Storage), at most 6. */
   gallery?: string[] | undefined;
+  /** Work area: central ZIP, radius in miles and the final list of ZIP codes covered. */
+  areaCenterZip?: string | undefined;
+  areaRadiusMi?: number | undefined;
+  areaZips?: string[] | undefined;
 };
 
 export const TRAIT_KEYS = ["reliable", "punctual", "quality", "friendly", "tidy"] as const;

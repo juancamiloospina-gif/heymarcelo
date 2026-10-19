@@ -3,17 +3,21 @@ import { CheckCircle2 } from "lucide-react";
 import { Field } from "./kit";
 import { submitQuoteRequest } from "@/lib/cloud";
 import { T, type Lang } from "@/lib/public-i18n";
+import { covers } from "@/lib/service-area";
 
 /** The quote request form on the public page. Sends the request to the worker through Supabase. */
 export function QuoteForm({
   slug,
   businessName,
   services,
+  coveredZips,
   lang,
 }: {
   slug: string;
   businessName: string;
   services: string[];
+  /** ZIP codes the worker covers; empty = no area defined, never warn. */
+  coveredZips: string[];
   lang: Lang;
 }) {
   const t = T[lang];
@@ -94,6 +98,11 @@ export function QuoteForm({
         value={f.zip}
         onChange={(e) => setF({ ...f, zip: e.target.value })}
       />
+      {covers(coveredZips, f.zip) === "no" ? (
+        <p role="status" className="-mt-1 text-[14px] font-medium text-[#9a5b00]">
+          {t.outsideNote}
+        </p>
+      ) : null}
       {services.length ? (
         <label className="block">
           <span className="mb-1.5 block text-[14px] font-medium text-[#4b5b70]">{t.service}</span>

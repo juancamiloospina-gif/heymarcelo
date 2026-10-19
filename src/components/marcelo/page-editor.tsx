@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Camera, CheckCircle2, ImagePlus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { AreaEditor } from "./area-editor";
 import { Button, Card, Field } from "./kit";
 import { TRAIT_KEYS, type TraitKey } from "@/lib/marcelo-data";
 import { useMarcelo } from "@/lib/marcelo-store";
@@ -230,6 +231,8 @@ export function PageEditor() {
           })}
         </div>
       </div>
+
+      <AreaEditor />
 
       <div>
         <p className="mb-1.5 text-[14px] font-medium text-muted-foreground">
