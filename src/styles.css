@@ -6,7 +6,7 @@
 
 /*
  * MARCELO design system.
- * Graphite primary, mandarin accent, soft warm-gray canvas, white cards.
+ * Navy text, brand-blue primary, mandarin accent, warm cream canvas, white cards.
  * All colors are oklch semantic tokens. Never hardcode colors in components.
  */
 
@@ -40,30 +40,32 @@
   --color-teal: var(--teal);
   --color-plum: var(--plum);
   --color-sky: var(--sky);
+  --color-brand-soft: var(--brand-soft);
+  --color-peach: var(--peach);
   --color-whatsapp: var(--whatsapp);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --shadow-card: 0 1px 2px oklch(0.23 0.01 75 / 0.04), 0 8px 24px oklch(0.23 0.01 75 / 0.06);
-  --shadow-lift: 0 16px 40px oklch(0.23 0.01 75 / 0.14);
+  --shadow-card: 0 1px 2px oklch(0.3 0.08 255 / 0.04), 0 8px 24px oklch(0.3 0.08 255 / 0.07);
+  --shadow-lift: 0 16px 40px oklch(0.3 0.08 255 / 0.16);
 }
 
 :root {
   --radius: 1rem;
-  --background: oklch(0.982 0.004 80);
-  --foreground: oklch(0.27 0.015 265);
+  --background: oklch(0.978 0.012 85);
+  --foreground: oklch(0.27 0.075 258);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.27 0.015 265);
+  --card-foreground: oklch(0.27 0.075 258);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.27 0.015 265);
-  --primary: oklch(0.27 0.015 265);
+  --popover-foreground: oklch(0.27 0.075 258);
+  --primary: oklch(0.55 0.2 260);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.965 0.004 80);
-  --secondary-foreground: oklch(0.27 0.015 265);
-  --muted: oklch(0.955 0.005 80);
-  --muted-foreground: oklch(0.55 0.015 265);
+  --secondary: oklch(0.96 0.012 85);
+  --secondary-foreground: oklch(0.27 0.075 258);
+  --muted: oklch(0.955 0.012 85);
+  --muted-foreground: oklch(0.54 0.04 255);
   --accent: oklch(0.7 0.19 48);
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.55 0.13 25);
@@ -75,10 +77,12 @@
   /* Secondary hues for icons and category chips only — never as surfaces. */
   --teal: oklch(0.58 0.09 195);
   --plum: oklch(0.55 0.13 340);
-  --sky: oklch(0.6 0.1 235);
+  --sky: oklch(0.58 0.17 255);
+  --brand-soft: oklch(0.945 0.03 250);
+  --peach: oklch(0.955 0.04 65);
   --whatsapp: oklch(0.64 0.15 150);
-  --border: oklch(0.91 0.006 80);
-  --input: oklch(0.91 0.006 80);
+  --border: oklch(0.925 0.012 85);
+  --input: oklch(0.925 0.012 85);
   --ring: oklch(0.7 0.19 48);
 }
 
@@ -105,7 +109,9 @@
   --warning-foreground: oklch(0.22 0.04 75);
   --teal: oklch(0.7 0.08 195);
   --plum: oklch(0.7 0.11 340);
-  --sky: oklch(0.72 0.09 235);
+  --sky: oklch(0.72 0.12 250);
+  --brand-soft: oklch(0.3 0.06 258);
+  --peach: oklch(0.3 0.04 60);
   --whatsapp: oklch(0.72 0.14 150);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);

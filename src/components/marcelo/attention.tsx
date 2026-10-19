@@ -152,23 +152,45 @@ export function AttentionList({
   const shown = all ? items : items.slice(0, limit);
   return (
     <section className="mb-2">
-      <h2 className="mb-3 flex items-center gap-2 text-[14px] font-bold uppercase tracking-[0.06em] text-destructive">
-        <span className="size-2 rounded-full bg-destructive" /> Necesitan tu atención
-        <span className="rounded-full bg-destructive/10 px-2 text-[12px]">{items.length}</span>
+      <h2 className="mb-3 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.1em] text-foreground">
+        <span className="size-2 rounded-full bg-accent" /> Necesitan tu atención
+        <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[12px] tracking-normal text-accent">
+          {items.length}
+        </span>
       </h2>
       <div className="space-y-2">
-        {shown.map((it) => (
-          <Card key={it.id} className="flex items-center gap-3 p-3.5" onClick={it.onClick}>
-            <IconChip icon={it.icon} tone={it.tone} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[16px] font-semibold leading-snug">{it.title}</p>
-              <p className="truncate text-[14px] text-muted-foreground">{it.body}</p>
-            </div>
-            <span className="flex shrink-0 items-center text-[14px] font-bold text-accent">
-              {it.cta} <ChevronRight className="size-4" />
-            </span>
-          </Card>
-        ))}
+        {shown.map((it) => {
+          // Messages and clients waiting are warm (orange); money and deadlines are cool (blue).
+          const warm = it.tone === "danger" || it.tone === "accent";
+          return (
+            <Card
+              key={it.id}
+              className="flex items-center gap-3 rounded-[1.25rem] p-3.5"
+              onClick={it.onClick}
+            >
+              <IconChip
+                icon={it.icon}
+                tone={warm ? "accent" : "sky"}
+                className={cn(
+                  "size-12 rounded-full",
+                  warm ? "bg-peach text-accent" : "bg-brand-soft text-sky",
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[16px] font-bold leading-snug text-foreground">{it.title}</p>
+                <p className="truncate text-[14px] text-muted-foreground">{it.body}</p>
+              </div>
+              <span
+                className={cn(
+                  "flex h-9 shrink-0 items-center gap-0.5 rounded-full pl-3 pr-2 text-[14px] font-bold",
+                  warm ? "bg-peach text-accent" : "bg-brand-soft text-sky",
+                )}
+              >
+                {it.cta} <ChevronRight className="size-4" />
+              </span>
+            </Card>
+          );
+        })}
       </div>
       {items.length > limit && !all ? (
         <button

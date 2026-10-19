@@ -15,10 +15,19 @@ export function PageTitle({ title, subtitle }: { title: string; subtitle?: strin
   );
 }
 
-export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
+export function SectionTitle({
+  children,
+  action,
+  lead,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+  lead?: ReactNode;
+}) {
   return (
-    <div className="mb-3 mt-7 flex items-baseline justify-between first:mt-0">
-      <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+    <div className="mb-3 mt-7 flex items-center justify-between first:mt-0">
+      <h2 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.1em] text-foreground">
+        {lead}
         {children}
       </h2>
       {action}
@@ -115,9 +124,20 @@ export function Badge({
   );
 }
 
-export function Empty({ title, hint }: { title: string; hint: string }) {
+export function Empty({
+  title,
+  hint,
+  icon,
+  className,
+}: {
+  title: string;
+  hint: string;
+  icon?: ReactNode;
+  className?: string;
+}) {
   return (
-    <Card className="py-8 text-center">
+    <Card className={cn("py-8 text-center", className)}>
+      {icon ? <div className="mb-3 flex justify-center">{icon}</div> : null}
       <p className="text-[16px] font-semibold text-foreground">{title}</p>
       <p className="mx-auto mt-2 max-w-[260px] text-[13px] leading-relaxed text-muted-foreground">
         {hint}

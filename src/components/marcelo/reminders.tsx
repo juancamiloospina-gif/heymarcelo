@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Check, Trash2 } from "lucide-react";
+import { Check, ChevronRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { daysBetween, prettyDate, todayISO, type Pending } from "@/lib/marcelo-data";
@@ -126,8 +126,8 @@ export function ReminderRow({ pending: p }: { pending: Pending }) {
         >
           <span
             className={cn(
-              "flex size-6 items-center justify-center rounded-md border-2",
-              p.done ? "border-success bg-success text-white" : "border-muted-foreground/40",
+              "flex size-6 items-center justify-center rounded-full border-2",
+              p.done ? "border-success bg-success text-white" : "border-primary/35 bg-card",
             )}
           >
             {p.done ? <Check className="size-4" /> : null}
@@ -154,6 +154,7 @@ export function ReminderRow({ pending: p }: { pending: Pending }) {
             </p>
           ) : null}
         </div>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground/60" aria-hidden />
       </div>
     </Swipeable>
   );

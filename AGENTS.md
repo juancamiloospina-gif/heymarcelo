@@ -9,4 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Marcelo uses Plus Jakarta Sans with a white, warm-gray, mandarin, and graphite visual system; this matches the approved brand direction and avoids blue dominance.
+- Marcelo uses Plus Jakarta Sans with a navy-text, brand-blue (primary), mandarin-orange (accent), warm-cream visual system, matching the approved home-screen reference (Oct 2026). Blue is for actions/active states, orange for small accents and warm items (messages). Colors live as tokens in `src/styles.css`; don't hardcode them in components.
