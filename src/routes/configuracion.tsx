@@ -123,6 +123,70 @@ function Configuracion() {
     <Screen>
       <BackButton onClick={() => navigate({ to: "/" })} label="Configuración" />
 
+      <SectionTitle>Tu cuenta</SectionTitle>
+      <Card className="mb-5 rounded-[1.25rem]">
+        {editing ? (
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setProfile({
+                name: form.name.trim(),
+                trade: form.trade.trim(),
+                city: form.city.trim(),
+              });
+              setEditing(false);
+              toast.success("Perfil guardado");
+            }}
+          >
+            <Field
+              label="Tu nombre"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <Field
+              label="¿A qué te dedicas?"
+              value={form.trade}
+              onChange={(e) => setForm({ ...form, trade: e.target.value })}
+            />
+            <Field
+              label="Ciudad"
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={!form.name.trim()}>
+                Guardar
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="flex items-center gap-4">
+            <ClientAvatar name={state.profile.name || "?"} size="md" className="size-12" />
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2 break-words text-[18px] font-extrabold leading-tight">
+                {state.profile.name || "Tu perfil"}
+              </p>
+              <p className="truncate text-[15px] text-muted-foreground">
+                {[state.profile.trade, state.profile.city].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setForm(state.profile);
+                setEditing(true);
+              }}
+              className="h-10 shrink-0 rounded-full border-2 border-sky px-3.5 text-[14px] font-bold text-sky"
+            >
+              Editar perfil
+            </button>
+          </div>
+        )}
+      </Card>
+
       <section className="relative overflow-hidden rounded-[1.5rem] bg-primary p-5 text-primary-foreground shadow-[var(--shadow-card)]">
         <span
           aria-hidden
@@ -241,70 +305,6 @@ function Configuracion() {
           </span>
         </span>
         <ChevronRight className="size-5 shrink-0 text-muted-foreground/60" />
-      </Card>
-
-      <SectionTitle>Tu cuenta</SectionTitle>
-      <Card className="rounded-[1.25rem]">
-        {editing ? (
-          <form
-            className="space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setProfile({
-                name: form.name.trim(),
-                trade: form.trade.trim(),
-                city: form.city.trim(),
-              });
-              setEditing(false);
-              toast.success("Perfil guardado");
-            }}
-          >
-            <Field
-              label="Tu nombre"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <Field
-              label="¿A qué te dedicas?"
-              value={form.trade}
-              onChange={(e) => setForm({ ...form, trade: e.target.value })}
-            />
-            <Field
-              label="Ciudad"
-              value={form.city}
-              onChange={(e) => setForm({ ...form, city: e.target.value })}
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={!form.name.trim()}>
-                Guardar
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <div className="flex items-center gap-4">
-            <ClientAvatar name={state.profile.name || "?"} size="md" className="size-12" />
-            <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 break-words text-[18px] font-extrabold leading-tight">
-                {state.profile.name || "Tu perfil"}
-              </p>
-              <p className="truncate text-[15px] text-muted-foreground">
-                {[state.profile.trade, state.profile.city].filter(Boolean).join(" · ")}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setForm(state.profile);
-                setEditing(true);
-              }}
-              className="h-10 shrink-0 rounded-full border-2 border-sky px-3.5 text-[14px] font-bold text-sky"
-            >
-              Editar perfil
-            </button>
-          </div>
-        )}
       </Card>
 
       <SectionTitle>Asistente</SectionTitle>
