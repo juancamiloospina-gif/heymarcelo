@@ -53,6 +53,8 @@ export const Route = createFileRoute("/bandeja/")({
       },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): { simular?: 1 } =>
+    s["simular"] ? { simular: 1 } : {},
   component: Bandeja,
 });
 
@@ -74,7 +76,9 @@ const timeAgo = (iso: string) => {
 function Bandeja() {
   const { state, setSettings, receiveClientMessage } = useMarcelo();
   const navigate = useNavigate();
-  const [simOpen, setSimOpen] = useState(false);
+  // "Prueba cómo responde Marcelo" (Conexiones) lands here with the simulator already open.
+  const { simular } = Route.useSearch();
+  const [simOpen, setSimOpen] = useState(Boolean(simular));
 
   const connected = (Object.keys(state.connections) as Channel[]).filter(
     (c) => state.connections[c].connected,
