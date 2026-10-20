@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Download,
   Globe,
+  GraduationCap,
   Pencil,
   Plug,
   RotateCcw,
@@ -72,7 +73,7 @@ const renewDay = () => {
 
 function Configuracion() {
   const navigate = useNavigate();
-  const { state, setSettings, reset } = useMarcelo();
+  const { state, setProfile, setSettings, reset } = useMarcelo();
   const ai = useAIStatus();
   const [danger, setDanger] = useState<0 | 1 | 2>(0);
   const [sheet, setSheet] = useState<"qr" | "cobros" | "pantalla" | "privacidad" | null>(null);
@@ -251,6 +252,24 @@ function Configuracion() {
           onClick={() => setSheet("pantalla")}
         />
       </div>
+      <Card
+        onClick={() => {
+          setProfile({ tourDone: false });
+          navigate({ to: "/" });
+        }}
+        className="mt-2 flex items-center gap-3 rounded-[1.25rem] p-3.5"
+      >
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-peach text-accent">
+          <GraduationCap className="size-6" strokeWidth={1.7} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-bold">Ver el tutorial</span>
+          <span className="block text-[14px] leading-snug text-muted-foreground">
+            Un recorrido corto por cada parte de Marcelo
+          </span>
+        </span>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground/60" />
+      </Card>
       <Card
         onClick={() => setSheet("privacidad")}
         className="mt-2 flex items-center gap-3 rounded-[1.25rem] p-3.5"

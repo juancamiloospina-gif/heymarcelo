@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/scroll-lock";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 import { ArrowLeft, X, type LucideIcon } from "lucide-react";
 
@@ -216,12 +217,16 @@ export function Sheet({
   children: ReactNode;
   icon?: ReactNode;
 }) {
+  useScrollLock();
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 overscroll-contain"
+      onClick={onClose}
+    >
       <div
         role="dialog"
         aria-label={title}
-        className="max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-[1.75rem] bg-card p-5 pb-8 shadow-[var(--shadow-lift)]"
+        className="max-h-[88dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[1.75rem] bg-card p-5 pb-8 shadow-[var(--shadow-lift)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-3">

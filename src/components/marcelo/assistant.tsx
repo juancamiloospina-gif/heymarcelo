@@ -1,3 +1,4 @@
+import { useScrollLock } from "@/lib/scroll-lock";
 import {
   createContext,
   useCallback,
@@ -363,6 +364,8 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, close]);
+
+  useScrollLock(isOpen);
 
   const value = useMemo(() => ({ open }), [open]);
 
