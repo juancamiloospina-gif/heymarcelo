@@ -33,6 +33,7 @@ import {
   Sheet,
 } from "@/components/marcelo/kit";
 import { ClientAvatar } from "@/components/marcelo/visual";
+import { UserPhoto } from "@/components/marcelo/mascot";
 import { QuoteLinkCard } from "@/components/marcelo/quote-link";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { useAIStatus, providers } from "@/lib/ai/config";
@@ -124,7 +125,11 @@ function Configuracion() {
       <SectionTitle>Tu cuenta</SectionTitle>
       <Card className="mb-5 rounded-[1.25rem]">
         <div className="flex items-center gap-4">
-          <ClientAvatar name={state.profile.name || "?"} size="md" className="size-12" />
+          {state.profile.photoUrl ? (
+            <UserPhoto className="size-12" />
+          ) : (
+            <ClientAvatar name={state.profile.name || "?"} size="md" className="size-12" />
+          )}
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 break-words text-[18px] font-extrabold leading-tight">
               {state.profile.name || "Tu perfil"}

@@ -10,10 +10,10 @@ import {
   Receipt,
   Sparkles,
   Star,
-  User,
   type LucideIcon,
 } from "lucide-react";
 import character from "@/assets/marcelo-character.png";
+import { UserPhoto } from "@/components/marcelo/mascot";
 import { Card, Empty, Screen, SectionTitle } from "@/components/marcelo/kit";
 import { AttentionList } from "@/components/marcelo/attention";
 import { JobCard, NewJobSheet, PaymentSheet } from "@/components/marcelo/jobs";
@@ -69,9 +69,9 @@ function Inicio() {
         <button
           onClick={() => navigate({ to: "/configuracion" })}
           aria-label="Perfil y configuración"
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sky ring-2 ring-card shadow-[var(--shadow-card)]"
+          className="shrink-0 rounded-full shadow-[var(--shadow-card)] ring-2 ring-card"
         >
-          <User className="size-6" strokeWidth={1.8} />
+          <UserPhoto className="size-11" fallback="person" />
         </button>
       </div>
 
