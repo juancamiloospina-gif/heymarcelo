@@ -1,16 +1,30 @@
 import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, type LucideIcon } from "lucide-react";
 
 export function Screen({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("px-4 pb-28 pt-5", className)}>{children}</div>;
 }
 
-export function PageTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+export function PageTitle({
+  title,
+  subtitle,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  /** Top-right slot: the mascot avatar or the screen's round buttons. */
+  right?: ReactNode;
+}) {
   return (
-    <div className="mb-6">
-      <h1 className="text-[22px] font-bold leading-tight text-foreground">{title}</h1>
-      {subtitle ? <p className="mt-1 text-[16px] text-muted-foreground">{subtitle}</p> : null}
+    <div className="mb-5 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="truncate text-[30px] font-extrabold leading-tight tracking-tight text-foreground">
+          {title}
+        </h1>
+        {subtitle ? <p className="mt-0.5 text-[16px] text-muted-foreground">{subtitle}</p> : null}
+      </div>
+      {right}
     </div>
   );
 }
@@ -235,23 +249,24 @@ export function Tabs<T extends string>({
   value,
   onChange,
 }: {
-  tabs: readonly { key: T; label: string; badge?: number }[];
+  tabs: readonly { key: T; label: string; badge?: number; icon?: LucideIcon }[];
   value: T;
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="no-scrollbar -mx-4 mb-5 flex gap-2 overflow-x-auto px-4">
+    <div className="no-scrollbar -mx-4 mb-5 flex gap-1.5 overflow-x-auto px-4 py-1">
       {tabs.map((t) => (
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
           className={cn(
-            "flex h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-[15px] font-semibold transition-colors",
+            "flex h-11 min-w-0 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[14px] font-semibold transition-colors min-[430px]:px-3 min-[430px]:text-[15px]",
             value === t.key
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground",
+              ? "bg-primary text-primary-foreground shadow-[var(--shadow-card)]"
+              : "bg-card text-foreground shadow-[var(--shadow-card)]",
           )}
         >
+          {t.icon ? <t.icon className="hidden size-4 min-[430px]:block" /> : null}
           {t.label}
           {t.badge ? (
             <span className="rounded-full bg-accent px-1.5 text-[11px] text-accent-foreground">

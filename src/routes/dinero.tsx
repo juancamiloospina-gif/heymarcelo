@@ -3,11 +3,15 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import {
   ArrowDownLeft,
-  Banknote,
+  BarChart3,
   Calculator,
   Camera,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
+  CircleDollarSign,
+  Clock,
+  CreditCard,
   Download,
   FileText,
   HandCoins,
@@ -18,6 +22,7 @@ import {
   Send,
   Sparkles,
   Trash2,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -32,6 +37,7 @@ import {
   Tabs,
 } from "@/components/marcelo/kit";
 import { PaymentSheet } from "@/components/marcelo/jobs";
+import { MascotAvatar } from "@/components/marcelo/mascot";
 import { Swipeable } from "@/components/marcelo/reminders";
 import { IconChip, expenseVisual, toneChip } from "@/components/marcelo/visual";
 import { useMarcelo, useMoney } from "@/lib/marcelo-store";
@@ -79,13 +85,13 @@ function Dinero() {
 
   return (
     <Screen>
-      <PageTitle title="Dinero" />
+      <PageTitle title="Dinero" right={<MascotAvatar />} />
       <Tabs
         tabs={[
-          { key: "resumen", label: "Resumen" },
-          { key: "cobrar", label: "Por cobrar", badge: owedCount },
-          { key: "gastos", label: "Gastos" },
-          { key: "contador", label: "Contador" },
+          { key: "resumen", label: "Resumen", icon: BarChart3 },
+          { key: "cobrar", label: "Por cobrar", badge: owedCount, icon: Clock },
+          { key: "gastos", label: "Gastos", icon: CreditCard },
+          { key: "contador", label: "Contador", icon: Calculator },
         ]}
         value={tab}
         onChange={setTab}
@@ -129,41 +135,65 @@ function Resumen({ onTab }: { onTab: (t: Tab) => void }) {
 
   return (
     <>
-      <Card className="bg-primary text-primary-foreground">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-primary-foreground/60">
+      <Card className="relative overflow-hidden rounded-[1.5rem] border-0 bg-primary p-5 text-primary-foreground">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-10 -top-12 size-40 rounded-full bg-white/10"
+        />
+        <p className="relative text-[13px] font-semibold uppercase tracking-[0.12em] text-primary-foreground/70">
           Este mes
         </p>
-        <p className="mt-2 text-[36px] font-bold leading-none">{signedMoney(profit)}</p>
-        <p className="mt-1 text-[15px] text-primary-foreground/70">Ganancia</p>
-        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-primary-foreground/15 pt-4">
-          <div>
-            <p className="text-[14px] text-primary-foreground/60">Cobrado</p>
-            <p className="text-[18px] font-semibold">{money(income)}</p>
+        <p className="relative mt-2 text-[40px] font-extrabold leading-none">
+          {signedMoney(profit)}
+        </p>
+        <p className="relative mt-1 text-[16px] text-primary-foreground/80">Ganancia</p>
+        <div className="relative mt-5 grid grid-cols-2 gap-4 border-t border-primary-foreground/20 pt-4">
+          <div className="flex items-center gap-3">
+            <CircleDollarSign
+              className="size-7 shrink-0 text-primary-foreground/80"
+              strokeWidth={1.6}
+            />
+            <div>
+              <p className="text-[14px] text-primary-foreground/70">Cobrado</p>
+              <p className="text-[20px] font-bold">{money(income)}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[14px] text-primary-foreground/60">Gastos</p>
-            <p className="text-[18px] font-semibold">{money(spent)}</p>
+          <div className="flex items-center gap-3 border-l border-primary-foreground/20 pl-4">
+            <CreditCard className="size-7 shrink-0 text-primary-foreground/80" strokeWidth={1.6} />
+            <div>
+              <p className="text-[14px] text-primary-foreground/70">Gastos</p>
+              <p className="text-[20px] font-bold">{money(spent)}</p>
+            </div>
           </div>
         </div>
       </Card>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Button
-          className="bg-success text-white hover:bg-success/90"
+          className="rounded-full px-3 shadow-[var(--shadow-card)]"
           onClick={() => setPaying(true)}
         >
-          <Banknote className="size-5" /> Cobré
+          <Wallet className="size-5" /> Cobré
         </Button>
-        <Button variant="secondary" onClick={() => onTab("gastos")}>
-          <Plus className="size-5" /> Anotar gasto
+        <Button
+          variant="secondary"
+          className="whitespace-nowrap rounded-full border-border/60 px-3 shadow-[var(--shadow-card)]"
+          onClick={() => onTab("gastos")}
+        >
+          <Plus className="size-5 text-accent" strokeWidth={2.4} /> Anotar gasto
         </Button>
       </div>
 
       {owed > 0 ? (
-        <Card className="mt-3 flex items-center gap-3" onClick={() => onTab("cobrar")}>
-          <IconChip icon={HandCoins} tone="warning" />
-          <p className="flex-1 text-[16px] font-semibold">Por cobrar: {money(owed)}</p>
-          <span className="text-[15px] font-semibold text-accent">Ver</span>
+        <Card
+          className="mt-3 flex items-center gap-3 rounded-[1.25rem]"
+          onClick={() => onTab("cobrar")}
+        >
+          <IconChip icon={HandCoins} tone="accent" className="size-12 rounded-full bg-peach" />
+          <p className="flex-1 text-[17px] font-bold">Por cobrar: {money(owed)}</p>
+          <span className="flex items-center text-[15px] font-bold text-accent">
+            Ver <ChevronRight className="size-4" />
+          </span>
         </Card>
       ) : null}
       {miles > 0 ? (
@@ -176,20 +206,20 @@ function Resumen({ onTab }: { onTab: (t: Tab) => void }) {
       {movements.length === 0 ? (
         <Empty title="Nada por aquí." hint="Tus cobros y gastos aparecen aquí." />
       ) : (
-        <Card className="divide-y divide-border p-0">
+        <Card className="divide-y divide-border overflow-hidden rounded-[1.25rem] p-0">
           {movements.map((m) => (
-            <div key={m.id} className="flex min-h-14 items-center gap-3 px-4 py-3">
+            <div key={m.id} className="flex min-h-16 items-center gap-3 px-4 py-3">
               {m.category ? (
                 <IconChip
                   icon={expenseVisual[m.category].icon}
                   tone={expenseVisual[m.category].tone}
-                  size="sm"
+                  className="size-11 rounded-full"
                 />
               ) : (
-                <IconChip icon={ArrowDownLeft} tone="success" size="sm" />
+                <IconChip icon={ArrowDownLeft} tone="success" className="size-11 rounded-full" />
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[16px] font-medium">{m.label}</span>
+                <span className="block truncate text-[16px] font-bold">{m.label}</span>
                 <span className="block truncate text-[14px] text-muted-foreground">
                   {prettyDate(m.date)} · {m.detail}
                 </span>

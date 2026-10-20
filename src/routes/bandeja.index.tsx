@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   Bot,
   Camera,
+  ChevronRight,
   FlaskConical,
   Link2,
   MessageCirclePlus,
@@ -31,6 +32,7 @@ import {
 } from "@/components/marcelo/visual";
 import { useMarcelo } from "@/lib/marcelo-store";
 import { AttentionList } from "@/components/marcelo/attention";
+import { MascotAvatar } from "@/components/marcelo/mascot";
 import { DEMO_MODE } from "@/lib/flags";
 import type { Channel } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
@@ -90,6 +92,7 @@ function Bandeja() {
             ? `${waiting} ${waiting === 1 ? "cliente espera" : "clientes esperan"} tu respuesta`
             : "Marcelo contesta por ti"
         }
+        right={<MascotAvatar />}
       />
 
       <AttentionList limit={6} />
@@ -109,14 +112,14 @@ function Bandeja() {
         </Card>
       ) : null}
 
-      <Card className="mb-4 overflow-hidden bg-primary p-0 text-primary-foreground">
+      <Card className="mb-4 overflow-hidden rounded-[1.5rem] border-0 bg-primary p-0 text-primary-foreground">
         <div className="flex items-center gap-3 p-4">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-accent/20 text-accent">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-primary-foreground">
             <Bot className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-semibold">Respuesta automática</p>
-            <p className="text-[12px] leading-snug text-primary-foreground/65">
+            <p className="text-[17px] font-bold">Respuesta automática</p>
+            <p className="text-[13px] leading-snug text-primary-foreground/80">
               Cotiza con tus precios y agenda cuando el cliente acepta.
             </p>
           </div>
@@ -146,15 +149,21 @@ function Bandeja() {
       </Card>
 
       <div className="mb-2 grid grid-cols-3 gap-2">
-        <Button variant="secondary" size="sm" onClick={() => navigate({ to: "/clientes" })}>
-          <Users className="size-4" /> Clientes
-        </Button>
-        <Button variant="secondary" size="sm" onClick={() => navigate({ to: "/servicios" })}>
-          <Tags className="size-4" /> Precios
-        </Button>
-        <Button variant="secondary" size="sm" onClick={() => navigate({ to: "/conexiones" })}>
-          <Link2 className="size-4" /> Canales
-        </Button>
+        {(
+          [
+            { to: "/clientes", label: "Clientes", icon: Users },
+            { to: "/servicios", label: "Precios", icon: Tags },
+            { to: "/conexiones", label: "Canales", icon: Link2 },
+          ] as const
+        ).map(({ to, label, icon: Icon }) => (
+          <button
+            key={to}
+            onClick={() => navigate({ to })}
+            className="flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-full border border-border/60 bg-card text-[15px] font-bold shadow-[var(--shadow-card)] transition-transform active:scale-95"
+          >
+            <Icon className="size-4 shrink-0 text-sky" /> {label}
+          </button>
+        ))}
       </div>
 
       <SectionTitle
@@ -162,9 +171,10 @@ function Bandeja() {
           DEMO_MODE ? (
             <button
               onClick={() => setSimOpen(true)}
-              className="flex h-10 items-center gap-1 text-[15px] font-semibold text-accent"
+              className="flex h-10 items-center gap-1.5 text-[15px] font-bold text-accent"
             >
-              <FlaskConical className="size-4" /> Simular mensaje
+              <FlaskConical className="size-4" /> Simular mensaje{" "}
+              <ChevronRight className="size-4" />
             </button>
           ) : undefined
         }
@@ -178,7 +188,7 @@ function Bandeja() {
           hint="Cuando un cliente te escriba por WhatsApp o SMS, aparece aquí y Marcelo le contesta."
         />
       ) : (
-        <Card className="divide-y divide-border p-0">
+        <div className="space-y-2">
           {list.map((c) => {
             // Show what the client said last, not Marcelo's reply.
             const lastClient = [...c.messages].reverse().find((m) => m.from === "client");
@@ -194,7 +204,7 @@ function Bandeja() {
                 onClick={() =>
                   navigate({ to: "/bandeja/$conversationId", params: { conversationId: c.id } })
                 }
-                className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
+                className="surface flex w-full items-start gap-3 rounded-[1.25rem] px-4 py-3.5 text-left transition-transform active:scale-[0.99]"
               >
                 <div className="relative">
                   <ClientAvatar name={c.contactName} />
@@ -204,13 +214,13 @@ function Bandeja() {
                   <div className="flex items-baseline justify-between gap-2">
                     <span
                       className={cn(
-                        "truncate text-[15px]",
-                        c.unread ? "font-bold" : "font-semibold",
+                        "truncate text-[16px]",
+                        c.unread ? "font-extrabold" : "font-bold",
                       )}
                     >
                       {c.contactName}
                     </span>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                    <span className="shrink-0 text-[12px] text-muted-foreground">
                       {timeAgo(c.updatedAt)}
                     </span>
                   </div>
@@ -234,10 +244,14 @@ function Bandeja() {
                     ) : null}
                   </div>
                 </div>
+                <ChevronRight
+                  className="mt-6 size-5 shrink-0 text-muted-foreground/60"
+                  aria-hidden
+                />
               </button>
             );
           })}
-        </Card>
+        </div>
       )}
 
       {simOpen ? (
@@ -258,8 +272,8 @@ function Bandeja() {
 function Stat({ value, label, highlight }: { value: number; label: string; highlight?: boolean }) {
   return (
     <div className="px-2 py-3">
-      <p className={cn("text-[18px] font-bold", highlight && "text-accent")}>{value}</p>
-      <p className="text-[11px] text-primary-foreground/60">{label}</p>
+      <p className={cn("text-[22px] font-extrabold", highlight && "text-accent")}>{value}</p>
+      <p className="text-[13px] text-primary-foreground/80">{label}</p>
     </div>
   );
 }
