@@ -16,6 +16,11 @@ export function TaxCard({ profit }: { profit: number }) {
 
   return (
     <>
+      <p className="mb-3 rounded-2xl bg-brand-soft p-3 text-[14px] leading-snug">
+        <b>El impuesto federal es igual en todo el país</b> (ganancia, self-employment tax,
+        formulario 1099-NEC). Tu estado solo cambia el sales tax y el impuesto estatal sobre el
+        ingreso.
+      </p>
       <Card className="space-y-3 text-[15px] leading-relaxed">
         <div className="flex items-start gap-3">
           <IconChip icon={Landmark} tone="sky" />

@@ -13,6 +13,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronDown,
+  ListChecks,
   ChevronRight,
   CircleDollarSign,
   Clock,
@@ -883,10 +884,12 @@ const estimatedDates = (year: number) => [
   new Date(year + 1, 0, 15),
 ];
 
-type ContadorSheet = "preview" | "categorias" | "impuestos" | "fechas" | "k1099" | null;
+type ContadorSheet =
+  "preview" | "documentos" | "categorias" | "impuestos" | "fechas" | "k1099" | null;
 
 function Contador({ onTab }: { onTab: (t: Tab) => void }) {
-  const { state } = useMarcelo();
+  const { state, setProfile } = useMarcelo();
+  const docs = state.profile.taxDocs ?? {};
   const year = todayISO().slice(0, 4);
   const n = yearNumbers(state, year);
   const [busy, setBusy] = useState(false);
@@ -894,6 +897,39 @@ function Contador({ onTab }: { onTab: (t: Tab) => void }) {
   const next = estimatedDates(Number(year)).find((d) => d >= new Date());
   const moves = n.payments.length + n.expenses.length;
   const receipts = n.expenses.filter((e) => e.receipt).length;
+
+  // What to hand over: two things Marcelo already holds, two the user brings.
+  const checklist = [
+    {
+      key: "nec" as const,
+      title: "Formularios 1099-NEC",
+      hint: "Si un cliente que es un negocio te pagó $2,000 o más en 2026 (antes $600), debe mandártelo. Es el comprobante de esos ingresos.",
+      auto: false,
+      done: Boolean(docs.nec),
+    },
+    {
+      key: "income" as const,
+      title: "Registro de todos tus ingresos",
+      hint: `${n.payments.length} ${n.payments.length === 1 ? "pago registrado" : "pagos registrados"} · ${money(n.income)}. Efectivo, Zelle, Cash App o cheque cuentan aunque no llegue un 1099. Marcelo ya los incluye.`,
+      auto: true,
+      done: n.payments.length > 0,
+    },
+    {
+      key: "expenses" as const,
+      title: "Comprobantes de gastos y millas",
+      hint: `${n.expenses.length} ${n.expenses.length === 1 ? "gasto" : "gastos"} · ${receipts} con foto · ${n.miles.toFixed(1)} mi. Gasolina, herramientas, seguro, teléfono… Marcelo los agrupa por categoría.`,
+      auto: true,
+      done: n.expenses.length > 0,
+    },
+    {
+      key: "estimated" as const,
+      title: "Comprobantes de pagos estimados al IRS",
+      hint: "Si pagaste cada trimestre (formulario 1040-ES), entrégalos para no pagar dos veces.",
+      auto: false,
+      done: Boolean(docs.estimated),
+    },
+  ];
+  const ready = checklist.filter((c) => c.done).length;
 
   const rowCls = "flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left";
 
@@ -984,6 +1020,18 @@ function Contador({ onTab }: { onTab: (t: Tab) => void }) {
 
       <Eyebrow>Antes de enviar</Eyebrow>
       <Card className="divide-y divide-border overflow-hidden rounded-[1.25rem] p-0">
+        <button onClick={() => setSheet("documentos")} className={rowCls}>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-peach text-accent">
+            <ListChecks className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[16px] font-semibold">Qué entregar a tu contador</span>
+            <span className="block text-[13px] text-muted-foreground">
+              {ready} de {checklist.length} listos
+            </span>
+          </span>
+          <ChevronRight className="size-5 text-muted-foreground/60" />
+        </button>
         <button onClick={() => setSheet("categorias")} className={rowCls}>
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-success/12 text-success">
             <Check className="size-5" strokeWidth={2.6} />
@@ -995,7 +1043,9 @@ function Contador({ onTab }: { onTab: (t: Tab) => void }) {
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sky">
             <FileText className="size-5" />
           </span>
-          <span className="flex-1 text-[16px] font-semibold">Impuestos de mi estado</span>
+          <span className="flex-1 text-[16px] font-semibold">
+            Impuestos federales y de mi estado
+          </span>
           <ChevronRight className="size-5 text-muted-foreground/60" />
         </button>
         <button onClick={() => setSheet("fechas")} className={rowCls}>
@@ -1045,6 +1095,68 @@ function Contador({ onTab }: { onTab: (t: Tab) => void }) {
             <Line label="Millas registradas" value={`${n.miles.toFixed(1)} mi`} muted />
             <Line label="Recibos con foto" value={`${receipts} de ${n.expenses.length}`} muted />
           </div>
+        </Sheet>
+      ) : null}
+
+      {sheet === "documentos" ? (
+        <Sheet
+          title="Qué entregar a tu contador"
+          icon={<ListChecks className="size-5 text-accent" />}
+          onClose={() => setSheet(null)}
+        >
+          <p className="mb-3 text-[15px] leading-relaxed text-muted-foreground">
+            La declaración federal de un trabajador independiente es la misma en todo el país, así
+            que esta lista sirve en cualquier estado.
+          </p>
+          <div className="divide-y divide-border rounded-2xl border">
+            {checklist.map((c) => (
+              <div key={c.key} className="flex items-start gap-3 p-3.5">
+                {c.auto ? (
+                  <span
+                    className={cn(
+                      "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full",
+                      c.done ? "bg-success text-white" : "border-2 border-muted-foreground/30",
+                    )}
+                    aria-label={c.done ? "Listo" : "Falta"}
+                  >
+                    {c.done ? <Check className="size-4" strokeWidth={3} /> : null}
+                  </span>
+                ) : (
+                  <button
+                    role="checkbox"
+                    aria-checked={c.done}
+                    aria-label={c.title}
+                    onClick={() =>
+                      setProfile({
+                        taxDocs: { ...docs, [c.key]: !c.done },
+                      })
+                    }
+                    className={cn(
+                      "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2",
+                      c.done
+                        ? "border-success bg-success text-white"
+                        : "border-muted-foreground/40 bg-card",
+                    )}
+                  >
+                    {c.done ? <Check className="size-4" strokeWidth={3} /> : null}
+                  </button>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[16px] font-bold leading-snug">{c.title}</p>
+                  <p className="mt-0.5 text-[14px] leading-snug text-muted-foreground">{c.hint}</p>
+                  {!c.auto ? (
+                    <p className="mt-1 text-[12px] font-semibold uppercase tracking-wide text-accent">
+                      Lo entregas tú
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
+            “Enviar a mi contador” incluye los ingresos, los gastos, las millas y las fotos de
+            recibos. Los formularios 1099-NEC y los comprobantes del IRS se los das aparte.
+          </p>
         </Sheet>
       ) : null}
 

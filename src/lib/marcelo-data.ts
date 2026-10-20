@@ -168,6 +168,8 @@ export type Profile = {
   taxState?: string | undefined;
   taxIdType?: "ssn" | "itin" | "ein" | undefined;
   salesTaxRegistered?: boolean | undefined;
+  /** Documents the user already gathered for the accountant (the ones Marcelo cannot see). */
+  taxDocs?: { nec?: boolean; estimated?: boolean } | undefined;
   /** Photos of the user's work (public URLs in Storage), at most 6. */
   gallery?: string[] | undefined;
   /** Work area: central ZIP, radius in miles and the final list of ZIP codes covered. */
