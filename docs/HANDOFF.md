@@ -388,6 +388,10 @@ No hecho a propósito: tarjeta NFC, pase de Wallet, galería de fotos, licencia.
 - **WhatsApp/SMS:** sigue siendo demo; diagnóstico y requisitos en `docs/WHATSAPP_SMS.md`. Nuevo "Abrir en WhatsApp con el mensaje listo" (real, vía `wa.me`).
 - **Impuestos:** tarjeta en Dinero › Contador (`tax-card.tsx`, `lib/taxes.ts`); datos guardados: estado, tipo de ID, si cobra sales tax. Investigación en `docs/IMPUESTOS.md`.
 
+### Onboarding y validación de ciudad (20/10/2026)
+- Onboarding de móvil (`onboarding.tsx`): columna única centrada, 3 pasos con progreso. El paso 3 **valida la ciudad** con `lib/places.ts` y `public/data/us-places.txt` (32,058 lugares del Census Gazetteer 2024, "Nombre|ST|área"; se descarga solo al abrir el paso 3). Sin llaves, sin costo y sin enviar lo que el usuario escribe. Guarda la ciudad normalizada ("Miami, FL"). Si no aparece, el usuario puede "Usar tal como la escribí"; si la lista no carga (sin conexión) no se bloquea.
+- Pendiente: usar la misma validación al editar la ciudad en Configuración.
+
 ## 11. Cómo trabajar en el proyecto
 
 ```bash

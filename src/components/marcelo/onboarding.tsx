@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Briefcase,
@@ -12,10 +12,19 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useMarcelo } from "@/lib/marcelo-store";
+import {
+  loadPlaces,
+  matchPlace,
+  placeValue,
+  searchPlaces,
+  stateName,
+  type Place,
+} from "@/lib/places";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/marcelo-logo.png";
 import mark from "@/assets/marcelo-mark.png";
 import character from "@/assets/marcelo-character.png";
+import wave from "@/assets/marcelo-character-wave.png";
 
 /** What Marcelo promises, in three short lines (the long version lives in Configuración). */
 const trust: { icon: LucideIcon; tone: string; title: string }[] = [
@@ -58,6 +67,25 @@ export function Onboarding() {
   const { setProfile } = useMarcelo();
   const [step, setStep] = useState(-1);
   const [values, setValues] = useState({ name: "", trade: "", city: "" });
+  // City check (step 3): the US places list loads only when that step opens.
+  const [places, setPlaces] = useState<Place[] | null>(null);
+  const [placesFailed, setPlacesFailed] = useState(false);
+  const [unlisted, setUnlisted] = useState(false);
+  useEffect(() => {
+    if (step !== 2 || places) return;
+    loadPlaces()
+      .then(setPlaces)
+      .catch(() => setPlacesFailed(true));
+  }, [step, places]);
+  const typedCity = values.city;
+  const matched = useMemo(
+    () => (places ? matchPlace(places, typedCity) : null),
+    [places, typedCity],
+  );
+  const suggestions = useMemo(
+    () => (places && !matched ? searchPlaces(places, typedCity) : []),
+    [places, matched, typedCity],
+  );
 
   if (step === -1) {
     return (
@@ -65,10 +93,10 @@ export function Onboarding() {
         <img src={logo} alt="Marcelo" className="mx-auto h-12 w-auto shrink-0" />
         <div className="flex min-h-[150px] flex-1 items-center justify-center py-3">
           <img
-            src={character}
+            src={wave}
             alt=""
             aria-hidden
-            className="max-h-[250px] w-auto max-w-[80%] object-contain"
+            className="max-h-[250px] w-auto max-w-[90%] object-contain"
           />
         </div>
         <div className="shrink-0 text-center">
@@ -109,8 +137,13 @@ export function Onboarding() {
   const keys = ["name", "trade", "city"] as const;
   const key = keys[step] ?? "name";
   const value = values[key];
-  const set = (v: string) => setValues({ ...values, [key]: v });
+  const set = (v: string) => {
+    if (key === "city") setUnlisted(false);
+    setValues({ ...values, [key]: v });
+  };
   const last = step === keys.length - 1;
+  // The last step needs a city we recognize; if the list can't load or the user insists, text is fine.
+  const cityOk = !last || Boolean(matched) || unlisted || placesFailed;
 
   const copy = [
     {
@@ -140,9 +173,14 @@ export function Onboarding() {
         className="flex flex-1 flex-col"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!value.trim()) return;
+          if (!value.trim() || !cityOk) return;
           if (!last) setStep(step + 1);
-          else setProfile({ ...values, onboarded: true });
+          else
+            setProfile({
+              ...values,
+              city: matched ? placeValue(matched) : value.trim(),
+              onboarded: true,
+            });
         }}
       >
         <div className="flex items-center justify-between">
@@ -252,29 +290,95 @@ export function Onboarding() {
           ) : null}
 
           {step === 2 ? (
-            <div className="relative mt-6 overflow-hidden rounded-[1.5rem] bg-brand-soft p-5">
-              <div className="max-w-[55%]">
-                <p className="text-[22px] font-extrabold leading-tight">Perfecto, ya casi está.</p>
-                <p className="mt-1.5 text-[14px] leading-snug text-muted-foreground">
-                  Marcelo dejará todo listo para tu negocio.
-                </p>
-              </div>
-              <img
-                src={character}
-                alt=""
-                aria-hidden
-                className="absolute -bottom-2 right-1 size-[130px] object-contain"
-              />
-              <span className="absolute bottom-5 right-4 flex size-9 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-[var(--shadow-card)]">
-                <MapPin className="size-5" />
-              </span>
-              <div className="h-14" aria-hidden />
+            <div className="mt-4 space-y-3">
+              {matched ? (
+                <div className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-[var(--shadow-card)]">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sky">
+                    <MapPin className="size-5" />
+                  </span>
+                  <p className="flex-1 text-[17px] font-bold">
+                    {matched.name}, {stateName(matched.st)}
+                  </p>
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                    <Check className="size-4" strokeWidth={3} />
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {suggestions.map((p) => (
+                    <button
+                      key={`${p.name}-${p.st}`}
+                      type="button"
+                      onClick={() => set(placeValue(p))}
+                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-card p-3 text-left shadow-[var(--shadow-card)] active:scale-[0.99]"
+                    >
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-soft text-sky">
+                        <MapPin className="size-5" />
+                      </span>
+                      <span className="flex-1 text-[17px] font-bold">
+                        {p.name}, {stateName(p.st)}
+                      </span>
+                    </button>
+                  ))}
+                  {places && value.trim().length >= 3 && suggestions.length === 0 && !unlisted ? (
+                    <div className="rounded-2xl bg-peach p-4 text-[15px] leading-snug">
+                      <p className="font-semibold">No encontré esa ciudad en Estados Unidos.</p>
+                      <p className="mt-1 text-muted-foreground">
+                        Revisa cómo está escrita, por ejemplo “Miami, FL”.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setUnlisted(true)}
+                        className="mt-2 h-10 rounded-full border border-accent/40 bg-card px-4 text-[14px] font-bold text-accent"
+                      >
+                        Usar tal como la escribí
+                      </button>
+                    </div>
+                  ) : null}
+                  {unlisted ? (
+                    <p className="rounded-2xl bg-muted p-3 text-[14px] text-muted-foreground">
+                      Listo, usaré “{value.trim()}” sin verificar.
+                    </p>
+                  ) : null}
+                  {placesFailed ? (
+                    <p className="rounded-2xl bg-muted p-3 text-[14px] text-muted-foreground">
+                      No pude verificar la ciudad ahora (sin conexión). Escríbela y sigue; podrás
+                      cambiarla después.
+                    </p>
+                  ) : null}
+                  {!places && !placesFailed && value.trim().length >= 2 ? (
+                    <p className="px-1 text-[14px] text-muted-foreground">Buscando…</p>
+                  ) : null}
+                </>
+              )}
+              {matched ? (
+                <div className="relative overflow-hidden rounded-[1.5rem] bg-brand-soft p-5">
+                  <div className="max-w-[55%]">
+                    <p className="text-[22px] font-extrabold leading-tight">
+                      Perfecto, ya casi está.
+                    </p>
+                    <p className="mt-1.5 text-[14px] leading-snug text-muted-foreground">
+                      Marcelo dejará todo listo para tu negocio.
+                    </p>
+                  </div>
+                  <img
+                    src={character}
+                    alt=""
+                    aria-hidden
+                    className="absolute -bottom-2 right-1 size-[130px] object-contain"
+                  />
+                  <span className="absolute bottom-5 right-4 flex size-9 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-[var(--shadow-card)]">
+                    <MapPin className="size-5" />
+                  </span>
+                  <div className="h-14" aria-hidden />
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
 
         <div className="mt-6">
-          <PrimaryButton type="submit" disabled={!value.trim()}>
+          <PrimaryButton type="submit" disabled={!value.trim() || !cityOk}>
             {last ? "Entrar a Marcelo" : "Continuar"} <ArrowRight className="size-5" />
           </PrimaryButton>
           {step === 0 ? (
