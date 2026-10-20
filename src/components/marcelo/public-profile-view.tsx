@@ -23,6 +23,7 @@ import type { ViewProfile } from "@/lib/public-view";
 import { T, type Lang } from "@/lib/public-i18n";
 import { formatPhone } from "@/lib/public-profile";
 import { areaSummary, covers, isZip } from "@/lib/service-area";
+import { useScrollLock } from "@/lib/scroll-lock";
 import { AreaMap } from "./area-map";
 
 /**
@@ -68,6 +69,7 @@ export function PublicProfileView({
   const [all, setAll] = useState(false);
   const [morePhotos, setMorePhotos] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  useScrollLock(open !== null);
   // A photo that no longer exists (deleted, not republished yet) is simply not shown.
   const [broken, setBroken] = useState<string[]>([]);
   const photos = p.gallery.filter((u) => !broken.includes(u));

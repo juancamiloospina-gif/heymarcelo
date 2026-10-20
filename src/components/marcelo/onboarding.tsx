@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   Briefcase,
@@ -65,6 +66,7 @@ const PrimaryButton = ({
 
 export function Onboarding() {
   const { setProfile } = useMarcelo();
+  const navigate = useNavigate();
   const [step, setStep] = useState(-1);
   const [values, setValues] = useState({ name: "", trade: "", city: "" });
   // City check (step 3): the US places list loads only when that step opens.
@@ -175,12 +177,16 @@ export function Onboarding() {
           e.preventDefault();
           if (!value.trim() || !cityOk) return;
           if (!last) setStep(step + 1);
-          else
+          else {
             setProfile({
               ...values,
               city: matched ? placeValue(matched) : value.trim(),
               onboarded: true,
+              tourDone: false,
             });
+            // Always land on Inicio, whatever address the app was opened from.
+            navigate({ to: "/", replace: true });
+          }
         }}
       >
         <div className="flex items-center justify-between">

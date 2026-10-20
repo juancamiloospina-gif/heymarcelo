@@ -36,6 +36,7 @@ import { MascotAvatar } from "@/components/marcelo/mascot";
 import { DEMO_MODE } from "@/lib/flags";
 import type { Channel } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/scroll-lock";
 
 export const Route = createFileRoute("/bandeja/")({
   head: () => ({
@@ -297,6 +298,7 @@ function Simulator({
     photo?: boolean;
   }) => void;
 }) {
+  useScrollLock();
   const [name, setName] = useState(samples[0]?.name ?? "");
   const [text, setText] = useState(samples[0]?.text ?? "");
   const [channel, setChannel] = useState<Channel>(channels[0] ?? "whatsapp");
