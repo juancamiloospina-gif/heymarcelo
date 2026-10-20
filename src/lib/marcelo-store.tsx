@@ -118,7 +118,9 @@ type Store = {
   findClientByName: (name: string) => Client | undefined;
 };
 
-const Ctx = createContext<Store | null>(null);
+// Kept on globalThis so hot reloads reuse one context instead of splitting provider and consumers.
+const g = globalThis as { __marceloCtx?: React.Context<Store | null> };
+const Ctx = (g.__marceloCtx ??= createContext<Store | null>(null));
 
 function announce(events: ops.OpEvent[]) {
   for (const e of events) {
