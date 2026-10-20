@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
+  Pencil,
+  Sparkles,
   Briefcase,
   Check,
   CheckCircle2,
@@ -34,7 +36,17 @@ const trust: { icon: LucideIcon; tone: string; title: string }[] = [
   { icon: ShieldCheck, tone: "bg-success/12 text-success", title: "Tu negocio sigue en tus manos" },
 ];
 
-const TRADE_OPTIONS = ["Jardinería", "Limpieza de casas", "Reparaciones del hogar"] as const;
+// Common trades as one-tap chips; any other trade is typed in the field above.
+const TRADE_OPTIONS = [
+  "Jardinería",
+  "Limpieza de casas",
+  "Plomería",
+  "Electricidad",
+  "Pintura",
+  "Construcción",
+  "Mudanzas",
+  "Reparaciones",
+] as const;
 
 /** One phone-sized column, centered, so it never looks like a desktop form. */
 function Frame({ children, className }: { children: ReactNode; className?: string }) {
@@ -67,6 +79,7 @@ const PrimaryButton = ({
 export function Onboarding() {
   const { setProfile } = useMarcelo();
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(-1);
   const [values, setValues] = useState({ name: "", trade: "", city: "" });
   // City check (step 3): the US places list loads only when that step opens.
@@ -156,8 +169,8 @@ export function Onboarding() {
     },
     {
       title: "¿Qué tipo de trabajo haces?",
-      sub: "Esto me ayuda a entender cómo hablas con tus clientes.",
-      placeholder: "Jardinería",
+      sub: "",
+      placeholder: "Escribe tu oficio",
       icon: Briefcase,
     },
     {
@@ -214,15 +227,33 @@ export function Onboarding() {
           >
             {copy.title}
           </h1>
-          <p className={cn("mt-1 text-[16px] text-muted-foreground", step === 0 && "text-center")}>
-            {copy.sub}
-          </p>
+          {copy.sub ? (
+            <p
+              className={cn("mt-1 text-[16px] text-muted-foreground", step === 0 && "text-center")}
+            >
+              {copy.sub}
+            </p>
+          ) : null}
+          {step === 1 ? (
+            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-brand-soft p-3.5">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card text-sky">
+                <Sparkles className="size-5" />
+              </span>
+              <p className="text-[15px] leading-snug">
+                <b>Marcelo funciona para cualquier oficio.</b>{" "}
+                <span className="text-muted-foreground">
+                  Plomería, pintura, mudanzas… o el tuyo. Puedes poner varios.
+                </span>
+              </p>
+            </div>
+          ) : null}
 
           <label className="mt-6 flex h-16 items-center gap-3 rounded-full border-2 border-accent/70 bg-card pl-2.5 pr-3 shadow-[var(--shadow-card)] focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-peach text-accent">
               <Icon className="size-5" />
             </span>
             <input
+              ref={inputRef}
               autoFocus
               value={value}
               onChange={(e) => set(e.target.value)}
@@ -257,41 +288,42 @@ export function Onboarding() {
           ) : null}
 
           {step === 1 ? (
-            <div className="mt-6">
-              <p className="mb-3 text-[18px] font-extrabold">¿Te suena bien?</p>
-              <div className="space-y-2.5">
+            <div className="mt-5">
+              <p className="mb-2.5 text-[15px] font-bold text-muted-foreground">
+                O toca uno para empezar:
+              </p>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Oficios comunes">
                 {TRADE_OPTIONS.map((o) => {
                   const on = value.trim().toLowerCase() === o.toLowerCase();
                   return (
                     <button
                       key={o}
                       type="button"
-                      role="radio"
-                      aria-checked={on}
+                      aria-pressed={on}
                       onClick={() => set(o)}
                       className={cn(
-                        "flex min-h-14 w-full items-center gap-3 rounded-2xl border bg-card px-4 py-2.5 text-left shadow-[var(--shadow-card)] transition-colors",
-                        on ? "border-accent bg-peach" : "border-transparent",
+                        "flex h-11 items-center gap-1.5 rounded-full border px-4 text-[15px] font-bold shadow-[var(--shadow-card)] transition-colors",
+                        on
+                          ? "border-accent bg-accent text-accent-foreground"
+                          : "border-transparent bg-card",
                       )}
                     >
-                      <span className="flex-1 text-[17px] font-bold">{o}</span>
-                      <span
-                        className={cn(
-                          "flex size-7 shrink-0 items-center justify-center rounded-full border-2",
-                          on
-                            ? "border-accent bg-accent text-accent-foreground"
-                            : "border-muted-foreground/30",
-                        )}
-                      >
-                        {on ? <Check className="size-4" strokeWidth={3} /> : null}
-                      </span>
+                      {on ? <Check className="size-4" strokeWidth={3} /> : null}
+                      {o}
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    set("");
+                    inputRef.current?.focus();
+                  }}
+                  className="flex h-11 items-center gap-1.5 rounded-full border-2 border-dashed border-accent/60 px-4 text-[15px] font-bold text-accent"
+                >
+                  <Pencil className="size-4" /> Otro oficio
+                </button>
               </div>
-              <p className="mt-3 text-[14px] text-muted-foreground">
-                Puedes escribir otro tipo de trabajo.
-              </p>
             </div>
           ) : null}
 
@@ -383,7 +415,7 @@ export function Onboarding() {
           ) : null}
         </div>
 
-        <div className="mt-6">
+        <div className="sticky bottom-0 -mx-5 mt-6 bg-background/95 px-5 pb-1 pt-3 backdrop-blur">
           <PrimaryButton type="submit" disabled={!value.trim() || !cityOk}>
             {last ? "Entrar a Marcelo" : "Continuar"} <ArrowRight className="size-5" />
           </PrimaryButton>
