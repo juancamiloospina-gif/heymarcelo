@@ -1,35 +1,58 @@
-import { useState } from "react";
-import { Database, Eye, ShieldCheck } from "lucide-react";
-import { Button, Field } from "./kit";
+import { useState, type ReactNode } from "react";
+import {
+  ArrowRight,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  Database,
+  MapPin,
+  ShieldCheck,
+  User,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { cn } from "@/lib/utils";
 import logo from "@/assets/marcelo-logo.png";
+import mark from "@/assets/marcelo-mark.png";
+import character from "@/assets/marcelo-character.png";
 
-const trust = [
-  {
-    icon: Database,
-    tone: "bg-accent/12 text-accent",
-    title: "Qué guardo",
-    body: "Tus clientes, trabajos y dinero. Solo en este teléfono.",
-  },
-  {
-    icon: Eye,
-    tone: "bg-sky/12 text-sky",
-    title: "Quién lo ve",
-    body: "Solo tú. Tus clientes solo ven los mensajes que les escribo.",
-  },
-  {
-    icon: ShieldCheck,
-    tone: "bg-success/12 text-success",
-    title: "Qué nunca hago",
-    body: "Cambiar tus precios, dar descuentos o borrar datos sin tu permiso.",
-  },
+/** What Marcelo promises, in three short lines (the long version lives in Configuración). */
+const trust: { icon: LucideIcon; tone: string; title: string }[] = [
+  { icon: Database, tone: "bg-peach text-accent", title: "Tus datos son tuyos" },
+  { icon: CheckCircle2, tone: "bg-brand-soft text-sky", title: "Tú apruebas los cambios" },
+  { icon: ShieldCheck, tone: "bg-success/12 text-success", title: "Tu negocio sigue en tus manos" },
 ];
 
-const steps = [
-  { key: "name", label: "¿Cómo te llamas?", placeholder: "Carlos" },
-  { key: "trade", label: "¿Qué tipo de trabajo haces?", placeholder: "Jardinería y mantenimiento" },
-  { key: "city", label: "¿En qué ciudad trabajas?", placeholder: "Los Ángeles, CA" },
-] as const;
+const TRADE_OPTIONS = ["Jardinería", "Limpieza de casas", "Reparaciones del hogar"] as const;
+
+/** One phone-sized column, centered, so it never looks like a desktop form. */
+function Frame({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className="min-h-dvh bg-background">
+      <div
+        className={cn(
+          "mx-auto flex min-h-dvh w-full max-w-md flex-col px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const PrimaryButton = ({
+  children,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) => (
+  <button
+    {...props}
+    className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-[18px] font-bold text-accent-foreground shadow-[0_8px_20px_-6px_color-mix(in_oklch,var(--accent)_60%,transparent)] transition-transform active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
+  >
+    {children}
+  </button>
+);
 
 export function Onboarding() {
   const { setProfile } = useMarcelo();
@@ -38,84 +61,255 @@ export function Onboarding() {
 
   if (step === -1) {
     return (
-      <div className="flex min-h-screen flex-col justify-between bg-background px-6 pb-10 pt-16 text-foreground">
-        <div>
-          <div className="text-center">
-            <img src={logo} alt="Marcelo" className="mx-auto h-[80px] w-auto" />
-            <h1 className="mt-8 text-[28px] font-bold leading-tight">Tu trabajo, más simple.</h1>
-            <p className="mx-auto mt-3 max-w-[300px] text-[16px] leading-relaxed text-muted-foreground">
-              Háblame en español. Yo le contesto a tus clientes en inglés.
-            </p>
-          </div>
-          <div className="mt-8 space-y-3">
-            {trust.map(({ icon: Icon, title, body, tone }) => (
-              <div
-                key={title}
-                className="flex items-start gap-3 rounded-2xl bg-card p-4 shadow-[var(--shadow-card)]"
-              >
-                <span
-                  className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${tone}`}
-                >
-                  <Icon className="size-5" />
-                </span>
-                <div>
-                  <p className="text-[16px] font-bold">{title}</p>
-                  <p className="text-[15px] leading-snug text-muted-foreground">{body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+      <Frame>
+        <img src={logo} alt="Marcelo" className="mx-auto h-12 w-auto shrink-0" />
+        <div className="flex min-h-[150px] flex-1 items-center justify-center py-3">
+          <img
+            src={character}
+            alt=""
+            aria-hidden
+            className="max-h-[250px] w-auto max-w-[80%] object-contain"
+          />
         </div>
-        <Button
-          className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-          onClick={() => setStep(0)}
-        >
-          Empezar
-        </Button>
-      </div>
+        <div className="shrink-0 text-center">
+          <h1 className="text-[30px] font-extrabold leading-tight tracking-tight text-foreground">
+            Tu trabajo, más simple.
+          </h1>
+          <p className="mx-auto mt-2 max-w-[300px] text-[16px] leading-snug text-muted-foreground">
+            Háblame en español. Yo le contesto a tus clientes en inglés.
+          </p>
+        </div>
+        <div className="mt-5 shrink-0 divide-y divide-border rounded-[1.5rem] bg-card px-4 shadow-[var(--shadow-card)]">
+          {trust.map(({ icon: Icon, title, tone }) => (
+            <div key={title} className="flex items-center gap-4 py-3">
+              <span
+                className={cn(
+                  "flex size-11 shrink-0 items-center justify-center rounded-full",
+                  tone,
+                )}
+              >
+                <Icon className="size-5" strokeWidth={1.8} />
+              </span>
+              <p className="text-[16px] font-bold">{title}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 shrink-0">
+          <PrimaryButton onClick={() => setStep(0)}>
+            Empezar <ArrowRight className="size-5" />
+          </PrimaryButton>
+          <p className="mt-3 text-center text-[14px] text-muted-foreground">
+            Toma menos de 1 minuto
+          </p>
+        </div>
+      </Frame>
     );
   }
 
-  const current = steps[step] ?? steps[0];
-  const value = values[current.key];
+  const keys = ["name", "trade", "city"] as const;
+  const key = keys[step] ?? "name";
+  const value = values[key];
+  const set = (v: string) => setValues({ ...values, [key]: v });
+  const last = step === keys.length - 1;
+
+  const copy = [
+    {
+      title: "¿Cómo te llamas?",
+      sub: "Así sabré cómo hablarte.",
+      placeholder: "Carlos",
+      icon: User,
+    },
+    {
+      title: "¿Qué tipo de trabajo haces?",
+      sub: "Esto me ayuda a entender cómo hablas con tus clientes.",
+      placeholder: "Jardinería",
+      icon: Briefcase,
+    },
+    {
+      title: "¿En qué ciudad trabajas?",
+      sub: "Así adapto tus mensajes a tu zona.",
+      placeholder: "Los Ángeles, CA",
+      icon: MapPin,
+    },
+  ][step]!;
+  const Icon = copy.icon;
 
   return (
-    <form
-      className="flex min-h-screen flex-col justify-between px-6 pb-10 pt-20"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!value.trim()) return;
-        if (step < steps.length - 1) setStep(step + 1);
-        else setProfile({ ...values, onboarded: true });
-      }}
-    >
-      <div>
-        <div className="mb-8 flex gap-1.5">
-          {steps.map((s, i) => (
+    <Frame>
+      <form
+        className="flex flex-1 flex-col"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!value.trim()) return;
+          if (!last) setStep(step + 1);
+          else setProfile({ ...values, onboarded: true });
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <img src={logo} alt="Marcelo" className="h-10 w-auto" />
+          <span className="text-[14px] font-medium text-muted-foreground">
+            Paso {step + 1} de 3
+          </span>
+        </div>
+        <div className="mt-4 flex gap-2" aria-hidden>
+          {keys.map((k, i) => (
             <span
-              key={s.key}
-              className={
-                i <= step
-                  ? "h-1 flex-1 rounded-full bg-accent"
-                  : "h-1 flex-1 rounded-full bg-border"
-              }
+              key={k}
+              className={cn("h-1.5 flex-1 rounded-full", i <= step ? "bg-accent" : "bg-border")}
             />
           ))}
         </div>
-        <h1 className="mb-6 text-[24px] font-semibold leading-tight text-foreground">
-          {current.label}
-        </h1>
-        <Field
-          label=""
-          autoFocus
-          value={value}
-          placeholder={current.placeholder}
-          onChange={(e) => setValues({ ...values, [current.key]: e.target.value })}
-        />
+
+        <div className="flex flex-1 flex-col pt-6">
+          {step === 0 ? <ChatIllustration /> : null}
+          <h1
+            className={cn(
+              "text-[28px] font-extrabold leading-tight tracking-tight text-foreground",
+              step === 0 && "mt-4 text-center",
+            )}
+          >
+            {copy.title}
+          </h1>
+          <p className={cn("mt-1 text-[16px] text-muted-foreground", step === 0 && "text-center")}>
+            {copy.sub}
+          </p>
+
+          <label className="mt-6 flex h-16 items-center gap-3 rounded-full border-2 border-accent/70 bg-card pl-2.5 pr-3 shadow-[var(--shadow-card)] focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-peach text-accent">
+              <Icon className="size-5" />
+            </span>
+            <input
+              autoFocus
+              value={value}
+              onChange={(e) => set(e.target.value)}
+              placeholder={copy.placeholder}
+              autoCapitalize="words"
+              autoComplete={step === 0 ? "given-name" : "off"}
+              enterKeyHint={last ? "done" : "next"}
+              aria-label={copy.title}
+              className="h-full min-w-0 flex-1 bg-transparent text-[18px] font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/60"
+            />
+            {value ? (
+              <button
+                type="button"
+                aria-label="Borrar"
+                onClick={() => set("")}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground"
+              >
+                <X className="size-5" />
+              </button>
+            ) : null}
+          </label>
+
+          {step === 0 ? (
+            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-brand-soft p-4">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-card text-sky">
+                <ShieldCheck className="size-5" />
+              </span>
+              <p className="text-[15px] leading-snug text-muted-foreground">
+                Usaré este nombre solo para personalizar tu experiencia.
+              </p>
+            </div>
+          ) : null}
+
+          {step === 1 ? (
+            <div className="mt-6">
+              <p className="mb-3 text-[18px] font-extrabold">¿Te suena bien?</p>
+              <div className="space-y-2.5">
+                {TRADE_OPTIONS.map((o) => {
+                  const on = value.trim().toLowerCase() === o.toLowerCase();
+                  return (
+                    <button
+                      key={o}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => set(o)}
+                      className={cn(
+                        "flex min-h-14 w-full items-center gap-3 rounded-2xl border bg-card px-4 py-2.5 text-left shadow-[var(--shadow-card)] transition-colors",
+                        on ? "border-accent bg-peach" : "border-transparent",
+                      )}
+                    >
+                      <span className="flex-1 text-[17px] font-bold">{o}</span>
+                      <span
+                        className={cn(
+                          "flex size-7 shrink-0 items-center justify-center rounded-full border-2",
+                          on
+                            ? "border-accent bg-accent text-accent-foreground"
+                            : "border-muted-foreground/30",
+                        )}
+                      >
+                        {on ? <Check className="size-4" strokeWidth={3} /> : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-[14px] text-muted-foreground">
+                Puedes escribir otro tipo de trabajo.
+              </p>
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div className="relative mt-6 overflow-hidden rounded-[1.5rem] bg-brand-soft p-5">
+              <div className="max-w-[55%]">
+                <p className="text-[22px] font-extrabold leading-tight">Perfecto, ya casi está.</p>
+                <p className="mt-1.5 text-[14px] leading-snug text-muted-foreground">
+                  Marcelo dejará todo listo para tu negocio.
+                </p>
+              </div>
+              <img
+                src={character}
+                alt=""
+                aria-hidden
+                className="absolute -bottom-2 right-1 size-[130px] object-contain"
+              />
+              <span className="absolute bottom-5 right-4 flex size-9 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-[var(--shadow-card)]">
+                <MapPin className="size-5" />
+              </span>
+              <div className="h-14" aria-hidden />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6">
+          <PrimaryButton type="submit" disabled={!value.trim()}>
+            {last ? "Entrar a Marcelo" : "Continuar"} <ArrowRight className="size-5" />
+          </PrimaryButton>
+          {step === 0 ? (
+            <p className="mt-3 text-center text-[14px] text-muted-foreground">
+              Lo puedes cambiar después
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setStep(step - 1)}
+              className="mx-auto mt-2 flex h-11 items-center px-6 text-[16px] font-semibold text-muted-foreground"
+            >
+              Atrás
+            </button>
+          )}
+        </div>
+      </form>
+    </Frame>
+  );
+}
+
+/** Two speech bubbles with Marcelo's mark: "we are going to talk". */
+function ChatIllustration() {
+  return (
+    <div className="relative mx-auto mt-2 h-[120px] w-[190px] shrink-0" aria-hidden>
+      <div className="absolute left-6 top-2 flex size-[92px] items-center justify-center rounded-[1.75rem] rounded-bl-md bg-brand-soft shadow-[var(--shadow-card)]">
+        <img src={mark} alt="" className="size-14 object-contain" />
       </div>
-      <Button type="submit" className="w-full" disabled={!value.trim()}>
-        {step < steps.length - 1 ? "Continuar" : "Entrar a Marcelo"}
-      </Button>
-    </form>
+      <div className="absolute bottom-1 right-2 flex h-[64px] w-[84px] items-center justify-center gap-1.5 rounded-[1.5rem] rounded-br-md bg-brand-soft/80">
+        <span className="size-2.5 rounded-full bg-sky/70" />
+        <span className="size-2.5 rounded-full bg-sky/70" />
+        <span className="size-2.5 rounded-full bg-sky/70" />
+      </div>
+      <span className="absolute left-0 top-6 h-1.5 w-5 -rotate-[20deg] rounded-full bg-sky" />
+      <span className="absolute left-3 top-0 h-1.5 w-5 rotate-[55deg] rounded-full bg-sky" />
+    </div>
   );
 }
