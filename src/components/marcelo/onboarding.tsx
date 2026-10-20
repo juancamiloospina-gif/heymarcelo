@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
+  Pencil,
+  Sparkles,
   Briefcase,
   Check,
   CheckCircle2,
@@ -13,6 +15,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useMarcelo } from "@/lib/marcelo-store";
+import { cloudEnabled, useCloudSession } from "@/lib/cloud";
+import { AccountBlock } from "./account-block";
 import {
   loadPlaces,
   matchPlace,
@@ -23,7 +27,6 @@ import {
 } from "@/lib/places";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/marcelo-logo.png";
-import mark from "@/assets/marcelo-mark.png";
 import character from "@/assets/marcelo-character.png";
 import wave from "@/assets/marcelo-character-wave.png";
 
@@ -34,7 +37,19 @@ const trust: { icon: LucideIcon; tone: string; title: string }[] = [
   { icon: ShieldCheck, tone: "bg-success/12 text-success", title: "Tu negocio sigue en tus manos" },
 ];
 
-const TRADE_OPTIONS = ["Jardinería", "Limpieza de casas", "Reparaciones del hogar"] as const;
+// Common trades as one-tap chips; any other trade is typed in the field above.
+const DRAFT_KEY = "marcelo.onboardingDraft";
+
+const TRADE_OPTIONS = [
+  "Jardinería",
+  "Limpieza de casas",
+  "Plomería",
+  "Electricidad",
+  "Pintura",
+  "Construcción",
+  "Mudanzas",
+  "Reparaciones",
+] as const;
 
 /** One phone-sized column, centered, so it never looks like a desktop form. */
 function Frame({ children, className }: { children: ReactNode; className?: string }) {
@@ -67,8 +82,32 @@ const PrimaryButton = ({
 export function Onboarding() {
   const { setProfile } = useMarcelo();
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Account (step 1): required. Without cloud settings (a local test build) it can't be.
+  const session = useCloudSession();
+  const email = session?.user.email ?? null;
+  const accountOk = !cloudEnabled || Boolean(session);
   const [step, setStep] = useState(-1);
   const [values, setValues] = useState({ name: "", trade: "", city: "" });
+  // Coming back from Google / Apple / Microsoft: pick up where the user was, with the name typed.
+  useEffect(() => {
+    if (!session) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        localStorage.removeItem(DRAFT_KEY);
+        const d = JSON.parse(raw) as { name?: string };
+        setValues((v) => ({ ...v, name: v.name || d.name || "" }));
+        setStep((st) => (st === -1 ? 0 : st));
+      }
+    } catch {
+      // No saved draft: nothing to restore.
+    }
+    // A provider may give the name; use it only when the field is still empty.
+    const meta = session.user.user_metadata as { full_name?: string; name?: string } | undefined;
+    const given = (meta?.full_name ?? meta?.name ?? "").split(" ")[0] ?? "";
+    if (given) setValues((v) => (v.name ? v : { ...v, name: given }));
+  }, [session]);
   // City check (step 3): the US places list loads only when that step opens.
   const [places, setPlaces] = useState<Place[] | null>(null);
   const [placesFailed, setPlacesFailed] = useState(false);
@@ -146,6 +185,7 @@ export function Onboarding() {
   const last = step === keys.length - 1;
   // The last step needs a city we recognize; if the list can't load or the user insists, text is fine.
   const cityOk = !last || Boolean(matched) || unlisted || placesFailed;
+  const stepOk = (step !== 0 || accountOk) && cityOk;
 
   const copy = [
     {
@@ -156,8 +196,8 @@ export function Onboarding() {
     },
     {
       title: "¿Qué tipo de trabajo haces?",
-      sub: "Esto me ayuda a entender cómo hablas con tus clientes.",
-      placeholder: "Jardinería",
+      sub: "",
+      placeholder: "Escribe tu oficio",
       icon: Briefcase,
     },
     {
@@ -175,7 +215,7 @@ export function Onboarding() {
         className="flex flex-1 flex-col"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!value.trim() || !cityOk) return;
+          if (!value.trim() || !stepOk) return;
           if (!last) setStep(step + 1);
           else {
             setProfile({
@@ -205,7 +245,6 @@ export function Onboarding() {
         </div>
 
         <div className="flex flex-1 flex-col pt-6">
-          {step === 0 ? <ChatIllustration /> : null}
           <h1
             className={cn(
               "text-[28px] font-extrabold leading-tight tracking-tight text-foreground",
@@ -214,15 +253,33 @@ export function Onboarding() {
           >
             {copy.title}
           </h1>
-          <p className={cn("mt-1 text-[16px] text-muted-foreground", step === 0 && "text-center")}>
-            {copy.sub}
-          </p>
+          {copy.sub ? (
+            <p
+              className={cn("mt-1 text-[16px] text-muted-foreground", step === 0 && "text-center")}
+            >
+              {copy.sub}
+            </p>
+          ) : null}
+          {step === 1 ? (
+            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-brand-soft p-3.5">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card text-sky">
+                <Sparkles className="size-5" />
+              </span>
+              <p className="text-[15px] leading-snug">
+                <b>Marcelo funciona para cualquier oficio.</b>{" "}
+                <span className="text-muted-foreground">
+                  Plomería, pintura, mudanzas… o el tuyo. Puedes poner varios.
+                </span>
+              </p>
+            </div>
+          ) : null}
 
           <label className="mt-6 flex h-16 items-center gap-3 rounded-full border-2 border-accent/70 bg-card pl-2.5 pr-3 shadow-[var(--shadow-card)] focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/15">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-peach text-accent">
               <Icon className="size-5" />
             </span>
             <input
+              ref={inputRef}
               autoFocus
               value={value}
               onChange={(e) => set(e.target.value)}
@@ -245,7 +302,22 @@ export function Onboarding() {
             ) : null}
           </label>
 
-          {step === 0 ? (
+          {step === 0 && cloudEnabled ? (
+            <div className="mt-5">
+              <AccountBlock
+                email={email}
+                onBeforeLeave={() => {
+                  try {
+                    localStorage.setItem(DRAFT_KEY, JSON.stringify({ name: values.name }));
+                  } catch {
+                    // Without storage the name is simply typed again.
+                  }
+                }}
+              />
+            </div>
+          ) : null}
+
+          {step === 0 && !cloudEnabled ? (
             <div className="mt-4 flex items-center gap-3 rounded-2xl bg-brand-soft p-4">
               <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-card text-sky">
                 <ShieldCheck className="size-5" />
@@ -257,41 +329,42 @@ export function Onboarding() {
           ) : null}
 
           {step === 1 ? (
-            <div className="mt-6">
-              <p className="mb-3 text-[18px] font-extrabold">¿Te suena bien?</p>
-              <div className="space-y-2.5">
+            <div className="mt-5">
+              <p className="mb-2.5 text-[15px] font-bold text-muted-foreground">
+                O toca uno para empezar:
+              </p>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Oficios comunes">
                 {TRADE_OPTIONS.map((o) => {
                   const on = value.trim().toLowerCase() === o.toLowerCase();
                   return (
                     <button
                       key={o}
                       type="button"
-                      role="radio"
-                      aria-checked={on}
+                      aria-pressed={on}
                       onClick={() => set(o)}
                       className={cn(
-                        "flex min-h-14 w-full items-center gap-3 rounded-2xl border bg-card px-4 py-2.5 text-left shadow-[var(--shadow-card)] transition-colors",
-                        on ? "border-accent bg-peach" : "border-transparent",
+                        "flex h-11 items-center gap-1.5 rounded-full border px-4 text-[15px] font-bold shadow-[var(--shadow-card)] transition-colors",
+                        on
+                          ? "border-accent bg-accent text-accent-foreground"
+                          : "border-transparent bg-card",
                       )}
                     >
-                      <span className="flex-1 text-[17px] font-bold">{o}</span>
-                      <span
-                        className={cn(
-                          "flex size-7 shrink-0 items-center justify-center rounded-full border-2",
-                          on
-                            ? "border-accent bg-accent text-accent-foreground"
-                            : "border-muted-foreground/30",
-                        )}
-                      >
-                        {on ? <Check className="size-4" strokeWidth={3} /> : null}
-                      </span>
+                      {on ? <Check className="size-4" strokeWidth={3} /> : null}
+                      {o}
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    set("");
+                    inputRef.current?.focus();
+                  }}
+                  className="flex h-11 items-center gap-1.5 rounded-full border-2 border-dashed border-accent/60 px-4 text-[15px] font-bold text-accent"
+                >
+                  <Pencil className="size-4" /> Otro oficio
+                </button>
               </div>
-              <p className="mt-3 text-[14px] text-muted-foreground">
-                Puedes escribir otro tipo de trabajo.
-              </p>
             </div>
           ) : null}
 
@@ -383,8 +456,8 @@ export function Onboarding() {
           ) : null}
         </div>
 
-        <div className="mt-6">
-          <PrimaryButton type="submit" disabled={!value.trim() || !cityOk}>
+        <div className="sticky bottom-0 -mx-5 mt-6 bg-background/95 px-5 pb-1 pt-3 backdrop-blur">
+          <PrimaryButton type="submit" disabled={!value.trim() || !stepOk}>
             {last ? "Entrar a Marcelo" : "Continuar"} <ArrowRight className="size-5" />
           </PrimaryButton>
           {step === 0 ? (
@@ -403,23 +476,5 @@ export function Onboarding() {
         </div>
       </form>
     </Frame>
-  );
-}
-
-/** Two speech bubbles with Marcelo's mark: "we are going to talk". */
-function ChatIllustration() {
-  return (
-    <div className="relative mx-auto mt-2 h-[120px] w-[190px] shrink-0" aria-hidden>
-      <div className="absolute left-6 top-2 flex size-[92px] items-center justify-center rounded-[1.75rem] rounded-bl-md bg-brand-soft shadow-[var(--shadow-card)]">
-        <img src={mark} alt="" className="size-14 object-contain" />
-      </div>
-      <div className="absolute bottom-1 right-2 flex h-[64px] w-[84px] items-center justify-center gap-1.5 rounded-[1.5rem] rounded-br-md bg-brand-soft/80">
-        <span className="size-2.5 rounded-full bg-sky/70" />
-        <span className="size-2.5 rounded-full bg-sky/70" />
-        <span className="size-2.5 rounded-full bg-sky/70" />
-      </div>
-      <span className="absolute left-0 top-6 h-1.5 w-5 -rotate-[20deg] rounded-full bg-sky" />
-      <span className="absolute left-3 top-0 h-1.5 w-5 rotate-[55deg] rounded-full bg-sky" />
-    </div>
   );
 }

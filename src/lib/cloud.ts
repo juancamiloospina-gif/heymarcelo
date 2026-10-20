@@ -18,7 +18,9 @@ export const cloud =
         auth: {
           persistSession: typeof window !== "undefined",
           autoRefreshToken: typeof window !== "undefined",
-          detectSessionInUrl: false,
+          // Needed to finish "Continuar con Google / Apple / Microsoft": the provider sends the
+          // user back to the app with the session in the address.
+          detectSessionInUrl: true,
         },
       })
     : null;
@@ -250,6 +252,43 @@ export const sendCode = async (email: string) => {
   });
   if (error) throw error;
 };
+
+/** Sign-in providers the app offers. "azure" is how Supabase names Microsoft (Outlook, Office 365). */
+export type SocialProvider = "google" | "apple" | "azure";
+
+/**
+ * Which sign-in methods are switched on in the Supabase project (public settings endpoint).
+ * Unknown (offline, error) counts as "on" so a hiccup never hides a working method.
+ */
+export async function enabledProviders(): Promise<Record<SocialProvider, boolean>> {
+  const all = { google: true, apple: true, azure: true };
+  if (!url || !key) return all;
+  try {
+    const r = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } });
+    if (!r.ok) return all;
+    const j = (await r.json()) as { external?: Record<string, boolean> };
+    const ext = j.external ?? {};
+    return {
+      google: "google" in ext ? Boolean(ext["google"]) : all.google,
+      apple: "apple" in ext ? Boolean(ext["apple"]) : all.apple,
+      azure: "azure" in ext ? Boolean(ext["azure"]) : all.azure,
+    };
+  } catch {
+    return all;
+  }
+}
+
+/** Leaves for the provider's page and comes back to the app already signed in. */
+export async function signInWithProvider(provider: SocialProvider): Promise<void> {
+  const { error } = await need().auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: `${window.location.origin}/`,
+      ...(provider === "azure" ? { scopes: "email" } : {}),
+    },
+  });
+  if (error) throw error;
+}
 
 export const verifyCode = async (email: string, token: string) => {
   const { error } = await need().auth.verifyOtp({
