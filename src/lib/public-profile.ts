@@ -71,6 +71,8 @@ const TRADES_EN: Record<string, string> = {
   plomero: "Plumbing",
   limpieza: "Cleaning",
   "limpieza de casas": "House cleaning",
+  "jardineria y mantenimiento": "Landscaping",
+  "reparaciones del hogar": "Home repairs",
   pintura: "Painting",
   pintor: "Painting",
   electricidad: "Electrical",
