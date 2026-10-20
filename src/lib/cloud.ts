@@ -45,7 +45,14 @@ export const isValidSlug = (s: string) =>
   /^[a-z0-9]+(-[a-z0-9]+)*$/.test(s) && s.length >= 3 && s.length <= 40;
 
 /** Public page as the server returns it. Phone is empty unless the owner chose to show it. */
-export type CloudServiceItem = { name: string; kind: string; from_price?: number };
+/** `from_price` is what older pages saved for the flat price; new ones use `price` and `sizes`. */
+export type CloudServiceItem = {
+  name: string;
+  kind: string;
+  price?: number;
+  from_price?: number;
+  sizes?: { chico: number; mediano: number; grande: number };
+};
 
 export type CloudProfile = {
   slug: string;
@@ -128,7 +135,8 @@ export function profileRow(p: PublicProfile, slug: string, active = true) {
     service_items: p.serviceItems.map((i) => ({
       name: i.name,
       kind: i.kind,
-      ...(i.fromPrice ? { from_price: i.fromPrice } : {}),
+      ...(i.price ? { price: i.price } : {}),
+      ...(i.sizes ? { sizes: i.sizes } : {}),
     })),
   };
 }
@@ -296,4 +304,75 @@ export function useCloudSession(): Session | null | undefined {
     return () => data.subscription.unsubscribe();
   }, []);
   return session;
+}
+
+/* ——— Ratings ("¿Cómo lo hice?") ——— */
+
+export type ReviewJobInput = {
+  jobId: string;
+  clientId: string;
+  clientName: string;
+  service: string;
+  jobDate: string;
+};
+
+/** Creates (or returns the existing) survey link token for a job. One token per job. */
+export async function createReviewRequest(i: ReviewJobInput): Promise<string> {
+  const { data, error } = await need().rpc("create_review_request", {
+    p_job_ref: i.jobId,
+    p_client_ref: i.clientId,
+    p_client_name: i.clientName,
+    p_service: i.service,
+    p_job_date: i.jobDate,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+export type CloudReview = {
+  job_ref: string;
+  client_ref: string;
+  rating: number;
+  comment: string;
+  rated_at: string;
+};
+
+/** Ratings clients have sent for the signed-in user's jobs. */
+export async function pullReviews(): Promise<CloudReview[]> {
+  const { data, error } = await need()
+    .from("review_requests")
+    .select("job_ref,client_ref,rating,comment,rated_at")
+    .not("rated_at", "is", null)
+    .order("rated_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return data as CloudReview[];
+}
+
+export type ReviewRequestInfo = {
+  business_name: string;
+  first_name: string;
+  photo_url: string;
+  client_first_name: string;
+  service: string;
+  rating: number | null;
+};
+
+/** What the client sees when opening the link. Null when the link does not exist. */
+export async function fetchReviewRequest(token: string): Promise<ReviewRequestInfo | null> {
+  const { data, error } = await need().rpc("get_review_request", { p_token: token });
+  if (error) throw error;
+  const rows = data as ReviewRequestInfo[] | null;
+  return rows?.[0] ?? null;
+}
+
+/** The client's rating. Returns false when this link was already used. */
+export async function submitReview(token: string, rating: number, comment: string) {
+  const { data, error } = await need().rpc("submit_review", {
+    p_token: token,
+    p_rating: rating,
+    p_comment: comment,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
 }

@@ -8,7 +8,10 @@ import {
   HandCoins,
   MapPin,
   MessageCircle,
+  MoreHorizontal,
   Navigation,
+  StickyNote,
+  UserPlus,
   Phone,
   Receipt,
   Route as RouteIcon,
@@ -37,6 +40,7 @@ import {
   type Size,
 } from "@/lib/marcelo-data";
 import { endTripFor, hasTrip, startTripFor } from "@/lib/trips";
+import { surveyReasonText, useSurveyRequest } from "@/lib/survey";
 import { cn } from "@/lib/utils";
 
 export const statusTone: Record<JobStatus, "neutral" | "success" | "warning" | "danger"> = {
@@ -45,6 +49,7 @@ export const statusTone: Record<JobStatus, "neutral" | "success" | "warning" | "
   confirmado: "neutral",
   en_camino: "warning",
   hecho: "danger",
+  facturado: "warning",
   cobrado: "success",
   vencido: "neutral",
   cancelado: "neutral",
@@ -56,6 +61,7 @@ const methodIcon: Record<PaymentMethod, typeof Banknote> = {
   cashapp: Wallet,
   cheque: Receipt,
   tarjeta: CreditCard,
+  otro: MoreHorizontal,
 };
 
 export const whatsappUrl = (phone: string) => {
@@ -98,6 +104,12 @@ export function JobCard({ job, showDate = false }: { job: Job; showDate?: boolea
           {address ? (
             <p className="mt-1 flex items-center gap-1.5 truncate text-[14px] text-muted-foreground">
               <MapPin className="size-4 shrink-0" /> {address}
+            </p>
+          ) : null}
+          {job.notes ? (
+            <p className="mt-1 flex items-start gap-1.5 text-[14px] text-muted-foreground">
+              <StickyNote className="mt-0.5 size-4 shrink-0" />
+              <span className="line-clamp-2">{job.notes}</span>
             </p>
           ) : null}
           <div className="mt-2">
@@ -238,6 +250,7 @@ export function GoSheet({
 /** "Terminé": how much they paid and how, or "Aún no pagó". */
 export function FinishSheet({ job, onClose }: { job: Job; onClose: () => void }) {
   const { finishJob, addMiles, clientById, queueJobMessage } = useMarcelo();
+  const requestSurvey = useSurveyRequest();
   const [amount, setAmount] = useState(String(job.price));
   const [method, setMethod] = useState<PaymentMethod | "debe" | null>(null);
   const [miles, setMiles] = useState("");
@@ -266,6 +279,11 @@ export function FinishSheet({ job, onClose }: { job: Job; onClose: () => void })
             : undefined,
       },
     );
+    // Finished: ask the client to rate the service (a link by WhatsApp; see `useSurveyRequest`).
+    void requestSurvey(job.id).then((r) => {
+      // Without a phone there is nobody to ask; any other reason the user should know about.
+      if (!r.ok && r.reason !== "no_phone") toast(surveyReasonText[r.reason]);
+    });
     onClose();
   };
 
@@ -322,15 +340,22 @@ export function PaymentSheet({
   onClose,
   clientId,
   receivableId,
+  jobId,
+  amount: presetAmount,
 }: {
   onClose: () => void;
   clientId?: string | undefined;
   receivableId?: string | undefined;
+  /** The job this payment closes ("Cobrado"), when opened from the job's screen. */
+  jobId?: string | undefined;
+  amount?: number | undefined;
 }) {
   const { state, recordPayment } = useMarcelo();
   const owed = state.receivables.find((r) => r.id === receivableId);
   const [who, setWho] = useState(clientId ?? owed?.clientId ?? "");
-  const [amount, setAmount] = useState(owed ? String(owed.amount) : "");
+  const [amount, setAmount] = useState(
+    owed ? String(owed.amount) : presetAmount ? String(presetAmount) : "",
+  );
   const [method, setMethod] = useState<PaymentMethod | null>(null);
   const [debt, setDebt] = useState(receivableId ?? "");
   const open = state.receivables.filter((r) => !r.paidAt && r.clientId === who);
@@ -405,6 +430,7 @@ export function PaymentSheet({
             clientId: who,
             amount: value,
             method: method!,
+            jobId,
             receivableId: debt || undefined,
           });
           toast.success(`Cobro registrado: ${money(value)}`);
@@ -419,13 +445,41 @@ export function PaymentSheet({
 
 export type JobDraft = {
   clientName: string;
+  /** An existing client to start with (e.g. coming back from "Crear cliente"). */
+  clientId?: string | undefined;
   serviceId?: string | undefined;
   date: string;
   time: string;
   address?: string | undefined;
   price?: number | undefined;
   size?: Size | undefined;
+  notes?: string | undefined;
 };
+
+const DRAFT_KEY = "marcelo.jobDraft";
+type SavedDraft = {
+  serviceId: string;
+  size?: Size | undefined;
+  date: string;
+  time: string;
+  price: string;
+  address: string;
+  notes: string;
+  from: "/" | "/agenda";
+};
+
+const NEW = "new";
+
+function readDraft(): SavedDraft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as SavedDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+const clientAddress = (c: Client) => [c.address, c.city].filter(Boolean).join(", ");
 
 /** Editable new job: one Confirmar, then Marcelo prepares the confirmation for the client. */
 export function JobDraftCard({
@@ -437,22 +491,46 @@ export function JobDraftCard({
   onDone: (job: Job) => void;
   onCancel: () => void;
 }) {
-  const { state, findClientByName, addClient, addJob, updateClient, queueJobMessage } =
+  const { state, findClientByName, clientById, addClient, addJob, updateClient, queueJobMessage } =
     useMarcelo();
-  const known = findClientByName(initial.clientName);
-  const byName = initial.serviceId ?? state.services.find((s) => s.name === known?.service)?.id;
+  const navigate = useNavigate();
+  // Coming back from "Crear cliente": restore what was typed before leaving.
+  const [saved] = useState(() => (initial.clientId ? readDraft() : null));
+  // Read once (the initializer can run twice in development), forget after mounting.
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // Nothing to clean.
+    }
+  }, []);
+  const known = initial.clientId
+    ? clientById(initial.clientId)
+    : initial.clientName
+      ? findClientByName(initial.clientName)
+      : undefined;
+  const byName =
+    saved?.serviceId ??
+    initial.serviceId ??
+    state.services.find((s) => s.name === known?.service)?.id;
+  // "" = nobody picked yet, NEW = a client that does not exist yet, else the client's id.
+  const [clientId, setClientId] = useState(known?.id ?? (initial.clientName.trim() ? NEW : ""));
   const [name, setName] = useState(known?.name ?? initial.clientName);
   const [serviceId, setServiceId] = useState(byName ?? state.services[0]?.id ?? "");
-  const [size, setSize] = useState<Size | undefined>(initial.size);
+  const [size, setSize] = useState<Size | undefined>(saved?.size ?? initial.size);
   const service = state.services.find((s) => s.id === serviceId);
-  const [date, setDate] = useState(initial.date);
-  const [time, setTime] = useState(initial.time);
+  const [date, setDate] = useState(saved?.date ?? initial.date);
+  const [time, setTime] = useState(saved?.time ?? initial.time);
   const [address, setAddress] = useState(
-    initial.address ?? (known ? [known.address, known.city].filter(Boolean).join(", ") : ""),
+    saved?.address || (initial.address ?? (known ? clientAddress(known) : "")),
   );
   const [price, setPrice] = useState(
-    String(initial.price ?? (service ? priceFor(service, size) : (known?.price ?? ""))),
+    saved?.price ??
+      String(initial.price ?? (service ? priceFor(service, size) : (known?.price ?? ""))),
   );
+  const [notes, setNotes] = useState(saved?.notes ?? initial.notes ?? "");
+  const [filled, setFilled] = useState(false);
+  const [autoPrice, setAutoPrice] = useState(false);
   const value = Number(price.replace(/[$,\s]/g, ""));
 
   const pickService = (id: string, sz = size) => {
@@ -461,9 +539,63 @@ export function JobDraftCard({
     if (s) setPrice(String(priceFor(s, sz)));
   };
 
+  // Choosing an existing client fills in what the app already knows: address, usual service, price.
+  const pickClient = (id: string) => {
+    setClientId(id);
+    // What came from the previous client's card does not follow the next one.
+    if (filled) setAddress("");
+    if (autoPrice && service) setPrice(String(priceFor(service, size)));
+    setFilled(false);
+    setAutoPrice(false);
+    const c = id && id !== NEW ? clientById(id) : undefined;
+    if (!c) {
+      if (id === NEW) setName("");
+      return;
+    }
+    setName(c.name);
+    const addr = clientAddress(c);
+    if (addr) {
+      setAddress(addr);
+      setFilled(true);
+    }
+    const usual = state.services.find((s) => s.name === c.service);
+    if (usual) {
+      setServiceId(usual.id);
+      setPrice(String(c.price || priceFor(usual, size)));
+      setAutoPrice(true);
+    } else if (c.price) {
+      setPrice(String(c.price));
+      setAutoPrice(true);
+    }
+  };
+
+  const createClientFirst = () => {
+    try {
+      const draft: SavedDraft = {
+        serviceId,
+        size,
+        date,
+        time,
+        price,
+        address,
+        notes,
+        from: window.location.pathname.startsWith("/agenda") ? "/agenda" : "/",
+      };
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      navigate({
+        to: "/clientes",
+        search: { nuevo: 1, ...(name.trim() ? { nombre: name.trim() } : {}), volver: draft.from },
+      });
+      onCancel();
+    } catch {
+      toast.error("No pude abrir Clientes. Intenta de nuevo.");
+    }
+  };
+
   const confirm = () => {
+    const existing = clientId && clientId !== NEW ? clientById(clientId) : findClientByName(name);
     const client =
-      findClientByName(name) ??
+      existing ??
       addClient({
         name: name.trim(),
         phone: "",
@@ -482,6 +614,7 @@ export function JobDraftCard({
       price: value,
       size,
       address: address || undefined,
+      notes: notes.trim() || undefined,
       status: "confirmado",
     });
     if (client.phone) queueJobMessage("confirm", job.id);
@@ -491,15 +624,46 @@ export function JobDraftCard({
 
   return (
     <div className="space-y-3 text-left text-foreground">
-      <div className="flex items-center gap-3">
-        <ClientAvatar name={name || "?"} size="sm" />
-        <Field
-          label="Cliente"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="h-11"
-        />
+      <div className="flex items-start gap-3">
+        <ClientAvatar name={name || "?"} size="sm" className="mt-8" />
+        <label className="block min-w-0 flex-1">
+          <span className="mb-1.5 block text-[14px] font-medium text-muted-foreground">
+            Cliente
+          </span>
+          <select
+            value={clientId}
+            onChange={(e) => pickClient(e.target.value)}
+            className="h-12 w-full rounded-2xl border border-input bg-card px-4 text-[16px] outline-none focus:border-accent"
+          >
+            <option value="">Elige un cliente</option>
+            {[...state.clients]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            <option value={NEW}>＋ Cliente nuevo</option>
+          </select>
+        </label>
       </div>
+      {clientId === NEW ? (
+        <div className="space-y-2 rounded-2xl bg-muted/60 p-3">
+          <Field
+            label="Nombre del cliente nuevo"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-11"
+          />
+          <Button variant="secondary" size="sm" className="w-full" onClick={createClientFirst}>
+            <UserPlus className="size-4" /> Crear cliente con teléfono y dirección
+          </Button>
+          <p className="text-[13px] text-muted-foreground">
+            Al guardar el cliente, vuelves aquí con lo que ya escribiste. Si solo pones el nombre,
+            se guarda sin teléfono.
+          </p>
+        </div>
+      ) : null}
       <label className="block">
         <span className="mb-1.5 block text-[14px] font-medium text-muted-foreground">Servicio</span>
         <select
@@ -531,23 +695,50 @@ export function JobDraftCard({
         <Field label="Día" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Field label="Hora" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
       </div>
-      <Field
-        label="Dirección"
-        value={address}
-        onChange={(e) => setAddress(e.target.value)}
-        placeholder="1244 Maple Ave, 91101"
-      />
+      <div>
+        <Field
+          label="Dirección"
+          value={address}
+          onChange={(e) => {
+            setAddress(e.target.value);
+            setFilled(false);
+          }}
+          placeholder="1244 Maple Ave, 91101"
+        />
+        {filled ? (
+          <p className="mt-1 flex items-center gap-1 text-[13px] text-success">
+            <CheckCircle2 className="size-3.5" /> Dirección del cliente. Puedes cambiarla para este
+            trabajo.
+          </p>
+        ) : null}
+      </div>
       <Field
         label="Precio"
         inputMode="decimal"
         value={price}
         onChange={(e) => setPrice(e.target.value)}
       />
+      <label className="block">
+        <span className="mb-1.5 block text-[14px] font-medium text-muted-foreground">
+          Observaciones (opcional)
+        </span>
+        <textarea
+          rows={2}
+          maxLength={500}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Llevar sopladora y bolsas extra. Portón azul."
+          className="w-full rounded-2xl border border-input bg-card px-4 py-3 text-[16px] outline-none placeholder:text-muted-foreground/70 focus:border-accent focus:ring-2 focus:ring-accent/25"
+        />
+      </label>
       <div className="grid grid-cols-[auto_1fr] gap-2 pt-1">
         <Button variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button onClick={confirm} disabled={!name.trim() || !date || !time || !(value > 0)}>
+        <Button
+          onClick={confirm}
+          disabled={!clientId || !name.trim() || !date || !time || !(value > 0)}
+        >
           <CheckCircle2 className="size-5" /> Confirmar
         </Button>
       </div>
@@ -562,10 +753,12 @@ export function JobDraftCard({
 export function NewJobSheet({
   onClose,
   clientName = "",
+  clientId,
   date,
 }: {
   onClose: () => void;
   clientName?: string;
+  clientId?: string | undefined;
   date?: string;
 }) {
   const navigate = useNavigate();
@@ -574,6 +767,7 @@ export function NewJobSheet({
       <JobDraftCard
         initial={{
           clientName,
+          clientId,
           date: date && date >= todayISO() ? date : todayISO(1),
           time: "09:00",
         }}

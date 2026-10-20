@@ -11,7 +11,9 @@ export type Client = {
 
 /**
  * Lifecycle of a job: a quote (cotizado) becomes confirmed, the worker heads out (en_camino),
- * finishes (hecho) and gets paid (cobrado). Quotes expire (vencido); anything can be cancelled.
+ * finishes (hecho), sends the invoice (facturado) and gets paid (cobrado). Paying on the spot
+ * goes straight from en_camino/confirmado to cobrado. Quotes expire (vencido); anything can be
+ * cancelled.
  */
 export type JobStatus =
   | "consulta"
@@ -19,6 +21,7 @@ export type JobStatus =
   | "confirmado"
   | "en_camino"
   | "hecho"
+  | "facturado"
   | "cobrado"
   | "vencido"
   | "cancelado";
@@ -42,11 +45,26 @@ export type Job = {
   conversationId?: string | undefined;
   /** Client messages already sent (or queued) for this job. */
   sent?:
-    { confirm?: boolean; reminder?: boolean; onTheWay?: boolean; invoice?: boolean } | undefined;
+    | {
+        confirm?: boolean;
+        reminder?: boolean;
+        onTheWay?: boolean;
+        invoice?: boolean;
+        survey?: boolean;
+      }
+    | undefined;
   miles?: number | undefined;
+  /** What to remember for this job ("llevar sopladora", "portón azul"). */
+  notes?: string | undefined;
+  /** Day the invoice was sent (status facturado). */
+  invoicedAt?: string | undefined;
+  /** Client's rating (1–5) from the survey link, with the comment and when they answered. */
+  rating?: number | undefined;
+  ratingComment?: string | undefined;
+  ratedAt?: string | undefined;
 };
 
-export type PaymentMethod = "efectivo" | "zelle" | "cashapp" | "cheque" | "tarjeta";
+export type PaymentMethod = "efectivo" | "zelle" | "cashapp" | "cheque" | "tarjeta" | "otro";
 
 export type Payment = {
   id: string;
@@ -146,6 +164,10 @@ export type Profile = {
   /** The exact Spanish text that was translated (to know when the translation is stale). */
   translatedBio?: string | undefined;
   translatedTagline?: string | undefined;
+  /** Tax data (never an SSN/EIN number): state, how the user files and whether they collect sales tax. */
+  taxState?: string | undefined;
+  taxIdType?: "ssn" | "itin" | "ein" | undefined;
+  salesTaxRegistered?: boolean | undefined;
   /** Photos of the user's work (public URLs in Storage), at most 6. */
   gallery?: string[] | undefined;
   /** Work area: central ZIP, radius in miles and the final list of ZIP codes covered. */
@@ -236,7 +258,7 @@ export type Conversation = {
 
 export type DayHours = { on: boolean; start: string; end: string };
 
-export type AutoMessageKind = "confirm" | "reminder" | "onTheWay";
+export type AutoMessageKind = "confirm" | "reminder" | "onTheWay" | "survey";
 
 export type Settings = {
   autoReply: boolean;
@@ -317,6 +339,7 @@ export const paymentMethods: PaymentMethod[] = [
   "cashapp",
   "cheque",
   "tarjeta",
+  "otro",
 ];
 
 export const paymentMethodLabel: Record<PaymentMethod, string> = {
@@ -325,6 +348,7 @@ export const paymentMethodLabel: Record<PaymentMethod, string> = {
   cashapp: "Cash App",
   cheque: "Cheque",
   tarjeta: "Tarjeta",
+  otro: "Otro",
 };
 
 export const sizeLabel: Record<Size, { es: string; en: string }> = {
@@ -339,10 +363,15 @@ export const statusLabel: Record<JobStatus, string> = {
   confirmado: "Confirmado",
   en_camino: "En camino",
   hecho: "Hecho",
+  facturado: "Facturado",
   cobrado: "Cobrado",
   vencido: "Vencido",
   cancelado: "Cancelado",
 };
+
+/** Jobs the worker has finished: done, invoiced or paid. */
+export const isDoneJob = (j: Job) =>
+  j.status === "hecho" || j.status === "facturado" || j.status === "cobrado";
 
 /** Jobs that still take a spot in the calendar. */
 export const isActiveJob = (j: Job) =>
@@ -430,7 +459,7 @@ export const defaultSettings = (): Settings => ({
   hours: defaultHours(),
   blocked: [],
   bufferMin: 30,
-  autoMessages: { confirm: "ask", reminder: "ask", onTheWay: "ask" },
+  autoMessages: { confirm: "ask", reminder: "ask", onTheWay: "ask", survey: "auto" },
   paymentInstructions: "",
   largeText: false,
 });
@@ -444,7 +473,10 @@ export function migrate(raw: unknown): MarceloState {
   if (!raw || typeof raw !== "object") return base;
   const s = raw as Record<string, unknown> & Partial<MarceloState>;
   if (s.version === 2) {
-    return { ...base, ...s, settings: { ...defaultSettings(), ...s.settings } } as MarceloState;
+    // autoMessages merged one level deeper so settings saved before "survey" existed get its default.
+    const settings = { ...defaultSettings(), ...s.settings };
+    settings.autoMessages = { ...defaultSettings().autoMessages, ...s.settings?.autoMessages };
+    return { ...base, ...s, settings } as MarceloState;
   }
 
   type OldJob = Omit<Job, "status"> & { status: string };

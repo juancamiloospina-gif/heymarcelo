@@ -378,6 +378,16 @@ No hecho a propósito: tarjeta NFC, pase de Wallet, galería de fotos, licencia.
 
 ---
 
+### Mejoras de trabajos, cobros y página (20/10/2026)
+- **Estados:** `hecho → facturado → cobrado` (`JobStatus`; pagar en el momento salta a `cobrado`). `facturado` se pone al enviar la factura o con "Marcar como facturado"; `cobrado` al registrar el cobro (`recordPayment` con `jobId`). `isDoneJob()` agrupa los terminados. Nuevo método de pago `otro`.
+- **Nuevo trabajo:** elegir cliente existente (autorrelleno de dirección, servicio y precio habitual), "＋ Cliente nuevo" lleva a `/clientes?nuevo=1&volver=/|/agenda` y regresa a `/?trabajo=<id>` con lo escrito guardado en `sessionStorage` (`marcelo.jobDraft`). Campo `Job.notes` (observaciones). "Crear cliente" abre el formulario arriba, con foco y resalte.
+- **Servicios realizados:** `/realizados` (botón de historial en Agenda).
+- **Encuesta de calificación:** al "Terminé" se crea un enlace `/r/<token>` (`lib/survey.ts`, RPC `create_review_request`), se prepara el mensaje `survey` (ajuste "Encuesta de calificación al terminar", automático por defecto) y la calificación vuelve a `Job.rating` (`cloud-sync.tsx`, cada minuto con la app abierta). Requiere sesión en Mi página y la app publicada. Migración `20261023000000` (probada en PGlite).
+- **Precios de la página:** cada servicio muestra su precio (o los tres tamaños) en vez de "Desde $"; `service_items` ahora trae `price`/`sizes` (la función también los oculta si se apagan los precios). Hay que **republicar** las páginas existentes.
+- **Fotos en el celular:** `lib/image.ts` lee la foto de tres formas y explica el error (HEIC, tamaño, sesión…); los botones ya no están deshabilitados sin sesión.
+- **WhatsApp/SMS:** sigue siendo demo; diagnóstico y requisitos en `docs/WHATSAPP_SMS.md`. Nuevo "Abrir en WhatsApp con el mensaje listo" (real, vía `wa.me`).
+- **Impuestos:** tarjeta en Dinero › Contador (`tax-card.tsx`, `lib/taxes.ts`); datos guardados: estado, tipo de ID, si cobra sales tax. Investigación en `docs/IMPUESTOS.md`.
+
 ## 11. Cómo trabajar en el proyecto
 
 ```bash

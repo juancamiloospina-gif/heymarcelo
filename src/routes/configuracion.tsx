@@ -53,6 +53,7 @@ const autoLabels: Record<AutoMessageKind, string> = {
   confirm: "Confirmación del trabajo",
   reminder: "Recordatorio 24 h antes",
   onTheWay: "Voy en camino",
+  survey: "Encuesta de calificación al terminar",
 };
 
 const renewDay = () => {

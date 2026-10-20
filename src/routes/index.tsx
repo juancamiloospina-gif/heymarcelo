@@ -19,7 +19,7 @@ import { AttentionList } from "@/components/marcelo/attention";
 import { JobCard, NewJobSheet, PaymentSheet } from "@/components/marcelo/jobs";
 import { ReminderRow } from "@/components/marcelo/reminders";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { isActiveJob, todayISO } from "@/lib/marcelo-data";
+import { isActiveJob, isDoneJob, todayISO } from "@/lib/marcelo-data";
 import { getInsights, type Insight } from "@/lib/marcelo-insights";
 import { cn } from "@/lib/utils";
 
@@ -38,19 +38,20 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): { trabajo?: string } =>
+    typeof s["trabajo"] === "string" ? { trabajo: s["trabajo"] } : {},
   component: Inicio,
 });
 
 function Inicio() {
   const { state } = useMarcelo();
   const navigate = useNavigate();
-  const [sheet, setSheet] = useState<"job" | "paid" | null>(null);
+  // Coming back from "Crear cliente" (started in Nuevo trabajo): reopen the job form.
+  const { trabajo } = Route.useSearch();
+  const [sheet, setSheet] = useState<"job" | "paid" | null>(trabajo ? "job" : null);
 
   const today = state.jobs
-    .filter(
-      (j) =>
-        j.date === todayISO() && (isActiveJob(j) || j.status === "hecho" || j.status === "cobrado"),
-    )
+    .filter((j) => j.date === todayISO() && (isActiveJob(j) || isDoneJob(j)))
     .sort((a, b) => a.time.localeCompare(b.time));
   const reminders = state.pendings.filter((p) => !p.done).slice(0, 4);
   const insights = getInsights(state);
@@ -216,7 +217,15 @@ function Inicio() {
         </>
       ) : null}
 
-      {sheet === "job" ? <NewJobSheet onClose={() => setSheet(null)} /> : null}
+      {sheet === "job" ? (
+        <NewJobSheet
+          clientId={trabajo && trabajo !== "-" ? trabajo : undefined}
+          onClose={() => {
+            setSheet(null);
+            if (trabajo) navigate({ to: "/", search: {}, replace: true });
+          }}
+        />
+      ) : null}
       {sheet === "paid" ? <PaymentSheet onClose={() => setSheet(null)} /> : null}
     </Screen>
   );

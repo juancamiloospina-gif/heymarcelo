@@ -1,11 +1,24 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { BellRing, Check, FileText, Languages, Navigation, Timer, XCircle } from "lucide-react";
+import {
+  BellRing,
+  Check,
+  FileText,
+  Languages,
+  MessageCircle,
+  Navigation,
+  ReceiptText,
+  Star,
+  Timer,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { BackButton, Button, Card, Screen, SectionTitle } from "@/components/marcelo/kit";
-import { JobCard } from "@/components/marcelo/jobs";
+import { JobCard, PaymentSheet } from "@/components/marcelo/jobs";
+import { useSurveyRequest } from "@/lib/survey";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { money, prettyDate, statusLabel, type JobStatus } from "@/lib/marcelo-data";
+import { isDoneJob, money, prettyDate, statusLabel, type JobStatus } from "@/lib/marcelo-data";
 import { shareInvoice } from "@/lib/reports";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +32,13 @@ export const Route = createFileRoute("/trabajo/$jobId")({
   component: TrabajoDetalle,
 });
 
-const flow: JobStatus[] = ["cotizado", "confirmado", "en_camino", "hecho", "cobrado"];
+const flow: JobStatus[] = ["cotizado", "confirmado", "en_camino", "hecho", "facturado", "cobrado"];
 
 function TrabajoDetalle() {
   const { jobId } = useParams({ from: "/trabajo/$jobId" });
-  const { state, clientById, updateJob, queueJobMessage } = useMarcelo();
+  const { state, clientById, updateJob, queueJobMessage, markInvoiced } = useMarcelo();
+  const requestSurvey = useSurveyRequest();
+  const [paying, setPaying] = useState(false);
   const navigate = useNavigate();
   const [confirmCancel, setConfirmCancel] = useState(false);
 
@@ -74,7 +89,7 @@ function TrabajoDetalle() {
 
       {job.status !== "cancelado" && job.status !== "vencido" ? (
         <div
-          className="mt-4 flex items-center gap-1"
+          className="mt-4 flex items-start gap-1"
           aria-label={`Estado: ${statusLabel[job.status]}`}
         >
           {flow.map((s, i) => (
@@ -84,7 +99,7 @@ function TrabajoDetalle() {
               />
               <span
                 className={cn(
-                  "text-[11px] font-semibold",
+                  "text-center text-[10.5px] font-semibold leading-tight",
                   i === step ? "text-accent" : "text-muted-foreground",
                 )}
               >
@@ -132,7 +147,31 @@ function TrabajoDetalle() {
               )}
             </div>
           ))}
-        {job.status === "hecho" || job.status === "cobrado" ? (
+        {isDoneJob(job) ? (
+          <div className="flex min-h-14 items-center gap-3 px-4 py-2">
+            <Star className="size-5 text-muted-foreground" />
+            <span className="flex-1 text-[16px]">Encuesta de calificación</span>
+            {job.rating ? (
+              <span className="flex items-center gap-1 text-[14px] font-semibold text-success">
+                <Check className="size-4" /> Respondió
+              </span>
+            ) : job.sent?.survey ? (
+              <span className="flex items-center gap-1 text-[14px] font-semibold text-success">
+                <Check className="size-4" /> Enviada
+              </span>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!hasPhone}
+                onClick={() => void requestSurvey(job.id, { manual: true })}
+              >
+                Preparar
+              </Button>
+            )}
+          </div>
+        ) : null}
+        {isDoneJob(job) ? (
           <div className="flex min-h-14 items-center gap-3 px-4 py-2">
             <FileText className="size-5 text-muted-foreground" />
             <span className="flex-1 text-[16px]">Factura en inglés</span>
@@ -142,6 +181,7 @@ function TrabajoDetalle() {
               onClick={async () => {
                 const shared = await shareInvoice(state, job);
                 if (hasPhone) queueJobMessage("invoice", job.id, "ask");
+                markInvoiced(job.id);
                 toast.success(shared ? "Factura lista para compartir" : "Factura descargada");
               }}
             >
@@ -170,6 +210,38 @@ function TrabajoDetalle() {
         ) : null}
       </div>
 
+      {job.status === "hecho" || job.status === "facturado" ? (
+        <div className="mt-4 grid gap-2">
+          {job.status === "hecho" ? (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                markInvoiced(job.id);
+                toast.success("Marcado como facturado", {
+                  action: {
+                    label: "Deshacer",
+                    onClick: () => updateJob(job.id, { status: "hecho", invoicedAt: undefined }),
+                  },
+                });
+              }}
+            >
+              <ReceiptText className="size-5" /> Marcar como facturado
+            </Button>
+          ) : null}
+          <Button onClick={() => setPaying(true)}>
+            <Wallet className="size-5" /> Registrar cobro
+          </Button>
+        </div>
+      ) : null}
+      {paying ? (
+        <PaymentSheet
+          clientId={job.clientId}
+          jobId={job.id}
+          amount={job.price}
+          onClose={() => setPaying(false)}
+        />
+      ) : null}
+
       <SectionTitle>Detalles</SectionTitle>
       <Card className="space-y-2 text-[16px]">
         <p>
@@ -180,6 +252,39 @@ function TrabajoDetalle() {
           <span className="text-muted-foreground">Precio: </span>
           {money(job.price)}
         </p>
+        {job.invoicedAt ? (
+          <p>
+            <span className="text-muted-foreground">Facturado: </span>
+            {prettyDate(job.invoicedAt)}
+          </p>
+        ) : null}
+        {job.notes ? (
+          <p className="whitespace-pre-line">
+            <span className="text-muted-foreground">Observaciones: </span>
+            {job.notes}
+          </p>
+        ) : null}
+        {job.rating ? (
+          <div>
+            <p className="flex items-center gap-1">
+              <span className="text-muted-foreground">Calificación: </span>
+              {Array.from({ length: 5 }, (_, i) => (
+                <Star
+                  key={i}
+                  className={cn(
+                    "size-4",
+                    i < job.rating! ? "fill-warning text-warning" : "text-muted-foreground/40",
+                  )}
+                />
+              ))}
+            </p>
+            {job.ratingComment ? (
+              <p className="mt-1 flex items-start gap-1.5 text-[15px] text-muted-foreground">
+                <MessageCircle className="mt-0.5 size-4 shrink-0" /> “{job.ratingComment}”
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </Card>
 
       {job.status === "cotizado" || job.status === "confirmado" ? (

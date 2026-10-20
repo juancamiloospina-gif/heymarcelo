@@ -893,7 +893,7 @@ export function requote(state: MarceloState, conv: Conversation, service: Servic
 /* ——— Messages tied to a job ——— */
 
 export function jobMessage(
-  kind: "confirm" | "reminder" | "onTheWay" | "invoice",
+  kind: "confirm" | "reminder" | "onTheWay" | "invoice" | "survey",
   job: Job,
   lang: "en" | "es",
   extra: {
@@ -901,6 +901,8 @@ export function jobMessage(
     service?: Service | undefined;
     eta?: number | undefined;
     instructions?: string;
+    /** Survey link (`/r/<token>`), for the "survey" message. */
+    url?: string | undefined;
   },
 ): Reply {
   const first = extra.clientName.split(" ")[0] ?? "";
@@ -926,6 +928,12 @@ export function jobMessage(
         lang,
         `Hi ${first}, I'm on my way${extra.eta ? ` — about ${extra.eta} minutes` : ""}.`,
         `Hola ${first}, voy en camino${extra.eta ? `, llego en unos ${extra.eta} minutos` : ""}.`,
+      );
+    case "survey":
+      return say(
+        lang,
+        `Hi ${first}, thanks for choosing me for ${svcEn.toLowerCase()}! How did I do? Please rate the service (it takes 10 seconds): ${extra.url ?? ""}`.trim(),
+        `Hola ${first}, ¡gracias por elegirme para ${svcEs.toLowerCase()}! ¿Cómo lo hice? Califica el servicio (toma 10 segundos): ${extra.url ?? ""}`.trim(),
       );
     case "invoice":
       return say(

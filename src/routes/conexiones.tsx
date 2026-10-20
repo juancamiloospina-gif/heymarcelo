@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Check, FlaskConical, Loader2 } from "lucide-react";
+import { Check, ExternalLink, FlaskConical, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Badge,
@@ -90,6 +90,25 @@ function Conexiones() {
         ))}
       </div>
 
+      <SectionTitle>Qué funciona hoy y qué falta</SectionTitle>
+      <Card className="space-y-3 text-[14px] leading-relaxed">
+        <p className="text-muted-foreground">
+          <b className="text-foreground">Funciona de verdad:</b> los botones “WhatsApp” del trabajo
+          y “Abrir en WhatsApp” de los mensajes preparados (abren tu WhatsApp con el mensaje
+          escrito; tú tocas enviar) y el texto SMS desde Mensajes. No necesitan conexión.
+        </p>
+        <p className="text-muted-foreground">
+          <b className="text-foreground">Todavía es demo:</b> “Conectar” (acepta cualquier código),
+          recibir mensajes de clientes y que Marcelo envíe solo. Para eso falta un servidor con la
+          API de WhatsApp Business (Meta Cloud API) y un proveedor de SMS (Twilio), con sus cuentas
+          verificadas y plantillas aprobadas. Detalle en <code>docs/WHATSAPP_SMS.md</code>.
+        </p>
+        <TestLinks
+          whatsapp={state.connections.whatsapp.number}
+          sms={state.connections.sms.number}
+        />
+      </Card>
+
       <SectionTitle>Cómo funciona</SectionTitle>
       <Card className="space-y-3 text-[14px] leading-relaxed text-muted-foreground">
         <Step n={1}>Un cliente te escribe pidiendo un servicio.</Step>
@@ -106,6 +125,43 @@ function Conexiones() {
         Ir a Mensajes
       </Button>
     </Screen>
+  );
+}
+
+/** Real tests that need no server: they open WhatsApp / Messages on this phone with a test text. */
+function TestLinks({ whatsapp, sms }: { whatsapp?: string | undefined; sms?: string | undefined }) {
+  const text = encodeURIComponent("Prueba de Marcelo: si ves este mensaje, el enlace funciona.");
+  const d = (n?: string) => (n ?? "").replace(/\D/g, "").slice(-10);
+  return (
+    <div className="grid gap-2 border-t pt-3">
+      <p className="text-[13px] font-semibold">Pruébalo ahora (te escribes a ti mismo)</p>
+      {d(whatsapp).length === 10 ? (
+        <a
+          href={`https://wa.me/1${d(whatsapp)}?text=${text}`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card font-semibold"
+        >
+          <ExternalLink className="size-4" /> Abrir WhatsApp con mi número
+        </a>
+      ) : (
+        <p className="text-[13px] text-muted-foreground">
+          Conecta tu número de WhatsApp (arriba) para probar el enlace.
+        </p>
+      )}
+      {d(sms).length === 10 ? (
+        <a
+          href={`sms:+1${d(sms)}?&body=${text}`}
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card font-semibold"
+        >
+          <ExternalLink className="size-4" /> Abrir SMS con mi número
+        </a>
+      ) : null}
+      <p className="text-[12px] text-muted-foreground">
+        Resultado esperado: se abre la app con el texto escrito y tu número como destinatario. Si
+        WhatsApp dice “número no válido”, revisa que sea de 10 dígitos de EE. UU.
+      </p>
+    </div>
   );
 }
 

@@ -224,7 +224,7 @@ export function queueJobMessage(
   s: MarceloState,
   kind: AutoMessageKind | "invoice",
   jobId: string,
-  opts: { eta?: number; force?: "ask" | "auto" } = {},
+  opts: { eta?: number; force?: "ask" | "auto"; url?: string } = {},
 ): Out {
   const job = s.jobs.find((j) => j.id === jobId);
   if (!job) return { s, events: [] };
@@ -237,6 +237,7 @@ export function queueJobMessage(
     service,
     eta: opts.eta,
     instructions: next.settings.paymentInstructions,
+    url: opts.url,
   });
   const text = msg.text;
   const es = msg.es ?? msg.text;
@@ -271,6 +272,8 @@ export function sendOutbox(s: MarceloState, id: string, always: boolean): Out {
     es: conv?.lang === "en" ? item.es : undefined,
   });
   next = { ...next, outbox: next.outbox.filter((o) => o.id !== id) };
+  // Sending the invoice is what moves a finished job to "Facturado".
+  if (item.kind === "invoice") next = markInvoiced(next, item.jobId);
   if (always && item.kind !== "invoice") {
     next = {
       ...next,
@@ -326,11 +329,20 @@ export function finishJob(
   return next;
 }
 
+/** "Facturado": the invoice went out. Only a finished (hecho) job moves; anything else stays. */
+export function markInvoiced(s: MarceloState, jobId: string): MarceloState {
+  return patchJob(s, jobId, (j) =>
+    j.status === "hecho" ? { ...j, status: "facturado", invoicedAt: todayISO() } : j,
+  );
+}
+
 /** "Cobré": a payment, optionally settling something in Por cobrar. */
 export function recordPayment(
   s: MarceloState,
   p: {
     clientId: string;
+    /** The job this payment closes (when it is paid from the job's own screen). */
+    jobId?: string | undefined;
     amount: number;
     method: PaymentMethod;
     receivableId?: string | undefined;
@@ -344,7 +356,7 @@ export function recordPayment(
       {
         id: uid(),
         clientId: p.clientId,
-        jobId: r?.jobId,
+        jobId: p.jobId ?? r?.jobId,
         amount: p.amount,
         method: p.method,
         date: todayISO(),
@@ -358,10 +370,19 @@ export function recordPayment(
       ...next,
       receivables: next.receivables.map((x) => (x.id === r.id ? { ...x, paidAt: todayISO() } : x)),
     };
-    if (r.jobId)
-      next = patchJob(next, r.jobId, (j) =>
-        j.status === "hecho" ? { ...j, status: "cobrado" } : j,
-      );
+  }
+  // Paid: a finished or invoiced job becomes "Cobrado", and anything still owed for it is settled.
+  const jobId = p.jobId ?? r?.jobId;
+  if (jobId) {
+    next = patchJob(next, jobId, (j) =>
+      j.status === "hecho" || j.status === "facturado" ? { ...j, status: "cobrado" } : j,
+    );
+    next = {
+      ...next,
+      receivables: next.receivables.map((x) =>
+        x.jobId === jobId && !x.paidAt ? { ...x, paidAt: todayISO() } : x,
+      ),
+    };
   }
   return next;
 }

@@ -171,9 +171,17 @@ export function PublicProfileView({
                       <Icon className="size-7" strokeWidth={1.7} />
                     </span>
                     <span className="mt-2 text-[16px] font-semibold leading-tight">{s.name}</span>
-                    {s.fromPrice ? (
-                      <span className="mt-0.5 text-[15px] text-[#4b5b70]">
-                        {t.from} ${s.fromPrice}
+                    {s.sizes ? (
+                      <span className="mt-0.5 flex flex-col text-[14px] leading-snug text-[#4b5b70]">
+                        {(["chico", "mediano", "grande"] as const).map((k) => (
+                          <span key={k}>
+                            {t.sizeLabels[k]} <b className="text-[#16263a]">${s.sizes![k]}</b>
+                          </span>
+                        ))}
+                      </span>
+                    ) : s.price ? (
+                      <span className="mt-0.5 text-[16px] font-bold text-[#16263a]">
+                        ${s.price}
                       </span>
                     ) : null}
                   </div>

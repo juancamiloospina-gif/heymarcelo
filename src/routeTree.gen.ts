@@ -20,6 +20,7 @@ import { Route as IaRouteImport } from './routes/ia'
 import { Route as MasRouteImport } from './routes/mas'
 import { Route as MiPaginaRouteImport } from './routes/mi-pagina'
 import { Route as PendientesRouteImport } from './routes/pendientes'
+import { Route as RealizadosRouteImport } from './routes/realizados'
 import { Route as ServiciosRouteImport } from './routes/servicios'
 import { Route as TraducirRouteImport } from './routes/traducir'
 import { Route as BandejaIndexRouteImport } from './routes/bandeja.index'
@@ -28,6 +29,7 @@ import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesClientIdRouteImport } from './routes/clientes.$clientId'
 import { Route as MensajeClientIdRouteImport } from './routes/mensaje.$clientId'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
+import { Route as RTokenRouteImport } from './routes/r.$token'
 import { Route as TrabajoJobIdRouteImport } from './routes/trabajo.$jobId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -85,6 +87,11 @@ const PendientesRoute = PendientesRouteImport.update({
   path: '/pendientes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RealizadosRoute = RealizadosRouteImport.update({
+  id: '/realizados',
+  path: '/realizados',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ServiciosRoute = ServiciosRouteImport.update({
   id: '/servicios',
   path: '/servicios',
@@ -125,6 +132,11 @@ const PSlugRoute = PSlugRouteImport.update({
   path: '/p/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RTokenRoute = RTokenRouteImport.update({
+  id: '/r/$token',
+  path: '/r/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrabajoJobIdRoute = TrabajoJobIdRouteImport.update({
   id: '/trabajo/$jobId',
   path: '/trabajo/$jobId',
@@ -143,12 +155,14 @@ export interface FileRoutesByFullPath {
   '/mas': typeof MasRoute
   '/mi-pagina': typeof MiPaginaRoute
   '/pendientes': typeof PendientesRoute
+  '/realizados': typeof RealizadosRoute
   '/servicios': typeof ServiciosRoute
   '/traducir': typeof TraducirRoute
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/p/$slug': typeof PSlugRoute
+  '/r/$token': typeof RTokenRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/bandeja/': typeof BandejaIndexRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -165,12 +179,14 @@ export interface FileRoutesByTo {
   '/mas': typeof MasRoute
   '/mi-pagina': typeof MiPaginaRoute
   '/pendientes': typeof PendientesRoute
+  '/realizados': typeof RealizadosRoute
   '/servicios': typeof ServiciosRoute
   '/traducir': typeof TraducirRoute
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/p/$slug': typeof PSlugRoute
+  '/r/$token': typeof RTokenRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/bandeja': typeof BandejaIndexRoute
   '/clientes': typeof ClientesIndexRoute
@@ -188,12 +204,14 @@ export interface FileRoutesById {
   '/mas': typeof MasRoute
   '/mi-pagina': typeof MiPaginaRoute
   '/pendientes': typeof PendientesRoute
+  '/realizados': typeof RealizadosRoute
   '/servicios': typeof ServiciosRoute
   '/traducir': typeof TraducirRoute
   '/bandeja/$conversationId': typeof BandejaConversationIdRoute
   '/clientes/$clientId': typeof ClientesClientIdRoute
   '/mensaje/$clientId': typeof MensajeClientIdRoute
   '/p/$slug': typeof PSlugRoute
+  '/r/$token': typeof RTokenRoute
   '/trabajo/$jobId': typeof TrabajoJobIdRoute
   '/bandeja/': typeof BandejaIndexRoute
   '/clientes/': typeof ClientesIndexRoute
@@ -212,12 +230,14 @@ export interface FileRouteTypes {
     | '/mas'
     | '/mi-pagina'
     | '/pendientes'
+    | '/realizados'
     | '/servicios'
     | '/traducir'
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/p/$slug'
+    | '/r/$token'
     | '/trabajo/$jobId'
     | '/bandeja/'
     | '/clientes/'
@@ -234,12 +254,14 @@ export interface FileRouteTypes {
     | '/mas'
     | '/mi-pagina'
     | '/pendientes'
+    | '/realizados'
     | '/servicios'
     | '/traducir'
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/p/$slug'
+    | '/r/$token'
     | '/trabajo/$jobId'
     | '/bandeja'
     | '/clientes'
@@ -256,12 +278,14 @@ export interface FileRouteTypes {
     | '/mas'
     | '/mi-pagina'
     | '/pendientes'
+    | '/realizados'
     | '/servicios'
     | '/traducir'
     | '/bandeja/$conversationId'
     | '/clientes/$clientId'
     | '/mensaje/$clientId'
     | '/p/$slug'
+    | '/r/$token'
     | '/trabajo/$jobId'
     | '/bandeja/'
     | '/clientes/'
@@ -279,12 +303,14 @@ export interface RootRouteChildren {
   MasRoute: typeof MasRoute
   MiPaginaRoute: typeof MiPaginaRoute
   PendientesRoute: typeof PendientesRoute
+  RealizadosRoute: typeof RealizadosRoute
   ServiciosRoute: typeof ServiciosRoute
   TraducirRoute: typeof TraducirRoute
   BandejaConversationIdRoute: typeof BandejaConversationIdRoute
   ClientesClientIdRoute: typeof ClientesClientIdRoute
   MensajeClientIdRoute: typeof MensajeClientIdRoute
   PSlugRoute: typeof PSlugRoute
+  RTokenRoute: typeof RTokenRoute
   TrabajoJobIdRoute: typeof TrabajoJobIdRoute
   BandejaIndexRoute: typeof BandejaIndexRoute
   ClientesIndexRoute: typeof ClientesIndexRoute
@@ -369,6 +395,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PendientesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/realizados': {
+      id: '/realizados'
+      path: '/realizados'
+      fullPath: '/realizados'
+      preLoaderRoute: typeof RealizadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/servicios': {
       id: '/servicios'
       path: '/servicios'
@@ -425,6 +458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/r/$token': {
+      id: '/r/$token'
+      path: '/r/$token'
+      fullPath: '/r/$token'
+      preLoaderRoute: typeof RTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trabajo/$jobId': {
       id: '/trabajo/$jobId'
       path: '/trabajo/$jobId'
@@ -447,12 +487,14 @@ const rootRouteChildren: RootRouteChildren = {
   MasRoute: MasRoute,
   MiPaginaRoute: MiPaginaRoute,
   PendientesRoute: PendientesRoute,
+  RealizadosRoute: RealizadosRoute,
   ServiciosRoute: ServiciosRoute,
   TraducirRoute: TraducirRoute,
   BandejaConversationIdRoute: BandejaConversationIdRoute,
   ClientesClientIdRoute: ClientesClientIdRoute,
   MensajeClientIdRoute: MensajeClientIdRoute,
   PSlugRoute: PSlugRoute,
+  RTokenRoute: RTokenRoute,
   TrabajoJobIdRoute: TrabajoJobIdRoute,
   BandejaIndexRoute: BandejaIndexRoute,
   ClientesIndexRoute: ClientesIndexRoute,
