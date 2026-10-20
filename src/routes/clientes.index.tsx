@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Search, Plus, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Search, Plus, ChevronRight, UserPlus } from "lucide-react";
 import {
   Button,
   Card,
@@ -29,15 +29,26 @@ export const Route = createFileRoute("/clientes/")({
       },
     ],
   }),
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { nuevo?: 1; nombre?: string; volver?: "/" | "/agenda" } => ({
+    ...(s["nuevo"] ? { nuevo: 1 as const } : {}),
+    ...(typeof s["nombre"] === "string" ? { nombre: s["nombre"] } : {}),
+    ...(s["volver"] === "/" || s["volver"] === "/agenda"
+      ? { volver: s["volver"] as "/" | "/agenda" }
+      : {}),
+  }),
   component: Clientes,
 });
 
 function Clientes() {
   const { state, addClient } = useMarcelo();
   const [q, setQ] = useState("");
-  const [adding, setAdding] = useState(false);
+  const search = Route.useSearch();
+  const [adding, setAdding] = useState(Boolean(search.nuevo));
+  const formRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState({
-    name: "",
+    name: search.nombre ?? "",
     phone: "",
     address: "",
     city: "",
@@ -46,6 +57,21 @@ function Clientes() {
   });
   const navigate = useNavigate();
 
+  // The form opens at the top and scrolls into view with a short highlight, so it can't go unseen.
+  useEffect(() => {
+    if (!adding) return;
+    const t = window.setTimeout(
+      () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      50,
+    );
+    return () => window.clearTimeout(t);
+  }, [adding]);
+
+  const finish = (clientId?: string) => {
+    if (search.volver) navigate({ to: search.volver, search: { trabajo: clientId ?? "-" } });
+    else if (clientId) navigate({ to: "/clientes/$clientId", params: { clientId } });
+  };
+
   const list = state.clients.filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
@@ -53,10 +79,77 @@ function Clientes() {
       <BackButton />
       <div className="flex items-start justify-between">
         <PageTitle title="Clientes" subtitle={`${state.clients.length} personas`} />
-        <Button size="sm" aria-label="Agregar cliente" onClick={() => setAdding(true)}>
-          <Plus className="size-4" />
+        <Button size="sm" aria-label="Crear cliente" onClick={() => setAdding(true)}>
+          <Plus className="size-4" /> Crear cliente
         </Button>
       </div>
+
+      {adding ? (
+        <div ref={formRef} className="mb-5 scroll-mt-4">
+          <Card className="animate-in zoom-in-95 space-y-3 border-accent ring-2 ring-accent/30 duration-300 fade-in">
+            <p className="flex items-center gap-2 text-[16px] font-semibold">
+              <UserPlus className="size-5 text-accent" /> Nuevo cliente
+            </p>
+            <Field
+              label="Nombre"
+              autoFocus
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+            <Field
+              label="Teléfono"
+              inputMode="tel"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+            <Field
+              label="Dirección"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+            />
+            <Field
+              label="Ciudad"
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+            />
+            <Field
+              label="Servicio habitual"
+              value={form.service}
+              onChange={(e) => setForm({ ...form, service: e.target.value })}
+            />
+            <Field
+              label="Precio habitual"
+              inputMode="numeric"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+            />
+            <div className="flex gap-2 pt-1">
+              <Button
+                className="flex-1"
+                disabled={!form.name.trim()}
+                onClick={() => {
+                  const c = addClient({ ...form, price: Number(form.price) || 0 });
+                  setAdding(false);
+                  setForm({ name: "", phone: "", address: "", city: "", service: "", price: "" });
+                  if (search.volver) finish(c.id);
+                  else navigate({ to: "/clientes/$clientId", params: { clientId: c.id } });
+                }}
+              >
+                {search.volver ? "Guardar y volver al trabajo" : "Guardar"}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAdding(false);
+                  if (search.volver) finish();
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
 
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -97,60 +190,6 @@ function Clientes() {
           ))}
         </div>
       )}
-
-      {adding ? (
-        <Card className="mt-5 space-y-3">
-          <p className="text-[15px] font-semibold">Nuevo cliente</p>
-          <Field
-            label="Nombre"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <Field
-            label="Teléfono"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          />
-          <Field
-            label="Dirección"
-            value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-          />
-          <Field
-            label="Ciudad"
-            value={form.city}
-            onChange={(e) => setForm({ ...form, city: e.target.value })}
-          />
-          <Field
-            label="Servicio habitual"
-            value={form.service}
-            onChange={(e) => setForm({ ...form, service: e.target.value })}
-          />
-          <Field
-            label="Precio habitual"
-            inputMode="numeric"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-          />
-          <div className="flex gap-2 pt-1">
-            <Button
-              className="flex-1"
-              disabled={!form.name.trim()}
-              onClick={() => {
-                const c = addClient({ ...form, price: Number(form.price) || 0 });
-                setAdding(false);
-                setForm({ name: "", phone: "", address: "", city: "", service: "", price: "" });
-                navigate({ to: "/clientes/$clientId", params: { clientId: c.id } });
-              }}
-            >
-              Guardar
-            </Button>
-            <Button variant="secondary" onClick={() => setAdding(false)}>
-              Cancelar
-            </Button>
-          </div>
-        </Card>
-      ) : null}
     </Screen>
   );
 }

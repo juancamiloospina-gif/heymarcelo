@@ -61,7 +61,10 @@ type Store = {
     kind: AutoMessageKind | "invoice",
     jobId: string,
     force?: "ask" | "auto",
+    url?: string,
   ) => void;
+  /** The invoice went out: a finished job becomes "Facturado". */
+  markInvoiced: (jobId: string) => void;
   sendOutbox: (id: string, always: boolean) => void;
   dismissOutbox: (id: string) => void;
   addExpense: (e: Omit<Expense, "id">) => Expense;
@@ -72,6 +75,7 @@ type Store = {
     clientId: string;
     amount: number;
     method: PaymentMethod;
+    jobId?: string | undefined;
     receivableId?: string | undefined;
     note?: string | undefined;
   }) => void;
@@ -249,9 +253,19 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
   );
 
   const queueJobMessage = useCallback(
-    (kind: AutoMessageKind | "invoice", jobId: string, force?: "ask" | "auto") =>
-      run((s) => ops.queueJobMessage(s, kind, jobId, force ? { force } : {})),
+    (kind: AutoMessageKind | "invoice", jobId: string, force?: "ask" | "auto", url?: string) =>
+      run((s) =>
+        ops.queueJobMessage(s, kind, jobId, {
+          ...(force ? { force } : {}),
+          ...(url ? { url } : {}),
+        }),
+      ),
     [run],
+  );
+
+  const markInvoiced = useCallback(
+    (jobId: string) => commit((s) => ops.markInvoiced(s, jobId)),
+    [commit],
   );
 
   const startTrip = useCallback(
@@ -589,6 +603,7 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       finishJob,
       startTrip,
       queueJobMessage,
+      markInvoiced,
       sendOutbox,
       dismissOutbox,
       addExpense,
@@ -647,6 +662,7 @@ export function MarceloProvider({ children }: { children: ReactNode }) {
       finishJob,
       startTrip,
       queueJobMessage,
+      markInvoiced,
       sendOutbox,
       dismissOutbox,
       addExpense,

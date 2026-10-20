@@ -7,6 +7,7 @@ import {
   ChevronRight,
   HandCoins,
   Hand,
+  MessageCircle,
   PencilLine,
   Send,
   Tag,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Card, Sheet } from "./kit";
+import { whatsappUrl } from "./jobs";
 import { IconChip, type Tone } from "./visual";
 import { useMarcelo } from "@/lib/marcelo-store";
 import {
@@ -42,6 +44,7 @@ const outboxLabel: Record<OutboxItem["kind"], string> = {
   confirm: "Confirmación",
   reminder: "Recordatorio del trabajo",
   onTheWay: "Voy en camino",
+  survey: "Encuesta de calificación",
   invoice: "Factura",
 };
 
@@ -251,7 +254,17 @@ export function OutboxSheet({ item, onClose }: { item: OutboxItem; onClose: () =
           Enviar siempre automático
         </label>
       ) : null}
-      <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
+      {conv?.phone ? (
+        <a
+          href={`${whatsappUrl(conv.phone)}?text=${encodeURIComponent(item.text)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 flex h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card text-[15px] font-semibold"
+        >
+          <MessageCircle className="size-5 text-whatsapp" /> Abrir en WhatsApp con el mensaje listo
+        </a>
+      ) : null}
+      <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
         <Button
           variant="secondary"
           onClick={() => {

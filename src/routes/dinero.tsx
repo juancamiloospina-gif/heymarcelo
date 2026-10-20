@@ -1,3 +1,4 @@
+import { TaxCard } from "@/components/marcelo/tax-card";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import {
@@ -737,6 +738,9 @@ function Contador() {
           </p>
         ))}
       </Card>
+
+      <SectionTitle>Impuestos de tu negocio</SectionTitle>
+      <TaxCard profit={n.profit} />
 
       <SectionTitle>Fechas para tener en cuenta</SectionTitle>
       <Card className="space-y-2 text-[15px] leading-relaxed">

@@ -13,7 +13,12 @@ export type ViewProfile = {
   tagline: string;
   bio: string;
   traits: string[];
-  services: { name: string; kind: string; fromPrice?: number | undefined }[];
+  services: {
+    name: string;
+    kind: string;
+    price?: number | undefined;
+    sizes?: { chico: number; mediano: number; grande: number } | undefined;
+  }[];
   phone: string;
   gallery: string[];
   areaCenterZip: string;
@@ -25,8 +30,13 @@ export type ViewProfile = {
 /** Picks the English text of tagline/bio when it exists (translated on publish); else the original. */
 export function viewFromCloud(c: CloudProfile, lang: Lang): ViewProfile {
   const items = c.service_items.length
-    ? c.service_items.map((i) => ({ name: i.name, kind: i.kind, fromPrice: i.from_price }))
-    : c.services.map((name) => ({ name, kind: "general", fromPrice: undefined }));
+    ? c.service_items.map((i) => ({
+        name: i.name,
+        kind: i.kind,
+        price: i.price ?? i.from_price,
+        sizes: i.sizes,
+      }))
+    : c.services.map((name) => ({ name, kind: "general", price: undefined, sizes: undefined }));
   return {
     businessName: c.business_name,
     tradeEn: c.trade_en,
@@ -60,7 +70,8 @@ export function viewFromPublic(p: PublicProfile): ViewProfile {
     services: p.serviceItems.map((i) => ({
       name: i.name,
       kind: i.kind,
-      fromPrice: p.showPrices ? i.fromPrice : undefined,
+      price: p.showPrices ? i.price : undefined,
+      sizes: p.showPrices ? i.sizes : undefined,
     })),
     phone: p.showPhone ? p.phone : "",
     gallery: p.gallery,

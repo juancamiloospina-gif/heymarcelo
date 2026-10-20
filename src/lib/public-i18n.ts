@@ -4,7 +4,7 @@ export type Lang = "en" | "es";
 export const T = {
   en: {
     servicesWord: "services",
-    from: "From",
+    sizeLabels: { chico: "Small", mediano: "Medium", grande: "Large" },
     seeAll: "See all",
     seeLess: "See less",
     aboutMe: "About me",
@@ -55,7 +55,7 @@ export const T = {
   },
   es: {
     servicesWord: "servicios",
-    from: "Desde",
+    sizeLabels: { chico: "Chico", mediano: "Mediano", grande: "Grande" },
     seeAll: "Ver todos",
     seeLess: "Ver menos",
     aboutMe: "Sobre mí",

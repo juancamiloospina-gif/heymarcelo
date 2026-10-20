@@ -7,7 +7,13 @@
  * `shareUrl` returns the page URL. QR, flyer and any future screen only use these two things.
  */
 import { PUBLIC_PROFILE_BASE_URL } from "./flags";
-import { digits, type MarceloState, type ServiceKind, type TraitKey } from "./marcelo-data";
+import {
+  digits,
+  type MarceloState,
+  type ServiceKind,
+  type Size,
+  type TraitKey,
+} from "./marcelo-data";
 import { buildAreaGeo, type AreaGeo } from "./service-area";
 
 export type PublicProfile = {
@@ -42,7 +48,13 @@ export type PublicProfile = {
   serviceItems: ServiceItem[];
 };
 
-export type ServiceItem = { name: string; kind: ServiceKind; fromPrice?: number | undefined };
+/** One service on the page: a flat `price`, or `sizes` when it is priced by job size. */
+export type ServiceItem = {
+  name: string;
+  kind: ServiceKind;
+  price?: number | undefined;
+  sizes?: Record<Size, number> | undefined;
+};
 
 /** Where the visit came from, so it can be measured once there is a page (`?src=`). */
 export type ShareSource = "qr" | "flyer" | "link";
@@ -80,7 +92,7 @@ export function tradeInEnglish(trade: string): string {
   return TRADES_EN[key] ?? "";
 }
 
-/** Lowest price of a service: the smallest size price when priced by size, else the flat price. */
+/** What each service costs, exactly as the user set it (flat, or one price per size). */
 function serviceItems(state: MarceloState): ServiceItem[] {
   const seen = new Set<string>();
   const items: ServiceItem[] = [];
@@ -88,13 +100,11 @@ function serviceItems(state: MarceloState): ServiceItem[] {
     const name = sv.nameEn.trim();
     if (!name || seen.has(name)) continue;
     seen.add(name);
-    const prices = sv.sizes ? Object.values(sv.sizes) : [sv.price];
-    const from = Math.min(...prices);
-    items.push({
-      name,
-      kind: sv.kind,
-      fromPrice: Number.isFinite(from) && from > 0 ? from : undefined,
-    });
+    if (sv.sizes && Object.values(sv.sizes).every((n) => n > 0)) {
+      items.push({ name, kind: sv.kind, sizes: { ...sv.sizes } });
+    } else {
+      items.push({ name, kind: sv.kind, price: sv.price > 0 ? sv.price : undefined });
+    }
   }
   return items.slice(0, 12);
 }

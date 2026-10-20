@@ -13,7 +13,14 @@ import {
 import { useMarcelo } from "@/lib/marcelo-store";
 import { JobCard, NewJobSheet } from "@/components/marcelo/jobs";
 import { ClientAvatar } from "@/components/marcelo/visual";
-import { money, prettyDate, prettyTime, todayISO, isActiveJob } from "@/lib/marcelo-data";
+import {
+  isDoneJob,
+  money,
+  prettyDate,
+  prettyTime,
+  todayISO,
+  isActiveJob,
+} from "@/lib/marcelo-data";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clientes/$clientId")({
@@ -55,9 +62,7 @@ function ClienteDetalle() {
     .filter((j) => j.clientId === client.id)
     .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
   const upcoming = jobs.filter((j) => j.date >= todayISO() && isActiveJob(j));
-  const past = jobs.filter(
-    (j) => j.date < todayISO() || j.status === "hecho" || j.status === "cobrado",
-  );
+  const past = jobs.filter((j) => j.date < todayISO() || isDoneJob(j));
   const owed = state.receivables
     .filter((r) => !r.paidAt && r.clientId === client.id)
     .reduce((a, b) => a + b.amount, 0);

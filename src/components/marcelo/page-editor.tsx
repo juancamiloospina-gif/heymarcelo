@@ -15,7 +15,7 @@ import {
   uploadWorkPhoto,
   useCloudSession,
 } from "@/lib/cloud";
-import { compressImage } from "@/lib/image";
+import { compressImage, photoErrorText } from "@/lib/image";
 import { T } from "@/lib/public-i18n";
 import { buildPublicProfile } from "@/lib/public-profile";
 import { publishErrorText, publishNotice, publishPage } from "@/lib/publish";
@@ -58,6 +58,16 @@ export function PageEditor() {
 
   const gallery = profile.gallery ?? [];
 
+  // The buttons stay tappable: a disabled button on a phone gives no clue why. If the photo
+  // can't be saved yet, say what to do; otherwise open the camera / gallery.
+  const pickFile = (input: HTMLInputElement | null) => {
+    if (!cloudEnabled)
+      return void toast.error("La nube no está conectada en esta versión de la app.");
+    if (!signedIn)
+      return void toast.error("Primero entra con tu correo (más abajo) para guardar fotos.");
+    input?.click();
+  };
+
   const addWorkPhotos = async (files: FileList | null) => {
     if (!files?.length) return;
     setBusy(true);
@@ -72,8 +82,8 @@ export function PageEditor() {
         current = [...current, url];
         setProfile({ gallery: current });
       }
-    } catch {
-      toast.error("No pude subir una foto. Intenta con otra.");
+    } catch (e) {
+      toast.error(photoErrorText(e), { duration: 8000 });
     } finally {
       setBusy(false);
       if (workRef.current) workRef.current.value = "";
@@ -105,8 +115,8 @@ export function PageEditor() {
       const url = await uploadProfilePhoto(await compressImage(file));
       setProfile({ photoUrl: url });
       toast.success("Foto guardada. Publica tu página para que se vea.");
-    } catch {
-      toast.error("No pude subir la foto. Intenta con otra.");
+    } catch (e) {
+      toast.error(photoErrorText(e), { duration: 8000 });
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -147,15 +157,16 @@ export function PageEditor() {
             ref={fileRef}
             type="file"
             accept="image/*"
-            className="hidden"
+            className="sr-only"
+            tabIndex={-1}
             onChange={(e) => void onPhoto(e.target.files?.[0])}
           />
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="secondary"
-              disabled={busy || !cloudEnabled || !signedIn}
-              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+              onClick={() => pickFile(fileRef.current)}
             >
               <Camera className="size-4" /> {profile.photoUrl ? "Cambiar" : "Subir foto"}
             </Button>
@@ -261,13 +272,14 @@ export function PageEditor() {
           type="file"
           accept="image/*"
           multiple
-          className="hidden"
+          className="sr-only"
+          tabIndex={-1}
           onChange={(e) => void addWorkPhotos(e.target.files)}
         />
         <Button
           variant="secondary"
-          disabled={busy || !cloudEnabled || !signedIn || gallery.length >= MAX_WORK_PHOTOS}
-          onClick={() => workRef.current?.click()}
+          disabled={busy || gallery.length >= MAX_WORK_PHOTOS}
+          onClick={() => pickFile(workRef.current)}
         >
           <ImagePlus className="size-4" /> {busy ? "Subiendo…" : "Agregar fotos"}
         </Button>
@@ -285,7 +297,7 @@ export function PageEditor() {
           checked={profile.showPrices ?? true}
           onChange={(e) => setProfile({ showPrices: e.target.checked })}
         />
-        Mostrar “Desde $” en cada servicio
+        Mostrar el precio de cada servicio
       </label>
       <p className="text-[13px] text-muted-foreground">
         Tus servicios y precios salen de la pantalla Servicios y precios. Si cambias algo allá,

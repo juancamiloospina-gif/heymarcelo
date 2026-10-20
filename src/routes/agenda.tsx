@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarPlus, Users } from "lucide-react";
+import { CalendarPlus, History, Users } from "lucide-react";
 import { Button, PageTitle, Screen } from "@/components/marcelo/kit";
 import { JobCard, NewJobSheet } from "@/components/marcelo/jobs";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { dayShort, isActiveJob, prettyDate, todayISO } from "@/lib/marcelo-data";
+import { dayShort, isActiveJob, isDoneJob, prettyDate, todayISO } from "@/lib/marcelo-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/agenda")({
@@ -14,6 +14,8 @@ export const Route = createFileRoute("/agenda")({
       { name: "description", content: "Tus trabajos día por día." },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>): { trabajo?: string } =>
+    typeof s["trabajo"] === "string" ? { trabajo: s["trabajo"] } : {},
   component: Agenda,
 });
 
@@ -23,12 +25,11 @@ function Agenda() {
   const { state } = useMarcelo();
   const navigate = useNavigate();
   const [day, setDay] = useState(todayISO());
-  const [adding, setAdding] = useState(false);
+  const { trabajo } = Route.useSearch();
+  const [adding, setAdding] = useState(Boolean(trabajo));
 
   const visible = (d: string) =>
-    state.jobs.filter(
-      (j) => j.date === d && (isActiveJob(j) || j.status === "hecho" || j.status === "cobrado"),
-    );
+    state.jobs.filter((j) => j.date === d && (isActiveJob(j) || isDoneJob(j)));
   const jobs = visible(day).sort((a, b) => a.time.localeCompare(b.time));
   const days = Array.from({ length: DAYS }, (_, i) => {
     const iso = todayISO(i);
@@ -47,6 +48,14 @@ function Agenda() {
       <div className="flex items-start justify-between gap-3">
         <PageTitle title="Agenda" subtitle={prettyDate(day)} />
         <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-label="Servicios realizados"
+            onClick={() => navigate({ to: "/realizados" })}
+          >
+            <History className="size-5" />
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -102,7 +111,16 @@ function Agenda() {
         </div>
       )}
 
-      {adding ? <NewJobSheet date={day} onClose={() => setAdding(false)} /> : null}
+      {adding ? (
+        <NewJobSheet
+          date={day}
+          clientId={trabajo && trabajo !== "-" ? trabajo : undefined}
+          onClose={() => {
+            setAdding(false);
+            if (trabajo) navigate({ to: "/agenda", search: {}, replace: true });
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

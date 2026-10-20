@@ -1,7 +1,13 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useMarcelo } from "@/lib/marcelo-store";
-import { markImported, pullNewRequests, useCloudSession, type CloudRequest } from "@/lib/cloud";
+import {
+  markImported,
+  pullNewRequests,
+  pullReviews,
+  useCloudSession,
+  type CloudRequest,
+} from "@/lib/cloud";
 
 const EVERY_MS = 60_000;
 
@@ -22,7 +28,13 @@ function requestText(r: CloudRequest): string {
  * closed nothing arrives yet: that needs push notifications.
  */
 export function CloudSync() {
-  const { state, receiveClientMessage } = useMarcelo();
+  const { state, receiveClientMessage, updateJob, clientById } = useMarcelo();
+  const jobsRef = useRef(state.jobs);
+  jobsRef.current = state.jobs;
+  const patchJob = useRef(updateJob);
+  patchJob.current = updateJob;
+  const clientRef = useRef(clientById);
+  clientRef.current = clientById;
   const session = useCloudSession();
   const receive = useRef(receiveClientMessage);
   receive.current = receiveClientMessage;
@@ -66,6 +78,44 @@ export function CloudSync() {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [published, signedIn]);
+
+  // Ratings sent from the survey link come back onto the job they belong to.
+  useEffect(() => {
+    if (!signedIn) return;
+    let stop = false;
+    const pull = async () => {
+      try {
+        const reviews = await pullReviews();
+        if (stop) return;
+        for (const r of reviews) {
+          const job = jobsRef.current.find((j) => j.id === r.job_ref);
+          if (!job || job.ratedAt === r.rated_at) continue;
+          patchJob.current(job.id, {
+            rating: r.rating,
+            ratingComment: r.comment || undefined,
+            ratedAt: r.rated_at,
+          });
+          if (!job.ratedAt) {
+            const name = clientRef.current(job.clientId)?.name.split(" ")[0] ?? "Tu cliente";
+            toast.success(
+              `${name} te calificó con ${r.rating} ${r.rating === 1 ? "estrella" : "estrellas"}`,
+            );
+          }
+        }
+      } catch {
+        // No connection or expired session: try again at the next turn.
+      }
+    };
+    void pull();
+    const timer = setInterval(() => void pull(), EVERY_MS);
+    const onVisible = () => document.visibilityState === "visible" && void pull();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      stop = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [signedIn]);
 
   return null;
 }
