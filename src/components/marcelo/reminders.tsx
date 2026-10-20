@@ -30,10 +30,12 @@ export function Swipeable({
 
   return (
     <div className="relative overflow-hidden">
+      {/* Only while swiping: otherwise a sliver of colour shows at the row edges. */}
       <div
         className={cn(
           "absolute inset-0 flex items-center px-5 text-[15px] font-semibold text-white",
           dx > 0 ? "justify-start bg-success" : "justify-end bg-destructive",
+          dx === 0 && "invisible",
         )}
         aria-hidden
       >
